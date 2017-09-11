@@ -41,40 +41,297 @@ Create and destroy a Vulkan surface on an SDL window.
 
 #include <iostream>
 #include <vector>
+#include <set>
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window);
 std::vector<const char*> getAvailableWSIExtensions();
 
+static const int screenWidth = 1280;
+static const int screenHeight = 720;
+
+using namespace vk;
+
+vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
+vk::SurfaceKHR surface;
+vk::Device device = VK_NULL_HANDLE;
+vk::Instance instance;
+
+// Extensions and layers
+std::vector<const char*> extensions;
+std::vector<const char*> layers;
+
+vk::Queue graphicsQueue;
+vk::Queue presentQueue;
+
+vk::DebugReportCallbackEXT callback;
+
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+	VkDebugReportFlagsEXT flags,
+	VkDebugReportObjectTypeEXT objType,
+	uint64_t obj,
+	size_t location,
+	int32_t code,
+	const char* layerPrefix,
+	const char* msg,
+	void* userData) {
+
+	std::cerr << "validation layer: " << msg << std::endl;
+
+	return VK_FALSE;
+}
+
+struct QueueFamilyIndices
+{
+	int graphicsFamily = -1;
+	int presentFamily = -1;
+	bool isComplete()
+	{
+		return graphicsFamily >= 0 && presentFamily >= 0;
+	}
+};
+
+QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device)
+{
+	QueueFamilyIndices indices;
+
+
+	std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
+
+	int i = 0;
+	for (const auto& queueFamily : queueFamilies)
+	{
+		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+		{
+			indices.graphicsFamily = i;
+		}
+
+		vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, surface);
+		if (queueFamily.queueCount > 0 && presentSupport) {
+			indices.presentFamily = i;
+			std::cout << "Present support detected in family" << std::endl;
+		}
+
+		if (indices.isComplete())
+		{
+			break;
+		}
+		i++;
+	}
+
+	return indices;
+}
+
+
+bool CheckValidationLayerSupport(const std::vector<const char*>& aLayersToCheck)
+{
+	uint32_t layerCount;
+	std::vector<vk::LayerProperties> availableLayers =  vk::enumerateInstanceLayerProperties();
+
+	
+	for (const char* layerName : aLayersToCheck)
+	{
+		bool layerFound = false;
+
+		for (const auto& layerProps : availableLayers)
+		{
+			layerFound = false;
+			if (strcmp(layerName, layerProps.layerName) == 0)
+			{
+				layerFound = true;
+				break;
+			}
+		}
+
+		if (!layerFound)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void CreateLogicalDevice()
+{
+	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
+
+	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+	std::set<int> uniqueQueueFamilies = { indices.graphicsFamily, indices.presentFamily };
+
+	float queuePriority = 1.0f;
+
+	// For every unique queue Family, create queue info
+	for (int queueFamily : uniqueQueueFamilies)
+	{
+		vk::DeviceQueueCreateInfo qCreateInfo = vk::DeviceQueueCreateInfo()
+			.setQueueFamilyIndex(queueFamily)
+			.setQueueCount(1)
+			.setPQueuePriorities(&queuePriority);
+
+		queueCreateInfos.push_back(qCreateInfo);
+	}
+
+	vk::PhysicalDeviceFeatures deviceFeatures = {};
+
+	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
+		.setQueueCreateInfoCount(static_cast<uint32_t>(queueCreateInfos.size()))
+		.setPQueueCreateInfos(queueCreateInfos.data())
+		.setPEnabledFeatures(&deviceFeatures)
+		.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
+		.setPpEnabledExtensionNames(extensions.data());
+
+
+	// Only enable layers in debug mode
+#if defined(_DEBUG)
+	createInfo.setEnabledLayerCount(static_cast<uint32_t>(layers.size()));
+	createInfo.setPpEnabledLayerNames(layers.data());
+#else
+	createInfo.setEnabledLayerCount(0);
+#endif
+
+	device = physicalDevice.createDevice(createInfo);
+
+	if (device == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("failed to create logical device");
+	}
+
+	graphicsQueue = device.getQueue(indices.graphicsFamily, 0);
+	presentQueue = device.getQueue(indices.presentFamily, 0);
+	
+}
+
+void SetupDebugCallBack()
+{
+
+	VkInstance tempInstance = VkInstance(instance);
+	#ifdef MY_DEBUG_BUILD_MACRO
+    /* Load VK_EXT_debug_report entry points in debug builds */
+  
+#endif
+
+#if defined(_DEBUG)
+	PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT =
+		reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>
+		(vkGetInstanceProcAddr(tempInstance, "vkCreateDebugReportCallbackEXT"));
+	PFN_vkDebugReportMessageEXT vkDebugReportMessageEXT =
+		reinterpret_cast<PFN_vkDebugReportMessageEXT>
+		(vkGetInstanceProcAddr(tempInstance, "vkDebugReportMessageEXT"));
+	PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT =
+		reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>
+		(vkGetInstanceProcAddr(tempInstance, "vkDestroyDebugReportCallbackEXT"));
+
+	//vk::DebugReportCallbackCreateInfoEXT createinfo = vk::DebugReportCallbackCreateInfoEXT()
+	//	.setFlags(vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning)
+	//	.setPfnCallback(debugCallback);
+	//
+	//callback = instance.createDebugReportCallbackEXT(createinfo);
+#else
+	return;
+#endif;
+}
+
+bool isDeviceSuitable(vk::PhysicalDevice device)
+{
+	vk::PhysicalDeviceProperties deviceProperties;
+	//device.getProperties(deviceProperties, device);
+	deviceProperties = device.getProperties();
+
+	PhysicalDeviceFeatures deviceFeatures;
+	deviceFeatures = device.getFeatures();
+
+	QueueFamilyIndices indices = FindQueueFamilies(device);
+
+	//return true;
+	return deviceProperties.deviceType == PhysicalDeviceType::eDiscreteGpu && deviceFeatures.geometryShader && indices.isComplete();
+}
+
+void PickPhysicalDevice()
+{
+	// Create device
+	std::vector<vk::PhysicalDevice> physDevices = instance.enumeratePhysicalDevices();
+
+	if (physDevices.size() == 0)
+	{
+		throw std::runtime_error("failed to find GPUs with Vulkan support!");
+	}
+
+	for (const auto& device : physDevices)
+	{
+		if (isDeviceSuitable(device))
+		{
+			physicalDevice = device;
+			break;
+		}
+	}
+
+	if (physicalDevice == VK_NULL_HANDLE)
+	{
+		throw std::runtime_error("failed to find a suitable GPU");
+	}}
+
+
 int main()
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
-    std::vector<const char*> extensions = getAvailableWSIExtensions();
-    std::vector<const char*> layers;
-#if defined(_DEBUG)
-    layers.push_back("VK_LAYER_LUNARG_standard_validation");
+    extensions = getAvailableWSIExtensions();
+
+#if defined(_DEBUG) 
+	// Open and allocate a console window
+	AllocConsole();
+	freopen("conin$", "r", stdin);
+	freopen("conout$", "w", stdout);
+	freopen("conout$", "w", stderr);
+
+	
+	std::vector<vk::ExtensionProperties> props = vk::enumerateInstanceExtensionProperties(nullptr);
+	
+	for (auto &e : props)
+	{
+		extensions.push_back(e.extensionName);
+	}
+	
+	for (auto& e : props)
+	{
+		std::cout << "Extension found!" << std::endl;
+		std::cout << "Name: " << e.extensionName << std::endl;
+		std::cout << "SpecVersion: " << e.specVersion << std::endl;
+	}
+	
+	layers.push_back("VK_LAYER_LUNARG_standard_validation");
+
+
 #endif
+
+	if (!CheckValidationLayerSupport(layers))
+	{
+		throw std::runtime_error("Validation layers requested, but not available!");
+	}
 
     // vk::ApplicationInfo allows the programmer to specifiy some basic information about the
     // program, which can be useful for layers and tools to provide more debug information.
-    vk::ApplicationInfo appInfo = vk::ApplicationInfo()
-        .setPApplicationName("Vulkan C++ Windowed Program Template")
-        .setApplicationVersion(1)
-        .setPEngineName("LunarG SDK")
-        .setEngineVersion(1)
-        .setApiVersion(VK_API_VERSION_1_0);
+	vk::ApplicationInfo appInfo = vk::ApplicationInfo()
+		.setPApplicationName("Vulkan C++ Windowed Program Template")
+		.setApplicationVersion(1)
+		.setPEngineName("LunarG SDK")
+		.setEngineVersion(1)
+		.setApiVersion(VK_API_VERSION_1_0);
 
     // vk::InstanceCreateInfo is where the programmer specifies the layers and/or extensions that
     // are needed.
-    vk::InstanceCreateInfo instInfo = vk::InstanceCreateInfo()
-        .setFlags(vk::InstanceCreateFlags())
-        .setPApplicationInfo(&appInfo)
-        .setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
-        .setPpEnabledExtensionNames(extensions.data())
-        .setEnabledLayerCount(static_cast<uint32_t>(layers.size()))
-        .setPpEnabledLayerNames(layers.data());
+	vk::InstanceCreateInfo instInfo = vk::InstanceCreateInfo()
+		.setFlags(vk::InstanceCreateFlags())
+		.setPApplicationInfo(&appInfo)
+		.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
+		.setPpEnabledExtensionNames(extensions.data())
+		.setEnabledLayerCount(static_cast<uint32_t>(layers.size()))
+		.setPpEnabledLayerNames(layers.data());
 
     // Create the Vulkan instance.
-    vk::Instance instance;
+
+
+
     try {
         instance = vk::createInstance(instInfo);
     } catch(const std::exception& e) {
@@ -82,20 +339,21 @@ int main()
         return 1;
     }
 
+	SetupDebugCallBack();
+	
     // Create an SDL window that supports Vulkan and OpenGL rendering.
     if(SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cout << "Could not initialize SDL." << std::endl;
         return 1;
     }
     SDL_Window* window = SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_OPENGL);
+        SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_OPENGL);
     if(window == NULL) {
         std::cout << "Could not create SDL window." << std::endl;
         return 1;
     }
 
     // Create a Vulkan surface for rendering
-    vk::SurfaceKHR surface;
     try {
         surface = createVulkanSurface(instance, window);
     } catch(const std::exception& e) {
@@ -103,8 +361,14 @@ int main()
         instance.destroy();
         return 1;
     }
+	
 
-    // This is where most initializtion for a program should be performed
+	PickPhysicalDevice();
+	//CreateLogicalDevice();
+
+	
+
+
 
     // Poll for user input.
     bool stillRunning = true;
@@ -124,16 +388,19 @@ int main()
                 break;
             }
         }
-
+		
         SDL_Delay(10);
     }
 
     // Clean up.
-    instance.destroySurfaceKHR(surface);
+	
+	device.destroy();
+	instance.destroySurfaceKHR(surface);
     SDL_DestroyWindow(window);
     SDL_Quit();
     instance.destroy();
-
+	
+	
     return 0;
 }
 
