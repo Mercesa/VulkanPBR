@@ -39,6 +39,9 @@ Create and destroy a Vulkan surface on an SDL window.
 #include <SDL2/SDL_syswm.h>
 #include <vulkan/vulkan.hpp>
 
+#include <glm/gtx/common.hpp>
+#include <glm/gtx/transform.hpp>
+#include <cstdlib>
 #include <iostream>
 #include <vector>
 #include <set>
@@ -52,225 +55,474 @@ static const int screenHeight = 720;
 using namespace vk;
 
 vk::PhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+
+vk::Image depthImage;
+vk::ImageView depthImageView;
+vk::DeviceMemory depthMem;
+
+
+vk::Format format;
 vk::SurfaceKHR surface;
+vk::SwapchainKHR swapchain;
+std::vector<vk::Image> images;
+std::vector<vk::ImageView> views;
+
 vk::Device device = VK_NULL_HANDLE;
 vk::Instance instance;
 
 // Extensions and layers
 std::vector<const char*> extensions;
-std::vector<const char*> layers;
 
 vk::Queue graphicsQueue;
 vk::Queue presentQueue;
 
 vk::DebugReportCallbackEXT callback;
 
+vk::CommandPool commandPool;
+vk::CommandBuffer commandBuffer;
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugReportFlagsEXT flags,
-	VkDebugReportObjectTypeEXT objType,
-	uint64_t obj,
-	size_t location,
-	int32_t code,
-	const char* layerPrefix,
-	const char* msg,
-	void* userData) {
+std::vector<PhysicalDevice> physicalDevices;
+std::vector<LayerProperties> layers;
 
-	std::cerr << "validation layer: " << msg << std::endl;
+vk::PhysicalDeviceMemoryProperties memoryProperties;
 
-	return VK_FALSE;
+std::vector<QueueFamilyProperties> familyProperties;
+int32_t familyIndex = 0;
+
+int32_t familyGraphicsIndex = 0;
+int32_t familyPresenteIndex = 0;
+
+SDL_Window* window = nullptr;
+
+
+glm::mat4 projectionMatrix;
+glm::mat4 viewMatrix;
+glm::mat4 modelMatrix;
+glm::mat4 clipMatrix;
+glm::mat4 mvpMatrix;
+
+#define NUM_SAMPLES vk::SampleCountFlagBits::e1
+
+
+bool memory_type_from_properties(PhysicalDeviceMemoryProperties memProps, uint32_t typeBits, vk::MemoryPropertyFlagBits requirements_mask, uint32_t *typeIndex) {
+	// Search memtypes to find first index with those properties
+	for (uint32_t i = 0; i < memProps.memoryTypeCount; i++) {
+		if ((typeBits & 1) == 1) {
+			// Type is available, does it match user properties?
+			if ((memProps.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask) {
+				*typeIndex = i;
+				return true;
+			}
+		}
+		typeBits >>= 1;
+	}
+	// No memory types matched, return failure
+	return false;
 }
 
-struct QueueFamilyIndices
+void SetupApplication()
 {
-	int graphicsFamily = -1;
-	int presentFamily = -1;
-	bool isComplete()
+	// vk::ApplicationInfo allows the programmer to specifiy some basic information about the
+	// program, which can be useful for layers and tools to provide more debug information.
+	vk::ApplicationInfo appInfo = vk::ApplicationInfo()
+		.setPApplicationName("Vulkan C++ Windowed Program Template")
+		.setApplicationVersion(1)
+		.setPEngineName("LunarG SDK")
+		.setEngineVersion(1)
+		.setApiVersion(VK_API_VERSION_1_0);
+
+	std::vector<const char*> layerNames;
+
+	for (auto &e : layers)
 	{
-		return graphicsFamily >= 0 && presentFamily >= 0;
+		layerNames.push_back(e.layerName);
 	}
-};
 
-QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice device)
+	// vk::InstanceCreateInfo is where the programmer specifies the layers and/or extensions that
+	// are needed.
+	vk::InstanceCreateInfo instInfo = vk::InstanceCreateInfo()
+		.setFlags(vk::InstanceCreateFlags())
+		.setPApplicationInfo(&appInfo)
+		.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
+		.setPpEnabledExtensionNames(extensions.data())
+		.setEnabledLayerCount(static_cast<uint32_t>(layers.size()))
+		.setPpEnabledLayerNames(layerNames.data());
+
+
+	// Create instance
+	try {
+		instance = vk::createInstance(instInfo);
+	}
+	catch (const std::exception& e) {
+		std::cout << "Could not create a Vulkan instance: " << e.what() << std::endl;
+	}
+}
+
+// Ensure there is at least 1 physical device capable to be used
+void EnumerateDevices()
 {
-	QueueFamilyIndices indices;
+	physicalDevices = instance.enumeratePhysicalDevices();
 
+	assert(physicalDevices.size() != 0);
+}
 
-	std::vector<vk::QueueFamilyProperties> queueFamilies = device.getQueueFamilyProperties();
+void EnumerateLayers()
+{
+	layers = vk::enumerateInstanceLayerProperties();
+}
 
-	int i = 0;
-	for (const auto& queueFamily : queueFamilies)
+void SetupDevice()
+{
+	vk::PhysicalDevice deviceToUse = physicalDevices[0];
+
+	familyProperties = deviceToUse.getQueueFamilyProperties();
+
+	// Find a family that supports graphics operations
+	bool found = false;
+
+	for (unsigned int i = 0; i < familyProperties.size(); i++)
 	{
-		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+		if (familyProperties[i].queueCount & VK_QUEUE_GRAPHICS_BIT)
 		{
-			indices.graphicsFamily = i;
-		}
-
-		vk::Bool32 presentSupport = device.getSurfaceSupportKHR(i, surface);
-		if (queueFamily.queueCount > 0 && presentSupport) {
-			indices.presentFamily = i;
-			std::cout << "Present support detected in family" << std::endl;
-		}
-
-		if (indices.isComplete())
-		{
+			familyIndex = 0;
+			found = true;
 			break;
 		}
-		i++;
 	}
 
-	return indices;
+	assert(found);
+	assert(familyProperties.size() >= 1);
+
+	// Cache the memory properties of our physical device
+	memoryProperties = physicalDevices[0].getMemoryProperties();
+
+
+	float queue_priorities[1] = { 0.0 };
+
+	vk::DeviceQueueCreateInfo queueInfo = DeviceQueueCreateInfo()
+		.setPNext(nullptr)
+		.setQueueCount(1)
+		.setPQueuePriorities(queue_priorities);
+
+	vk::DeviceCreateInfo deviceInfo = vk::DeviceCreateInfo()
+		.setPNext(nullptr)
+		.setQueueCreateInfoCount(1)
+		.setPQueueCreateInfos(&queueInfo)
+		.setEnabledExtensionCount(0)
+		.setPpEnabledExtensionNames(NULL)
+		.setEnabledLayerCount(0)
+		.setPpEnabledLayerNames(NULL)
+		.setPEnabledFeatures(NULL);
+
+	device = deviceToUse.createDevice(deviceInfo);
 }
 
-
-bool CheckValidationLayerSupport(const std::vector<const char*>& aLayersToCheck)
+void SetupSDL()
 {
-	uint32_t layerCount;
-	std::vector<vk::LayerProperties> availableLayers =  vk::enumerateInstanceLayerProperties();
-
+	// Create an SDL window that supports Vulkan and OpenGL rendering.
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		std::cout << "Could not initialize SDL." << std::endl;
+		return;
+	}
 	
-	for (const char* layerName : aLayersToCheck)
-	{
-		bool layerFound = false;
+	window = SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED,
+		SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_OPENGL);
+	if (window == NULL) {
+		std::cout << "Could not create SDL window." << std::endl;
+		return;
+	}
 
-		for (const auto& layerProps : availableLayers)
+	// Create a Vulkan surface for rendering
+	try {
+		surface = createVulkanSurface(instance, window);
+	}
+	catch (const std::exception& e) {
+		std::cout << "Failed to create Vulkan surface: " << e.what() << std::endl;
+		instance.destroy();
+		return;
+	}
+}
+
+void SetupCommandBuffer()
+{
+	vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
+		.setPNext(nullptr)
+		.setQueueFamilyIndex(familyIndex);
+
+	commandPool = device.createCommandPool(commandPoolInfo);
+	
+
+	vk::CommandBufferAllocateInfo commandBuffAllInfo = vk::CommandBufferAllocateInfo()
+		.setPNext(NULL)
+		.setLevel(CommandBufferLevel::ePrimary)
+		.setCommandBufferCount(1)
+		.setCommandPool(commandPool);
+
+	commandBuffer = device.allocateCommandBuffers(commandBuffAllInfo)[0];
+}
+
+void SetupSwapchain()
+{
+	vk::Bool32* pSupportsPresent = (vk::Bool32*)malloc(familyProperties.size() * sizeof(vk::Bool32));
+
+	// Iterate over each queue 
+	for (uint32_t i = 0; i < familyProperties.size(); ++i)
+	{
+		physicalDevices[0].getSurfaceSupportKHR(i, surface, &pSupportsPresent[i]);
+	}
+
+
+	familyGraphicsIndex = UINT32_MAX;
+	familyPresenteIndex = UINT32_MAX;
+
+	for (uint32_t i = 0; i < familyProperties.size(); ++i)
+	{
+		if ((familyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
 		{
-			layerFound = false;
-			if (strcmp(layerName, layerProps.layerName) == 0)
+			if (familyGraphicsIndex == UINT32_MAX)
 			{
-				layerFound = true;
+				familyGraphicsIndex = i;
+			}
+
+			if (pSupportsPresent[i] == VK_TRUE) {
+				familyGraphicsIndex = i;
+				familyPresenteIndex = i;
 				break;
 			}
 		}
+	}
 
-		if (!layerFound)
+	// Find a seperate queue for present if there is no family that supports both
+	if (familyPresenteIndex == UINT32_MAX)
+	{
+		for (int i = 0; i < familyProperties.size(); ++i)
 		{
-			return false;
+			if (pSupportsPresent[i] == VK_TRUE)
+			{
+				familyPresenteIndex = i;
+				break;
+			}
 		}
 	}
 
-	return true;
+	free(pSupportsPresent);
+
+	if (familyGraphicsIndex == UINT32_MAX && familyPresenteIndex == UINT32_MAX)
+	{
+		std::cout << "Could not find queues for graphics and present\n";
+		exit(-1);
+	}
+
+	// get the list of of supported formats
+	 std::vector<SurfaceFormatKHR> surfaceFormats = physicalDevices[0].getSurfaceFormatsKHR(surface);
+
+	 if (surfaceFormats.size() == 1 && surfaceFormats[0].format == vk::Format::eUndefined)
+	 {
+		 format = vk::Format::eB8G8R8A8Unorm;
+	 }
+	 else
+	 {
+		 assert(surfaceFormats.size() >= 1);
+		 format = surfaceFormats[0].format;
+	 }
+
+	 // Get the surface capabilities
+	 vk::SurfaceCapabilitiesKHR surfCapabilities;
+	 std::vector<vk::PresentModeKHR> presentModes;
+
+	 // Get surface capabilities and present modes
+	 surfCapabilities = physicalDevices[0].getSurfaceCapabilitiesKHR(surface);
+	 presentModes = physicalDevices[0].getSurfacePresentModesKHR(surface);
+
+	 vk::Extent2D swapchainExtent;
+
+	 // Width and height are either both 0xFFFFFFFFF or both not 0xFFFFFFFF
+	 if (surfCapabilities.currentExtent.width == 0xFFFFFFFF)
+	 {
+		 swapchainExtent.width = screenWidth;
+		 swapchainExtent.height = screenHeight;
+
+		 if (swapchainExtent.width < surfCapabilities.minImageExtent.width)
+		 {
+			 swapchainExtent.width = surfCapabilities.minImageExtent.width;
+		 }
+		 else if (swapchainExtent.width > surfCapabilities.maxImageExtent.width)
+		 {
+			 swapchainExtent.width = surfCapabilities.maxImageExtent.width;
+		 }
+
+		 if (swapchainExtent.height < surfCapabilities.minImageExtent.height)
+		 {
+			 swapchainExtent.height = surfCapabilities.minImageExtent.height;
+		 }
+		 else if (swapchainExtent.height > surfCapabilities.maxImageExtent.height)
+		 {
+			 swapchainExtent.height = surfCapabilities.maxImageExtent.height;
+		 }
+	 }
+	 else
+	 {
+		 swapchainExtent = surfCapabilities.currentExtent;
+	 }
+
+	 vk::PresentModeKHR swapchainPresentMode = vk::PresentModeKHR::eFifo;
+
+	 uint32_t desiredNumberOfSwapChainImages = surfCapabilities.minImageCount;
+
+	 vk::SurfaceTransformFlagBitsKHR preTransform;
+	 if (surfCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
+	 {
+		 preTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
+	 }
+	 else
+	 {
+		 preTransform = surfCapabilities.currentTransform;
+	 }
+
+	 vk::CompositeAlphaFlagBitsKHR compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+	 vk::CompositeAlphaFlagBitsKHR compositeAlphaFLags[4] = {
+	 vk::CompositeAlphaFlagBitsKHR::eOpaque,
+	 vk::CompositeAlphaFlagBitsKHR::ePreMultiplied,
+	 vk::CompositeAlphaFlagBitsKHR::ePostMultiplied,
+	 vk::CompositeAlphaFlagBitsKHR::eInherit
+	 };
+
+	 for (uint32_t i = 0; i < sizeof(compositeAlphaFLags); i++)
+	 {
+		 if (surfCapabilities.supportedCompositeAlpha & compositeAlphaFLags[i])
+		 {
+			 compositeAlpha = compositeAlphaFLags[i];
+			 break;
+		 }
+	 }
+
+	 vk::SwapchainCreateInfoKHR swapchainCI = SwapchainCreateInfoKHR()
+		 .setPNext(NULL)
+		 .setSurface(surface)
+		 .setMinImageCount(desiredNumberOfSwapChainImages)
+		 .setImageFormat(format)
+		 .setImageExtent(swapchainExtent)
+		 .setPreTransform(preTransform)
+		 .setCompositeAlpha(compositeAlpha)
+		 .setImageArrayLayers(1)
+		 .setPresentMode(swapchainPresentMode)
+		 .setOldSwapchain(VK_NULL_HANDLE)
+		 .setClipped(true)
+		 .setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
+		 .setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+		 .setImageSharingMode(vk::SharingMode::eExclusive)
+		 .setQueueFamilyIndexCount(0)
+		 .setPQueueFamilyIndices(NULL);
+
+	 uint32_t queueFamilyIndices[2] = { familyGraphicsIndex, familyPresenteIndex };
+
+	 if (familyGraphicsIndex != familyPresenteIndex)
+	 {
+		 swapchainCI.setImageSharingMode(vk::SharingMode::eConcurrent);
+		 swapchainCI.setQueueFamilyIndexCount(2);
+		 swapchainCI.setPQueueFamilyIndices(queueFamilyIndices);
+	 }
+
+	 swapchain = device.createSwapchainKHR(swapchainCI);
+
+	 std::vector<vk::Image> swapchainImages = device.getSwapchainImagesKHR(swapchain);
+
+	 for (int i = 0; i < swapchainImages.size(); ++i)
+	 {
+		 images.push_back(swapchainImages[i]);
+	 }
+
+
+	 for (int i = 0; i < images.size(); ++i)
+	 {
+		 vk::ImageViewCreateInfo color_image_view = vk::ImageViewCreateInfo()
+			 .setPNext(NULL)
+			 .setImage(images[i])
+			 .setViewType(vk::ImageViewType::e2D)
+			 .setFormat(format)
+			 .setComponents(vk::ComponentMapping(ComponentSwizzle::eR, ComponentSwizzle::eG, ComponentSwizzle::eB))
+			 .setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
+			
+		 views.push_back(device.createImageView(color_image_view));
+	 }
 }
 
-void CreateLogicalDevice()
+void SetupDepthbuffer()
 {
-	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
+	vk::ImageCreateInfo image_Info = {};
+	const vk::Format depth_format = vk::Format::eD16Unorm;
 
-	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	std::set<int> uniqueQueueFamilies = { indices.graphicsFamily, indices.presentFamily };
+	// Query if the format we supplied is supported by our device
+	vk::FormatProperties props = physicalDevices[0].getFormatProperties(depth_format);
 
-	float queuePriority = 1.0f;
-
-	// For every unique queue Family, create queue info
-	for (int queueFamily : uniqueQueueFamilies)
+	if (props.linearTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
 	{
-		vk::DeviceQueueCreateInfo qCreateInfo = vk::DeviceQueueCreateInfo()
-			.setQueueFamilyIndex(queueFamily)
-			.setQueueCount(1)
-			.setPQueuePriorities(&queuePriority);
-
-		queueCreateInfos.push_back(qCreateInfo);
+		image_Info.tiling = vk::ImageTiling::eLinear;
 	}
-
-	vk::PhysicalDeviceFeatures deviceFeatures = {};
-
-	vk::DeviceCreateInfo createInfo = vk::DeviceCreateInfo()
-		.setQueueCreateInfoCount(static_cast<uint32_t>(queueCreateInfos.size()))
-		.setPQueueCreateInfos(queueCreateInfos.data())
-		.setPEnabledFeatures(&deviceFeatures)
-		.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
-		.setPpEnabledExtensionNames(extensions.data());
-
-
-	// Only enable layers in debug mode
-#if defined(_DEBUG)
-	createInfo.setEnabledLayerCount(static_cast<uint32_t>(layers.size()));
-	createInfo.setPpEnabledLayerNames(layers.data());
-#else
-	createInfo.setEnabledLayerCount(0);
-#endif
-
-	device = physicalDevice.createDevice(createInfo);
-
-	if (device == VK_NULL_HANDLE)
+	else if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment)
 	{
-		throw std::runtime_error("failed to create logical device");
+		image_Info.tiling = vk::ImageTiling::eOptimal;
 	}
-
-	graphicsQueue = device.getQueue(indices.graphicsFamily, 0);
-	presentQueue = device.getQueue(indices.presentFamily, 0);
+	else
+	{
+		std::cout << "VK_FORMAT_D16_UNORM Unsupported.\n" << std::endl;
+		exit(-1);
+	}
 	
+	image_Info.pNext = NULL;
+	image_Info.imageType = vk::ImageType::e2D;
+	image_Info.format = depth_format;
+	image_Info.extent.width = screenWidth;
+	image_Info.extent.height = screenHeight;
+	image_Info.extent.depth = 1;
+	image_Info.mipLevels = 1;
+	image_Info.arrayLayers = 1;
+	image_Info.samples = NUM_SAMPLES;
+	image_Info.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	image_Info.queueFamilyIndexCount = 0;
+	image_Info.pQueueFamilyIndices = NULL;
+	image_Info.sharingMode = vk::SharingMode::eExclusive;
+
+	vk::MemoryAllocateInfo mem_alloc = vk::MemoryAllocateInfo()
+		.setPNext(NULL)
+		.setAllocationSize(0)
+		.setMemoryTypeIndex(0);
+
+	vk::ImageViewCreateInfo view_info = vk::ImageViewCreateInfo()
+		.setPNext(NULL)
+		.setImage(VK_NULL_HANDLE)
+		.setFormat(depth_format)
+		.setComponents(vk::ComponentMapping(ComponentSwizzle::eR, ComponentSwizzle::eG, ComponentSwizzle::eB, ComponentSwizzle::eA))
+		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1))
+		.setViewType(ImageViewType::e2D);
+
+	vk::MemoryRequirements mem_reqs;
+
+	depthImage = device.createImage(image_Info);
+
+	mem_reqs = device.getImageMemoryRequirements(depthImage);
+
+	mem_alloc.allocationSize = mem_reqs.size;
+	
+	memory_type_from_properties(memoryProperties, mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal, &mem_alloc.memoryTypeIndex);
+	
+
+	/* Allocate memory */
+	depthMem = device.allocateMemory(mem_alloc);
+
+	/* Bind memory */
+	device.bindImageMemory(depthImage, depthMem, 0);
+
+	/* Create Image view */
+	view_info.image = depthImage;
+	depthImageView = device.createImageView(view_info);
 }
 
-void SetupDebugCallBack()
+void SetupUniformbuffer()
 {
-
-	VkInstance tempInstance = VkInstance(instance);
-	#ifdef MY_DEBUG_BUILD_MACRO
-    /* Load VK_EXT_debug_report entry points in debug builds */
-  
-#endif
-
-#if defined(_DEBUG)
-	PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT =
-		reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>
-		(vkGetInstanceProcAddr(tempInstance, "vkCreateDebugReportCallbackEXT"));
-	PFN_vkDebugReportMessageEXT vkDebugReportMessageEXT =
-		reinterpret_cast<PFN_vkDebugReportMessageEXT>
-		(vkGetInstanceProcAddr(tempInstance, "vkDebugReportMessageEXT"));
-	PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT =
-		reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>
-		(vkGetInstanceProcAddr(tempInstance, "vkDestroyDebugReportCallbackEXT"));
-
-	//vk::DebugReportCallbackCreateInfoEXT createinfo = vk::DebugReportCallbackCreateInfoEXT()
-	//	.setFlags(vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::eWarning)
-	//	.setPfnCallback(debugCallback);
-	//
-	//callback = instance.createDebugReportCallbackEXT(createinfo);
-#else
-	return;
-#endif;
+	//vk::bufferCreateInfo create_info
 }
-
-bool isDeviceSuitable(vk::PhysicalDevice device)
-{
-	vk::PhysicalDeviceProperties deviceProperties;
-	//device.getProperties(deviceProperties, device);
-	deviceProperties = device.getProperties();
-
-	PhysicalDeviceFeatures deviceFeatures;
-	deviceFeatures = device.getFeatures();
-
-	QueueFamilyIndices indices = FindQueueFamilies(device);
-
-	//return true;
-	return deviceProperties.deviceType == PhysicalDeviceType::eDiscreteGpu && deviceFeatures.geometryShader && indices.isComplete();
-}
-
-void PickPhysicalDevice()
-{
-	// Create device
-	std::vector<vk::PhysicalDevice> physDevices = instance.enumeratePhysicalDevices();
-
-	if (physDevices.size() == 0)
-	{
-		throw std::runtime_error("failed to find GPUs with Vulkan support!");
-	}
-
-	for (const auto& device : physDevices)
-	{
-		if (isDeviceSuitable(device))
-		{
-			physicalDevice = device;
-			break;
-		}
-	}
-
-	if (physicalDevice == VK_NULL_HANDLE)
-	{
-		throw std::runtime_error("failed to find a suitable GPU");
-	}}
-
 
 int main()
 {
@@ -283,92 +535,27 @@ int main()
 	freopen("conin$", "r", stdin);
 	freopen("conout$", "w", stdout);
 	freopen("conout$", "w", stderr);
-
-	
-	std::vector<vk::ExtensionProperties> props = vk::enumerateInstanceExtensionProperties(nullptr);
-	
-	for (auto &e : props)
-	{
-		extensions.push_back(e.extensionName);
-	}
-	
-	for (auto& e : props)
-	{
-		std::cout << "Extension found!" << std::endl;
-		std::cout << "Name: " << e.extensionName << std::endl;
-		std::cout << "SpecVersion: " << e.specVersion << std::endl;
-	}
-	
-	layers.push_back("VK_LAYER_LUNARG_standard_validation");
-
-
 #endif
 
-	if (!CheckValidationLayerSupport(layers))
-	{
-		throw std::runtime_error("Validation layers requested, but not available!");
-	}
+	projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+	viewMatrix = glm::lookAt(glm::vec3(-5, 3, -10), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+	modelMatrix = glm::mat4(1.0f);
+	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 0.5f, 0.0f,
+		0.0f, 0.0f, 0.5f, 1.0f);
 
-    // vk::ApplicationInfo allows the programmer to specifiy some basic information about the
-    // program, which can be useful for layers and tools to provide more debug information.
-	vk::ApplicationInfo appInfo = vk::ApplicationInfo()
-		.setPApplicationName("Vulkan C++ Windowed Program Template")
-		.setApplicationVersion(1)
-		.setPEngineName("LunarG SDK")
-		.setEngineVersion(1)
-		.setApiVersion(VK_API_VERSION_1_0);
+	mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
-    // vk::InstanceCreateInfo is where the programmer specifies the layers and/or extensions that
-    // are needed.
-	vk::InstanceCreateInfo instInfo = vk::InstanceCreateInfo()
-		.setFlags(vk::InstanceCreateFlags())
-		.setPApplicationInfo(&appInfo)
-		.setEnabledExtensionCount(static_cast<uint32_t>(extensions.size()))
-		.setPpEnabledExtensionNames(extensions.data())
-		.setEnabledLayerCount(static_cast<uint32_t>(layers.size()))
-		.setPpEnabledLayerNames(layers.data());
-
-    // Create the Vulkan instance.
-
-
-
-    try {
-        instance = vk::createInstance(instInfo);
-    } catch(const std::exception& e) {
-        std::cout << "Could not create a Vulkan instance: " << e.what() << std::endl;
-        return 1;
-    }
-
-	SetupDebugCallBack();
-	
-    // Create an SDL window that supports Vulkan and OpenGL rendering.
-    if(SDL_Init(SDL_INIT_VIDEO) != 0) {
-        std::cout << "Could not initialize SDL." << std::endl;
-        return 1;
-    }
-    SDL_Window* window = SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_OPENGL);
-    if(window == NULL) {
-        std::cout << "Could not create SDL window." << std::endl;
-        return 1;
-    }
-
-    // Create a Vulkan surface for rendering
-    try {
-        surface = createVulkanSurface(instance, window);
-    } catch(const std::exception& e) {
-        std::cout << "Failed to create Vulkan surface: " << e.what() << std::endl;
-        instance.destroy();
-        return 1;
-    }
-	
-
-	PickPhysicalDevice();
-	//CreateLogicalDevice();
-
-	
-
-
+	SetupApplication();
+	SetupSDL();
+	EnumerateDevices();
+	EnumerateLayers();
+	SetupDevice();
+	SetupCommandBuffer();
+	SetupSwapchain();
+	SetupDepthbuffer();
+	SetupUniformbuffer();
 
     // Poll for user input.
     bool stillRunning = true;
@@ -399,7 +586,6 @@ int main()
     SDL_DestroyWindow(window);
     SDL_Quit();
     instance.destroy();
-	
 	
     return 0;
 }
