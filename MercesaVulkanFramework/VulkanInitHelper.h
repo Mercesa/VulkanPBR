@@ -33,6 +33,22 @@ inline bool OptimalFamilyQuery()
 
 }
 
+// Updates designated UniformBufferVulkan object
+inline bool UpdateUniformBuffer(vk::Device aDevice, UniformBufferVulkan* const aUniformBuffer, void* aData, size_t aSizeOfData)
+{
+	uint8_t* pData;
+	vk::Result result;
+	result = aDevice.mapMemory(vk::DeviceMemory(aUniformBuffer->memory), vk::DeviceSize(0), vk::DeviceSize(aUniformBuffer->memReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
+
+	assert(result == Result::eSuccess);
+
+	memcpy(pData, aData, aSizeOfData);
+
+	 aDevice.unmapMemory(aUniformBuffer->memory);
+	
+	 return true;
+}
+
 inline bool SetupBasicVertexBuffer(vk::Device aDevice,
 	VertexBufferVulkan* aVertexBuffer,
 	PhysicalDeviceMemoryProperties aPhysDevMemProps,

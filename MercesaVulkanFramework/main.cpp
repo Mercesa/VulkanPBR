@@ -78,11 +78,9 @@ vk::Image depthImage;
 vk::ImageView depthImageView;
 vk::DeviceMemory depthMem;
 
-// Information for the uniform buffer
-vk::Buffer uniformBufferBuff;
-vk::DeviceMemory uniformBufferMemory;
-vk::DescriptorBufferInfo uniformBufferInfo;
-vk::MemoryRequirements uniformBufferMemReqs;
+
+UniformBufferVulkan uniformBufferMVP;
+
 
 vk::DescriptorPool descriptorPool;
 
@@ -664,54 +662,47 @@ void SetupUniformbuffer()
 		.setPQueueFamilyIndices(NULL)
 		.setSharingMode(vk::SharingMode::eExclusive);
 
-	uniformBufferBuff = device.createBuffer(create_info);
+	uniformBufferMVP.buffer = device.createBuffer(create_info);
 
-	uniformBufferMemReqs = device.getBufferMemoryRequirements(uniformBufferBuff);
+	uniformBufferMVP.memReqs = device.getBufferMemoryRequirements(uniformBufferMVP.buffer);
 
 	vk::MemoryAllocateInfo alloc_info = vk::MemoryAllocateInfo()
 		.setPNext(NULL)
 		.setMemoryTypeIndex(0)
-		.setAllocationSize(uniformBufferMemReqs.size);
+		.setAllocationSize(uniformBufferMVP.memReqs.size);
 
-	memory_type_from_properties(memoryProperties, uniformBufferMemReqs.memoryTypeBits, MemoryPropertyFlagBits::eHostVisible | MemoryPropertyFlagBits::eHostCoherent, &alloc_info.memoryTypeIndex);
+	memory_type_from_properties(memoryProperties, uniformBufferMVP.memReqs.memoryTypeBits, MemoryPropertyFlagBits::eHostVisible | MemoryPropertyFlagBits::eHostCoherent, &alloc_info.memoryTypeIndex);
 
-	uniformBufferMemory = device.allocateMemory(alloc_info);
+	uniformBufferMVP.memory = device.allocateMemory(alloc_info);
 
-	uint8_t* pData;
-	device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(uniformBufferMemReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
+	UpdateUniformBuffer(device, &uniformBufferMVP, &mvpMatrix, sizeof(mvpMatrix));
 
-	memcpy(pData, &mvpMatrix, sizeof(mvpMatrix));
-
-	device.unmapMemory(uniformBufferMemory);
-
-	device.bindBufferMemory(uniformBufferBuff, uniformBufferMemory, 0);
+	device.bindBufferMemory(uniformBufferMVP.buffer, uniformBufferMVP.memory, 0);
 
 
-	uniformBufferInfo.buffer = uniformBufferBuff;
-	uniformBufferInfo.offset = 0;
-	uniformBufferInfo.range = sizeof(mvpMatrix);
+	uniformBufferMVP.descriptorInfo.buffer = uniformBufferMVP.buffer;
+	uniformBufferMVP.descriptorInfo.offset = 0;
+	uniformBufferMVP.descriptorInfo.range = sizeof(mvpMatrix);
 }
 
 void UpdateUniformBufferTest()
 {
 	static float derp = 1.0f;
-	derp += 1.0f;
+	derp += 0.01f;
+	float derp2 = (sinf(derp) + 1.0f) / 2.0f;
 	
 	projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
 	viewMatrix = glm::lookAt(glm::vec3(-5, 3, -10), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-	modelMatrix = glm::scale(glm::vec3(sin(derp), 1.0f, 1.0f));
+	modelMatrix = glm::scale(glm::vec3(derp2, derp2, derp2));
 	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f);
 
 	mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
-	uint8_t* pData;
-	device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(uniformBufferMemReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 
-	memcpy(pData, &mvpMatrix, sizeof(mvpMatrix));
 
-	device.unmapMemory(uniformBufferMemory);
+	UpdateUniformBuffer(device, &uniformBufferMVP, &mvpMatrix, sizeof(mvpMatrix));
 
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
@@ -774,7 +765,7 @@ void SetupDescriptorSet()
 	writes[0].dstSet = desc_set[0];
 	writes[0].descriptorCount = 1;
 	writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-	writes[0].pBufferInfo = &uniformBufferInfo;
+	writes[0].pBufferInfo = &uniformBufferMVP.descriptorInfo;
 	writes[0].dstArrayElement = 0;
 	writes[0].dstBinding = 0;
 	
@@ -1349,10 +1340,19 @@ int main()
                 stillRunning = false;
                 break;
 
+			case SDL_KEYDOWN:
+				if (event.key.keysym.sym == SDLK_ESCAPE)
+				{
+					stillRunning = false;
+				}
+				break;
+
             default:
                 // Do nothing.
                 break;
             }	
+			
+			
         }
 		UpdateUniformBufferTest();
 		DrawFrame();

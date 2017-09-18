@@ -16,6 +16,19 @@ struct VertexBufferVulkan
 	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
 };
 
+// A uniform buffer is..
+// - A buffer object
+// - Memory handle
+// - Info for the descriptor
+// - Requirements of this uniform buffer
+struct UniformBufferVulkan
+{
+	vk::Buffer buffer;
+	vk::DeviceMemory memory;
+	vk::DescriptorBufferInfo descriptorInfo;
+	vk::MemoryRequirements memReqs;
+};
+
 
 // A texture in vulkan is made out of..
 // - An image (physical object)
