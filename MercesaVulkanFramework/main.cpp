@@ -371,26 +371,27 @@ void SetupDevice()
 	}
 
 	// Find the unsupported extensions and remove them
-	auto it = deviceExtensions.begin();
-	while (it != deviceExtensions.end())
-	{
-		bool matched = false;
-		// Check for a match
-		for (int i = 0; i < removeExtensions.size(); ++i)
-		{
-			if ((*it) == removeExtensions[i])
-			{
-				it = deviceExtensions.erase(it);
-				matched = true;
-			}
-
-			if (matched)
-			{
-				++it;
-				break;
-			}
-		}
-	}
+	//auto it = deviceExtensions.begin();
+	//while (it != deviceExtensions.end())
+	//{
+	//	bool matched = false;
+	//	// Check for a match
+	//	for (int i = 0; i < removeExtensions.size(); ++i)
+	//	{
+	//		if ((*it) == removeExtensions[i])
+	//		{
+	//			it = deviceExtensions.erase(it);
+	//			matched = true;
+	//			break;
+	//		}
+	//
+	//		if (matched)
+	//		{
+	//			++it;
+	//			break;
+	//		}
+	//	}
+	//}
 
 
 	vk::DeviceQueueCreateInfo queueInfo = DeviceQueueCreateInfo()
@@ -829,7 +830,7 @@ void SetupRenderPass()
 	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 	attachments[0].flags = AttachmentDescriptionFlagBits(0);
 
-	attachments[1].format = format;
+	attachments[1].format = vk::Format::eD16Unorm;
 	attachments[1].samples = NUM_SAMPLES;
 	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
 	attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
@@ -925,8 +926,9 @@ void SetupShaders()
 
 void SetupFramebuffers()
 {
-	vk::ImageView attachments[2];
+	vk::ImageView attachments[2] = {};
 	attachments[1] = depthImageView;
+	attachments[0] = VK_NULL_HANDLE;
 
 	vk::FramebufferCreateInfo fb_info = vk::FramebufferCreateInfo()
 		.setRenderPass(renderPass)
@@ -938,6 +940,7 @@ void SetupFramebuffers()
 
 	for (int i = 0; i < images.size(); ++i)
 	{
+		attachments[0] = views[i];
 		framebuffers.push_back(device.createFramebuffer(fb_info));
 	}
 }
@@ -1169,6 +1172,20 @@ void InitScissors()
 	commandBuffer.setScissor(0, 1, &scissor);
 }
 
+void SetupDeviceQueue()
+{
+	graphicsQueue = device.getQueue(familyGraphicsIndex, 0);
+
+	if (familyGraphicsIndex == familyPresenteIndex)
+	{
+		presentQueue = graphicsQueue;
+	}
+	else
+	{
+		presentQueue = device.getQueue(familyPresenteIndex, 0);
+	}
+}
+
 int main()
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
@@ -1199,6 +1216,9 @@ int main()
 	EnumerateDevices();
 	SetupDevice();
 	SetupCommandBuffer();
+
+	vk::CommandBufferBeginInfo cmdBufferInf = vk::CommandBufferBeginInfo();
+	commandBuffer.begin(cmdBufferInf);
 	SetupSwapchain();
 	SetupDepthbuffer();
 	SetupUniformbuffer();
@@ -1209,8 +1229,10 @@ int main()
 	SetupFramebuffers();
 	SetupVertexBuffer();
 	SetupPipeline();
+	SetupDeviceQueue();
 
 
+	std::cout << "setup completed" << std::endl;
 
 	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 0.2f;
@@ -1240,6 +1262,7 @@ int main()
 		
 	// start the pipeline
 	commandBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
+	commandBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipeline);
 	commandBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, desc_set.data(), 0, NULL);
 
 	const vk::DeviceSize offsets[1] = { 0 };
@@ -1251,7 +1274,7 @@ int main()
 	commandBuffer.draw(12 * 3, 1, 0, 0);
 	commandBuffer.endRenderPass();
 	// End the pipeline
-
+	commandBuffer.end();
 
 	const vk::CommandBuffer cmd_bufs[] = { commandBuffer };
 	vk::FenceCreateInfo fenceInfo;
@@ -1282,8 +1305,8 @@ int main()
 
 	vk::Result res;
 	do {
-		res = device.waitForFences(1, &drawFence,VK_TRUE, FENCE_TIMEOUT);
-	} while (res == vk::Result::eSuccess);
+		res = device.waitForFences(1, &drawFence, VK_TRUE, FENCE_TIMEOUT);
+	} while (res == vk::Result::eTimeout);
 
 	presentQueue.presentKHR(&present);
 	
@@ -1317,7 +1340,8 @@ int main()
     SDL_DestroyWindow(window);
     SDL_Quit();
     instance.destroy();
-	
+	std::cin.get();
+
     return 0;
 }
 
