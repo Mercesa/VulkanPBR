@@ -157,6 +157,11 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="RenderingIncludes.h" />
+    <ClInclude Include="VulkanDataObjects.h" />
+    <ClInclude Include="VulkanInitHelper.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
