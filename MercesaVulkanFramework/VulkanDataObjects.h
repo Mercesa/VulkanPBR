@@ -1,7 +1,7 @@
 #pragma once
 
 #include "RenderingIncludes.h"
-
+#include "vk_mem_alloc.h"
 // A vertex buffer is 
 // - A buffer
 // - Memory associated with the buffer
@@ -11,9 +11,9 @@
 struct VertexBufferVulkan
 {
 	vk::Buffer buffer;
-	vk::DeviceMemory memory;
 	vk::VertexInputBindingDescription inputDescription;
 	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+	VmaAllocation allocation;
 };
 
 // A uniform buffer is..
@@ -51,4 +51,9 @@ struct SwapchainVulkan
 
 	std::vector<vk::Image> images;
 	std::vector<vk::ImageView> views;
+};
+
+struct QueueFamilyIndicesVulkan
+{
+	
 };

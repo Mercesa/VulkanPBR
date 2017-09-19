@@ -33,6 +33,11 @@ Create and destroy a Vulkan surface on an SDL window.
 
 // Tell SDL not to mess with main()
 #define SDL_MAIN_HANDLED
+#define NOMINMAX
+
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
+
 
 #include "RenderingIncludes.h"
 
@@ -43,10 +48,12 @@ Create and destroy a Vulkan surface on an SDL window.
 
 #include <fstream>
 
+
 #include "VulkanDataObjects.h"
 #include "cube_data.h"
-//#include "SPIRV/GlslangToSpv.h"
 #include "VulkanInitHelper.h"
+
+
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
 #define NUM_DESCRIPTOR_SETS 1
@@ -76,16 +83,13 @@ vk::PipelineLayout pipelineLayout;
 // Depth buffer information
 vk::Image depthImage;
 vk::ImageView depthImageView;
-vk::DeviceMemory depthMem;
-
+VmaAllocation depthMemory;
 
 UniformBufferVulkan uniformBufferMVP;
-
 
 vk::DescriptorPool descriptorPool;
 
 vk::RenderPass renderPass;
-
 
 // Device and instance
 vk::Device device = vk::Device(nullptr);
@@ -114,9 +118,10 @@ SwapchainVulkan swapchain;
 
 VertexBufferVulkan vertexBuffer;
 
+VmaAllocator allocator;
+
 
 // Family indices
-int32_t familyIndex = 0;
 
 int32_t familyGraphicsIndex = 0;
 int32_t familyPresenteIndex = 0;
@@ -296,20 +301,7 @@ void SetupDevice()
 
 	familyProperties = deviceToUse.getQueueFamilyProperties();
 
-	// Find a family that supports graphics operations
-	bool found = false;
 
-	for (unsigned int i = 0; i < familyProperties.size(); i++)
-	{
-		if (familyProperties[i].queueCount & VK_QUEUE_GRAPHICS_BIT)
-		{
-			familyIndex = 0;
-			found = true;
-			break;
-		}
-	}
-
-	assert(found);
 	assert(familyProperties.size() >= 1);
 
 	// Cache the memory properties of our physical device
@@ -359,6 +351,17 @@ void SetupDevice()
 		.setPEnabledFeatures(NULL);
 
 	device = deviceToUse.createDevice(deviceInfo);
+
+
+	VmaAllocatorCreateInfo createInfo = VmaAllocatorCreateInfo();
+	createInfo.device = VkDevice(device);
+	createInfo.physicalDevice = VkPhysicalDevice(physicalDevices[0]);
+	createInfo.flags = VMA_ALLOCATOR_FLAG_BITS_MAX_ENUM;
+
+
+	// Create custom allocator
+	vmaCreateAllocator(&createInfo, &allocator);
+	
 }
 
 void SetupSDL()
@@ -391,7 +394,7 @@ void SetupCommandBuffer()
 {
 	vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
 		.setPNext(nullptr)
-		.setQueueFamilyIndex(familyIndex);
+		.setQueueFamilyIndex(familyGraphicsIndex);
 
 	commandPool = device.createCommandPool(commandPoolInfo);
 	
@@ -405,6 +408,8 @@ void SetupCommandBuffer()
 	commandBuffers = device.allocateCommandBuffers(commandBuffAllInfo);
 	
 }
+
+
 
 void SetupSwapchain()
 {
@@ -488,11 +493,11 @@ void SetupSwapchain()
 		 swapchainExtent.height = screenHeight;
 
 		 // Wrap the boundaries
-		 swapchainExtent.width = max(swapchainExtent.width, surfCapabilities.minImageExtent.width);
-		 swapchainExtent.width = min(swapchainExtent.width, surfCapabilities.maxImageExtent.width);
+		 swapchainExtent.width = std::max(swapchainExtent.width, surfCapabilities.minImageExtent.width);
+		 swapchainExtent.width = std::min(swapchainExtent.width, surfCapabilities.maxImageExtent.width);
 
-		 swapchainExtent.width = max(swapchainExtent.height, surfCapabilities.minImageExtent.height);
-		 swapchainExtent.width = min(swapchainExtent.height, surfCapabilities.maxImageExtent.height);
+		 swapchainExtent.width = std::max(swapchainExtent.height, surfCapabilities.minImageExtent.height);
+		 swapchainExtent.width = std::min(swapchainExtent.height, surfCapabilities.maxImageExtent.height);
 	 }
 	 else
 	 {
@@ -617,6 +622,7 @@ void SetupDepthbuffer()
 	image_Info.pQueueFamilyIndices = NULL;
 	image_Info.sharingMode = vk::SharingMode::eExclusive;
 
+	
 	vk::MemoryAllocateInfo mem_alloc = vk::MemoryAllocateInfo()
 		.setPNext(NULL)
 		.setAllocationSize(0)
@@ -633,19 +639,15 @@ void SetupDepthbuffer()
 	vk::MemoryRequirements mem_reqs;
 
 	depthImage = device.createImage(image_Info);
-
-	mem_reqs = device.getImageMemoryRequirements(depthImage);
-
-	mem_alloc.allocationSize = mem_reqs.size;
 	
-	memory_type_from_properties(memoryProperties, mem_reqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal, &mem_alloc.memoryTypeIndex);
-	
+	VmaAllocationCreateInfo createInfoMemory = {};
+	createInfoMemory.usage =  VMA_MEMORY_USAGE_GPU_ONLY;
 
-	/* Allocate memory */
-	depthMem = device.allocateMemory(mem_alloc);
+
+	vmaAllocateMemoryForImage(allocator, (VkImage)depthImage, &createInfoMemory, &depthMemory, nullptr);
 
 	/* Bind memory */
-	device.bindImageMemory(depthImage, depthMem, 0);
+	device.bindImageMemory(depthImage, vk::DeviceMemory(depthMemory->GetMemory()), 0);
 
 	/* Create Image view */
 	view_info.image = depthImage;
@@ -839,7 +841,168 @@ void SetupRenderPass()
 	renderPass = device.createRenderPass(rp_info);
 }
 
+/*
 
+
+void init_resources(TBuiltInResource &Resources) {
+	Resources.maxLights = 32;
+	Resources.maxClipPlanes = 6;
+	Resources.maxTextureUnits = 32;
+	Resources.maxTextureCoords = 32;
+	Resources.maxVertexAttribs = 64;
+	Resources.maxVertexUniformComponents = 4096;
+	Resources.maxVaryingFloats = 64;
+	Resources.maxVertexTextureImageUnits = 32;
+	Resources.maxCombinedTextureImageUnits = 80;
+	Resources.maxTextureImageUnits = 32;
+	Resources.maxFragmentUniformComponents = 4096;
+	Resources.maxDrawBuffers = 32;
+	Resources.maxVertexUniformVectors = 128;
+	Resources.maxVaryingVectors = 8;
+	Resources.maxFragmentUniformVectors = 16;
+	Resources.maxVertexOutputVectors = 16;
+	Resources.maxFragmentInputVectors = 15;
+	Resources.minProgramTexelOffset = -8;
+	Resources.maxProgramTexelOffset = 7;
+	Resources.maxClipDistances = 8;
+	Resources.maxComputeWorkGroupCountX = 65535;
+	Resources.maxComputeWorkGroupCountY = 65535;
+	Resources.maxComputeWorkGroupCountZ = 65535;
+	Resources.maxComputeWorkGroupSizeX = 1024;
+	Resources.maxComputeWorkGroupSizeY = 1024;
+	Resources.maxComputeWorkGroupSizeZ = 64;
+	Resources.maxComputeUniformComponents = 1024;
+	Resources.maxComputeTextureImageUnits = 16;
+	Resources.maxComputeImageUniforms = 8;
+	Resources.maxComputeAtomicCounters = 8;
+	Resources.maxComputeAtomicCounterBuffers = 1;
+	Resources.maxVaryingComponents = 60;
+	Resources.maxVertexOutputComponents = 64;
+	Resources.maxGeometryInputComponents = 64;
+	Resources.maxGeometryOutputComponents = 128;
+	Resources.maxFragmentInputComponents = 128;
+	Resources.maxImageUnits = 8;
+	Resources.maxCombinedImageUnitsAndFragmentOutputs = 8;
+	Resources.maxCombinedShaderOutputResources = 8;
+	Resources.maxImageSamples = 0;
+	Resources.maxVertexImageUniforms = 0;
+	Resources.maxTessControlImageUniforms = 0;
+	Resources.maxTessEvaluationImageUniforms = 0;
+	Resources.maxGeometryImageUniforms = 0;
+	Resources.maxFragmentImageUniforms = 8;
+	Resources.maxCombinedImageUniforms = 8;
+	Resources.maxGeometryTextureImageUnits = 16;
+	Resources.maxGeometryOutputVertices = 256;
+	Resources.maxGeometryTotalOutputComponents = 1024;
+	Resources.maxGeometryUniformComponents = 1024;
+	Resources.maxGeometryVaryingComponents = 64;
+	Resources.maxTessControlInputComponents = 128;
+	Resources.maxTessControlOutputComponents = 128;
+	Resources.maxTessControlTextureImageUnits = 16;
+	Resources.maxTessControlUniformComponents = 1024;
+	Resources.maxTessControlTotalOutputComponents = 4096;
+	Resources.maxTessEvaluationInputComponents = 128;
+	Resources.maxTessEvaluationOutputComponents = 128;
+	Resources.maxTessEvaluationTextureImageUnits = 16;
+	Resources.maxTessEvaluationUniformComponents = 1024;
+	Resources.maxTessPatchComponents = 120;
+	Resources.maxPatchVertices = 32;
+	Resources.maxTessGenLevel = 64;
+	Resources.maxViewports = 16;
+	Resources.maxVertexAtomicCounters = 0;
+	Resources.maxTessControlAtomicCounters = 0;
+	Resources.maxTessEvaluationAtomicCounters = 0;
+	Resources.maxGeometryAtomicCounters = 0;
+	Resources.maxFragmentAtomicCounters = 8;
+	Resources.maxCombinedAtomicCounters = 8;
+	Resources.maxAtomicCounterBindings = 1;
+	Resources.maxVertexAtomicCounterBuffers = 0;
+	Resources.maxTessControlAtomicCounterBuffers = 0;
+	Resources.maxTessEvaluationAtomicCounterBuffers = 0;
+	Resources.maxGeometryAtomicCounterBuffers = 0;
+	Resources.maxFragmentAtomicCounterBuffers = 1;
+	Resources.maxCombinedAtomicCounterBuffers = 1;
+	Resources.maxAtomicCounterBufferSize = 16384;
+	Resources.maxTransformFeedbackBuffers = 4;
+	Resources.maxTransformFeedbackInterleavedComponents = 64;
+	Resources.maxCullDistances = 8;
+	Resources.maxCombinedClipAndCullDistances = 8;
+	Resources.maxSamples = 4;
+	Resources.limits.nonInductiveForLoops = 1;
+	Resources.limits.whileLoops = 1;
+	Resources.limits.doWhileLoops = 1;
+	Resources.limits.generalUniformIndexing = 1;
+	Resources.limits.generalAttributeMatrixVectorIndexing = 1;
+	Resources.limits.generalVaryingIndexing = 1;
+	Resources.limits.generalSamplerIndexing = 1;
+	Resources.limits.generalVariableIndexing = 1;
+	Resources.limits.generalConstantMatrixVectorIndexing = 1;
+}
+
+EShLanguage FindLanguage(const VkShaderStageFlagBits shader_type) {
+	switch (shader_type) {
+	case VK_SHADER_STAGE_VERTEX_BIT:
+		return EShLangVertex;
+
+	case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+		return EShLangTessControl;
+
+	case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+		return EShLangTessEvaluation;
+
+	case VK_SHADER_STAGE_GEOMETRY_BIT:
+		return EShLangGeometry;
+
+	case VK_SHADER_STAGE_FRAGMENT_BIT:
+		return EShLangFragment;
+
+	case VK_SHADER_STAGE_COMPUTE_BIT:
+		return EShLangCompute;
+
+	default:
+		return EShLangVertex;
+	}
+}
+
+bool GLSLtoSPV(const VkShaderStageFlagBits shader_type, const char *pshader, std::vector<unsigned int> &spirv) {
+	EShLanguage stage = FindLanguage(shader_type);
+	glslang::TShader shader(stage);
+	glslang::TProgram program;
+	const char *shaderStrings[1];
+	TBuiltInResource Resources;
+	init_resources(Resources);
+
+	// Enable SPIR-V and Vulkan rules when parsing GLSL
+	EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+
+	shaderStrings[0] = pshader;
+	shader.setStrings(shaderStrings, 1);
+
+	if (!shader.parse(&Resources, 100, false, messages)) {
+		puts(shader.getInfoLog());
+		puts(shader.getInfoDebugLog());
+		return false;  // something didn't work
+	}
+
+	program.addShader(&shader);
+
+	//
+	// Program-level processing...
+	//
+
+	if (!program.link(messages)) {
+		puts(shader.getInfoLog());
+		puts(shader.getInfoDebugLog());
+		fflush(stdout);
+		return false;
+	}
+
+	glslang::GlslangToSpv(*program.getIntermediate(stage), spirv);
+	return true;
+}
+
+
+*/
 void SetupShaders()
 {
 	auto codeVertex = readFile("Shaders/vert.spv");
@@ -874,6 +1037,8 @@ void SetupShaders()
 		.setPName("main")
 		.setModule(fragmentShaderModule);
 	shaderStages.push_back(shaderStageCInfoFragment);
+
+	std::vector<unsigned int> vtx_spv;
 
 
 	//glslang::InitializeProcess();
@@ -922,31 +1087,26 @@ void SetupVertexBuffer()
 		.setSharingMode(SharingMode::eExclusive)
 		.setFlags(vk::BufferCreateFlagBits(0));
 
-	vertexBuffer.buffer = device.createBuffer(buf_info);
 
-	vk::MemoryRequirements memReqs = device.getBufferMemoryRequirements(vertexBuffer.buffer);
+	
+	VmaAllocationCreateInfo memReq = {};
+	memReq.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	
+	VkBuffer buffer = (VkBuffer)vertexBuffer.buffer;
 
-	vk::MemoryAllocateInfo alloc_info = vk::MemoryAllocateInfo()
-		.setMemoryTypeIndex(0)
-		.setAllocationSize(memReqs.size);
+	vmaCreateBuffer(allocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer, &vertexBuffer.allocation, nullptr);
+	
 
-	memory_type_from_properties(memoryProperties, memReqs.memoryTypeBits, MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, &alloc_info.memoryTypeIndex);
+	vertexBuffer.buffer = (vk::Buffer)buffer;
 
-	vk::Result res;
+	
 
-	res = device.allocateMemory(&alloc_info, nullptr, &vertexBuffer.memory);
-	assert(res == vk::Result::eSuccess);
 
-	uint8_t *pData;
-
-	res = device.mapMemory(vertexBuffer.memory, 0, vk::DeviceSize(memReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
-	assert(res == vk::Result::eSuccess);
-
+	uint8_t* pData;
+	vkMapMemory((VkDevice)device, vertexBuffer.allocation->GetMemory(), vertexBuffer.allocation->GetOffset(), vertexBuffer.allocation->GetSize(), 0, (void**)&pData);
 	memcpy(pData, g_vb_solid_face_colors_Data, sizeof(g_vb_solid_face_colors_Data));
+	vkUnmapMemory((VkDevice)device, vertexBuffer.allocation->GetMemory());
 
-	device.unmapMemory(vertexBuffer.memory);
-
-	device.bindBufferMemory(vertexBuffer.buffer, vertexBuffer.memory, 0);
 
 	vertexBuffer.inputDescription.binding = 0;
 	vertexBuffer.inputDescription.inputRate = vk::VertexInputRate::eVertex;
@@ -967,7 +1127,6 @@ void SetupVertexBuffer()
 
 	vertexBuffer.inputAttributes.push_back(att1);
 	vertexBuffer.inputAttributes.push_back(att2);
-
 }
 
 #include <ostream>
@@ -1210,13 +1369,11 @@ void SetupCommandBuffers()
 void DrawFrame()
 {
 	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
-
-
+	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 	device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &currentBuffer);
 
 
 	vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-
 
 	vk::SubmitInfo submit_info[1] = {};
 	submit_info[0].waitSemaphoreCount = 1;
@@ -1228,9 +1385,7 @@ void DrawFrame()
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 	// start the pipeline
 
-
 	graphicsQueue.submit(1, submit_info, VK_NULL_HANDLE);
-
 
 	vk::PresentInfoKHR present;
 	present.swapchainCount = 1;	
@@ -1242,40 +1397,7 @@ void DrawFrame()
 
 	presentQueue.presentKHR(&present);
 	presentQueue.waitIdle();
-	//vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	//
-	//vk::Semaphore signalSemaphore[] = { rendererFinishedSemaphore };
-	//
-	//vk::SubmitInfo submit_info[1] = {};
-	//submit_info[0].waitSemaphoreCount = 1;
-	//submit_info[0].pWaitSemaphores = &imageAcquiredSemaphore;
-	//submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-	//submit_info[0].commandBufferCount = 1;
-	//submit_info[0].pCommandBuffers = cmd_bufs;
-	//submit_info[0].signalSemaphoreCount = 1;
-	//submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
-	//
-	//
-	//
-	//
-	//graphicsQueue.submit(1, submit_info, drawFence);
-	//
-	//vk::Result results[] = { vk::Result::eSuccess };
-	//
-	//vk::PresentInfoKHR present;
-	//present.swapchainCount = 1;
-	//present.pSwapchains = &swapchain.swapchain;
-	//present.pImageIndices = &currentBuffer;
-	//present.pWaitSemaphores = &rendererFinishedSemaphore;
-	//present.waitSemaphoreCount = 1;
-	//present.pResults = results;
-	//
-	//vk::Result res;
-	//do {
-	//	res = device.waitForFences(1, &drawFence, VK_TRUE, FENCE_TIMEOUT);
-	//} while (res == vk::Result::eTimeout);
-	//
-	//presentQueue.presentKHR(&present);
+
 }
 
 int main()
@@ -1308,7 +1430,6 @@ int main()
 	EnumerateDevices();
 	SetupDevice();
 
-	vk::CommandBufferBeginInfo cmdBufferInf = vk::CommandBufferBeginInfo();
 	SetupSwapchain();
 	SetupDepthbuffer();
 	SetupUniformbuffer();
@@ -1359,9 +1480,12 @@ int main()
 		
         SDL_Delay(10);
     }
-
-    // Clean up.
 	
+	vmaDestroyImage(allocator, (VkImage)depthImage, depthMemory);
+	vmaDestroyBuffer(allocator, (VkBuffer)vertexBuffer.buffer, vertexBuffer.allocation);
+    // Clean up.
+	vmaDestroyAllocator(allocator);
+
 	device.waitIdle();
 	device.destroy();
 	instance.destroySurfaceKHR(swapchain.surface);

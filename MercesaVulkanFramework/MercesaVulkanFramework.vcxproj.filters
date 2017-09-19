@@ -29,5 +29,8 @@
     <ClInclude Include="VulkanDataObjects.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="vk_mem_alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

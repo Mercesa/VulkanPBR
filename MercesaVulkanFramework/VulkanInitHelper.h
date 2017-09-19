@@ -49,45 +49,32 @@ inline bool UpdateUniformBuffer(vk::Device aDevice, UniformBufferVulkan* const a
 	 return true;
 }
 
-inline bool SetupBasicVertexBuffer(vk::Device aDevice,
-	VertexBufferVulkan* aVertexBuffer,
-	PhysicalDeviceMemoryProperties aPhysDevMemProps,
-	void* aData,
-	size_t aSizeOfData)
-{
-	vk::BufferCreateInfo buf_info = vk::BufferCreateInfo()
-		.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-		.setSize(sizeof(aData))
-		.setQueueFamilyIndexCount(0)
-		.setPQueueFamilyIndices(NULL)
-		.setSharingMode(SharingMode::eExclusive)
-		.setFlags(vk::BufferCreateFlagBits(0));
-
-	aVertexBuffer->buffer = aDevice.createBuffer(buf_info);
-
-	vk::MemoryRequirements memReqs = aDevice.getBufferMemoryRequirements(aVertexBuffer->buffer);
-
-	vk::MemoryAllocateInfo alloc_info = vk::MemoryAllocateInfo()
-		.setMemoryTypeIndex(0)
-		.setAllocationSize(memReqs.size);
-
-	memory_type_from_properties(aPhysDevMemProps, memReqs.memoryTypeBits, MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, &alloc_info.memoryTypeIndex);
-
-	vk::Result res;
-
-	res = aDevice.allocateMemory(&alloc_info, nullptr, &aVertexBuffer->memory);
-	assert(res == vk::Result::eSuccess);
-
-	uint8_t *pData;
-
-	res = aDevice.mapMemory(aVertexBuffer->memory, 0, vk::DeviceSize(memReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
-	assert(res == vk::Result::eSuccess);
-
-	memcpy(pData, aData, sizeof(aData));
-
-	aDevice.unmapMemory(aVertexBuffer->memory);
-
-	aDevice.bindBufferMemory(aVertexBuffer->buffer, aVertexBuffer->memory, 0);
-
+inline bool CreateBuffer()
+	//vk::Device aDevice, 
+	//vk::DeviceSize aSize, 
+	//vk::BufferUsageFlags aUsage, 
+	//vk::MemoryPropertyFlagBits aProperties, 
+	//VertexBufferVulkan* const aVertexBuffer)
+{	//
+	//vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+	//	.setSize(aSize)
+	//	.setUsage(aUsage)
+	//	.setSharingMode(vk::SharingMode::eExclusive);
+	//
+	//aVertexBuffer->buffer = aDevice.createBuffer(bufferInfo, nullptr);
+	//
+	//aVertexBuffer->memReqs = aDevice.getBufferMemoryRequirements(aVertexBuffer->buffer);
+	//
+	//
+	//
+	//vk::MemoryAllocateInfo allocInfo = vk::MemoryAllocateInfo()
+	//	.setMemoryTypeIndex(0)
+	//	.setAllocationSize(aVertexBuffer->memReqs.size);
+	//
+	//memory_type_from_properties(memoryProperties, aVertexBuffer->memReqs.memoryTypeBits, aProperties, &allocInfo.memoryTypeIndex);
+	//
+	//aDevice.allocateMemory(&allocInfo, nullptr, &aVertexBuffer->memory);
+	//
+	//aDevice.bindBufferMemory(aVertexBuffer->buffer, aVertexBuffer->memory, 0);
 	return true;
 }
