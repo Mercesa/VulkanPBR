@@ -8,6 +8,13 @@
 // - Input description for the shader
 // - The attributes linked with that description
 
+
+struct BufferVulkan
+{
+	vk::Buffer buffer;
+	VmaAllocation allocation;
+};
+
 struct VertexBufferVulkan
 {
 	vk::Buffer buffer;
@@ -24,9 +31,8 @@ struct VertexBufferVulkan
 struct UniformBufferVulkan
 {
 	vk::Buffer buffer;
-	vk::DeviceMemory memory;
 	vk::DescriptorBufferInfo descriptorInfo;
-	vk::MemoryRequirements memReqs;
+	VmaAllocation allocation;
 };
 
 

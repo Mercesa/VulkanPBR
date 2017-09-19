@@ -3895,8 +3895,8 @@ uint32_t VmaAllocation_T::GetMemoryTypeIndex() const
     case ALLOCATION_TYPE_BLOCK:
         return m_BlockAllocation.m_Block->m_MemoryTypeIndex;
     case ALLOCATION_TYPE_OWN:
-        return m_OwnAllocation.m_MemoryTypeIndex;
-    default:
+		return m_OwnAllocation.m_MemoryTypeIndex;
+	default:
         VMA_ASSERT(0);
         return UINT32_MAX;
     }

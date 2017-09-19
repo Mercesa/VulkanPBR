@@ -49,10 +49,14 @@ Create and destroy a Vulkan surface on an SDL window.
 #include <fstream>
 
 
+#include "easylogging++.h"
+INITIALIZE_EASYLOGGINGPP
+
 #include "VulkanDataObjects.h"
 #include "cube_data.h"
 #include "VulkanInitHelper.h"
 
+#include "ModelLoader.h"
 
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
@@ -116,6 +120,10 @@ std::vector<QueueFamilyProperties> familyProperties;
 
 SwapchainVulkan swapchain;
 
+BufferVulkan indexBuffer;
+BufferVulkan indexBufferStaging;
+
+BufferVulkan vertexBufferStaging;
 VertexBufferVulkan vertexBuffer;
 
 VmaAllocator allocator;
@@ -145,6 +153,8 @@ VkDebugReportCallbackEXT callback;
 
 vk::Viewport viewPort;
 vk::Rect2D scissor;
+
+std::vector<RawMeshData> rawMeshData;
 
 
 VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
@@ -666,20 +676,18 @@ void SetupUniformbuffer()
 
 	uniformBufferMVP.buffer = device.createBuffer(create_info);
 
-	uniformBufferMVP.memReqs = device.getBufferMemoryRequirements(uniformBufferMVP.buffer);
 
-	vk::MemoryAllocateInfo alloc_info = vk::MemoryAllocateInfo()
-		.setPNext(NULL)
-		.setMemoryTypeIndex(0)
-		.setAllocationSize(uniformBufferMVP.memReqs.size);
+	VmaAllocationCreateInfo memReq = {};
+	memReq.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
-	memory_type_from_properties(memoryProperties, uniformBufferMVP.memReqs.memoryTypeBits, MemoryPropertyFlagBits::eHostVisible | MemoryPropertyFlagBits::eHostCoherent, &alloc_info.memoryTypeIndex);
+	VkBuffer buffer = (VkBuffer)uniformBufferMVP.buffer;
 
-	uniformBufferMVP.memory = device.allocateMemory(alloc_info);
+	vmaCreateBuffer(allocator, &(VkBufferCreateInfo)create_info, &memReq, &buffer, &uniformBufferMVP.allocation, nullptr);
+
+	uniformBufferMVP.buffer = vk::Buffer(buffer);
+
 
 	UpdateUniformBuffer(device, &uniformBufferMVP, &mvpMatrix, sizeof(mvpMatrix));
-
-	device.bindBufferMemory(uniformBufferMVP.buffer, uniformBufferMVP.memory, 0);
 
 
 	uniformBufferMVP.descriptorInfo.buffer = uniformBufferMVP.buffer;
@@ -760,6 +768,7 @@ void SetupDescriptorSet()
 	desc_set.resize(1);
 	device.allocateDescriptorSets(alloc_info, desc_set.data());
 
+	
 	vk::WriteDescriptorSet writes[1];
 
 	writes[0] = {};
@@ -1059,7 +1068,7 @@ void SetupFramebuffers()
 {
 	vk::ImageView attachments[2] = {};
 	attachments[1] = depthImageView;
-	attachments[0] = VK_NULL_HANDLE;
+	attachments[0] = vk::ImageView(nullptr);
 
 	vk::FramebufferCreateInfo fb_info = vk::FramebufferCreateInfo()
 		.setRenderPass(renderPass)
@@ -1076,42 +1085,93 @@ void SetupFramebuffers()
 	}
 }
 
+void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
+{
+	vk::CommandBufferAllocateInfo allocInfo = vk::CommandBufferAllocateInfo()
+		.setLevel(vk::CommandBufferLevel::ePrimary)
+		.setCommandPool(commandPool)
+		.setCommandBufferCount(1);
+
+	vk::CommandBuffer commandBuffer = device.allocateCommandBuffers(allocInfo).at(0);
+
+	vk::CommandBufferBeginInfo beginInfo = CommandBufferBeginInfo()
+		.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+	vk::BufferCopy copyRegion = vk::BufferCopy()
+		.setSrcOffset(0)
+		.setDstOffset(0)
+		.setSize(aSize);
+
+
+	commandBuffer.begin(beginInfo);
+	commandBuffer.copyBuffer(srcBuffer, destBuffer, 1, &copyRegion);
+
+	commandBuffer.end();
+
+	vk::SubmitInfo submitInfo = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&commandBuffer);
+
+	graphicsQueue.submit(1, &submitInfo, vk::Fence(nullptr));
+	graphicsQueue.waitIdle();
+
+	device.freeCommandBuffers(commandPool, 1, &commandBuffer);
+}
+
+void SetupIndexBuffer()
+{
+	vk::BufferCreateInfo buf_info = vk::BufferCreateInfo()
+		.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
+		.setSize(sizeof(g_vb_solid_face_colors_Data))
+		.setQueueFamilyIndexCount(0)
+		.setPQueueFamilyIndices(NULL)
+		.setSharingMode(SharingMode::eExclusive)
+		.setFlags(vk::BufferCreateFlagBits(0));
+}
+
 void SetupVertexBuffer()
 {
-
+	// Create vertex buffer
 	vk::BufferCreateInfo buf_info = vk::BufferCreateInfo()
-		.setUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+		.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
 		.setSize(sizeof(g_vb_solid_face_colors_Data))
 		.setQueueFamilyIndexCount(0)
 		.setPQueueFamilyIndices(NULL)
 		.setSharingMode(SharingMode::eExclusive)
 		.setFlags(vk::BufferCreateFlagBits(0));
 
-
 	
 	VmaAllocationCreateInfo memReq = {};
-	memReq.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	memReq.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+
+	VkBuffer buffer = (VkBuffer)vertexBufferStaging.buffer;
+
+	vmaCreateBuffer(allocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer, &vertexBufferStaging.allocation, nullptr);
 	
-	VkBuffer buffer = (VkBuffer)vertexBuffer.buffer;
+	vertexBufferStaging.buffer = (vk::Buffer)buffer;
 
-	vmaCreateBuffer(allocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer, &vertexBuffer.allocation, nullptr);
-	
-
-	vertexBuffer.buffer = (vk::Buffer)buffer;
-
-	
-
-
+	// Map memory of vertex buffer
 	uint8_t* pData;
-	vkMapMemory((VkDevice)device, vertexBuffer.allocation->GetMemory(), vertexBuffer.allocation->GetOffset(), vertexBuffer.allocation->GetSize(), 0, (void**)&pData);
+	vkMapMemory((VkDevice)device, vertexBufferStaging.allocation->GetMemory(), vertexBufferStaging.allocation->GetOffset(), vertexBufferStaging.allocation->GetSize(), 0, (void**)&pData);
 	memcpy(pData, g_vb_solid_face_colors_Data, sizeof(g_vb_solid_face_colors_Data));
-	vkUnmapMemory((VkDevice)device, vertexBuffer.allocation->GetMemory());
+	vkUnmapMemory((VkDevice)device, vertexBufferStaging.allocation->GetMemory());
 
+
+
+	// Setup the destination buffer
+	buf_info.setUsage(vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+	memReq.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	VkBuffer buffer2 = (VkBuffer)vertexBuffer.buffer;
+
+	vmaCreateBuffer(allocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer2, &vertexBuffer.allocation, nullptr);
+
+	vertexBuffer.buffer = (vk::Buffer)buffer2;
+
+	// end of setup
 
 	vertexBuffer.inputDescription.binding = 0;
 	vertexBuffer.inputDescription.inputRate = vk::VertexInputRate::eVertex;
 	vertexBuffer.inputDescription.stride = sizeof(g_vb_solid_face_colors_Data[0]);
-
 
 
 	vk::VertexInputAttributeDescription att1;
@@ -1127,6 +1187,11 @@ void SetupVertexBuffer()
 
 	vertexBuffer.inputAttributes.push_back(att1);
 	vertexBuffer.inputAttributes.push_back(att2);
+
+
+	// Create staging buffer
+
+	CopyBufferMemory(vertexBufferStaging.buffer, vertexBuffer.buffer, vertexBuffer.allocation->GetSize());
 }
 
 #include <ostream>
@@ -1312,8 +1377,10 @@ void SetupDeviceQueue()
 	}
 }
 
+
 vk::Semaphore imageAcquiredSemaphore;
 vk::Semaphore rendererFinishedSemaphore;
+
 
 void SetupSemaphores()
 {
@@ -1321,6 +1388,7 @@ void SetupSemaphores()
 	imageAcquiredSemaphore = device.createSemaphore(semaphoreInfo);
 	rendererFinishedSemaphore = device.createSemaphore(semaphoreInfo);
 }
+
 
 void SetupCommandBuffers()
 {
@@ -1370,7 +1438,7 @@ void DrawFrame()
 {
 	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
 	vmaSetCurrentFrameIndex(allocator, currentBuffer);
-	device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, VK_NULL_HANDLE, &currentBuffer);
+	device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
 
 
 	vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -1385,7 +1453,7 @@ void DrawFrame()
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 	// start the pipeline
 
-	graphicsQueue.submit(1, submit_info, VK_NULL_HANDLE);
+	graphicsQueue.submit(1, submit_info, vk::Fence(nullptr));
 
 	vk::PresentInfoKHR present;
 	present.swapchainCount = 1;	
@@ -1397,7 +1465,6 @@ void DrawFrame()
 
 	presentQueue.presentKHR(&present);
 	presentQueue.waitIdle();
-
 }
 
 int main()
@@ -1422,6 +1489,8 @@ int main()
 
 	mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
+	rawMeshData = ModelLoader::LoadModel("Models/Box/cube.obj", false);
+
 	extensions = getAvailableWSIExtensions();
 	EnumerateLayers();
 
@@ -1438,11 +1507,12 @@ int main()
 	SetupRenderPass();
 	SetupShaders();
 	SetupFramebuffers();
+	SetupCommandBuffer();
+	SetupDeviceQueue();
+
 	SetupVertexBuffer();
 	SetupPipeline();
-	SetupDeviceQueue();
 	SetupSemaphores();
-	SetupCommandBuffer();
 	SetupCommandBuffers();
 	std::cout << "setup completed" << std::endl;
 
@@ -1481,9 +1551,12 @@ int main()
         SDL_Delay(10);
     }
 	
+	vmaDestroyBuffer(allocator, (VkBuffer)uniformBufferMVP.buffer,uniformBufferMVP.allocation);
 	vmaDestroyImage(allocator, (VkImage)depthImage, depthMemory);
 	vmaDestroyBuffer(allocator, (VkBuffer)vertexBuffer.buffer, vertexBuffer.allocation);
-    // Clean up.
+	vmaDestroyBuffer(allocator, (VkBuffer)vertexBufferStaging.buffer, vertexBufferStaging.allocation);
+
+	// Clean up.
 	vmaDestroyAllocator(allocator);
 
 	device.waitIdle();

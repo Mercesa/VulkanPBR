@@ -38,13 +38,13 @@ inline bool UpdateUniformBuffer(vk::Device aDevice, UniformBufferVulkan* const a
 {
 	uint8_t* pData;
 	vk::Result result;
-	result = aDevice.mapMemory(vk::DeviceMemory(aUniformBuffer->memory), vk::DeviceSize(0), vk::DeviceSize(aUniformBuffer->memReqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
+	result = aDevice.mapMemory(vk::DeviceMemory(aUniformBuffer->allocation->GetMemory()), vk::DeviceSize(0), vk::DeviceSize(aUniformBuffer->allocation->GetSize()), vk::MemoryMapFlagBits(0), (void**)&pData);
 
 	assert(result == Result::eSuccess);
 
 	memcpy(pData, aData, aSizeOfData);
 
-	 aDevice.unmapMemory(aUniformBuffer->memory);
+	 aDevice.unmapMemory(vk::DeviceMemory(aUniformBuffer->allocation->GetMemory()));
 	
 	 return true;
 }
