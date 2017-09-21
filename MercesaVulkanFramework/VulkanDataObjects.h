@@ -15,6 +15,12 @@ struct BufferVulkan
 	VmaAllocation allocation;
 };
 
+struct ImageVulkan
+{
+	vk::Image image;
+	VmaAllocation allocation;
+};
+
 struct VertexBufferVulkan
 {
 	vk::Buffer buffer;
@@ -45,7 +51,7 @@ struct TextureVulkan
 {
 	vk::Image image;
 	vk::ImageView view;
-	vk::DeviceMemory memory;
+	VmaAllocation allocation;
 	vk::Format format;
 };
 

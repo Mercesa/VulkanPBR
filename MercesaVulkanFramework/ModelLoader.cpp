@@ -245,7 +245,7 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 	// Set directory string and c_string
 	std::string assbinString(aFilePath);
 
-
+	// Check if assbin version exist of file
 	std::size_t dotPos = assbinString.find_last_of(".");
 	assbinString.erase(dotPos, assbinString.size());
 
