@@ -169,6 +169,10 @@
     <ClInclude Include="VulkanDataObjects.h" />
     <ClInclude Include="VulkanHelper.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\FragmentShaderStart.frag" />
+    <None Include="Shaders\VertexShaderStart.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -14,9 +14,10 @@ layout(location = 4) in vec3 tangent;
 
 
 layout(location = 0) out vec4 outColor;
-
+layout(location = 1) out vec2 outUV;
 
 void main() {
 	outColor = vec4(uv.xy, 0.0, 1.0);
+	outUV = uv;
 	gl_Position = myBufferVals.mvp * vec4(pos, 1.0);
 }

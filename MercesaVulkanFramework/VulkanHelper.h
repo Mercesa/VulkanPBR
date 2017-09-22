@@ -26,17 +26,17 @@ inline bool memory_type_from_properties(PhysicalDeviceMemoryProperties memProps,
 }
 
 inline bool CreateSimpleBuffer(
-	VmaAllocator aAllocator, 
-	VmaAllocation& aAllocation,
-	VmaMemoryUsage aMemUsage,
-	vk::Buffer& aBuffer, 
-	vk::BufferUsageFlags aUsageFlags,
-	size_t aSizeofData)
+	VmaAllocator iAllocator, 
+	VmaAllocation& oAllocation,
+	VmaMemoryUsage iMemUsage,
+	vk::Buffer& oBuffer, 
+	vk::BufferUsageFlags iUsageFlags,
+	size_t iSizeOfData)
 {
 	
 	vk::BufferCreateInfo buf_info = vk::BufferCreateInfo()
-	.setUsage(aUsageFlags)
-	.setSize(aSizeofData)
+	.setUsage(iUsageFlags)
+	.setSize(iSizeOfData)
 	.setQueueFamilyIndexCount(0)
 	.setPQueueFamilyIndices(NULL)
 	.setSharingMode(SharingMode::eExclusive)
@@ -44,13 +44,54 @@ inline bool CreateSimpleBuffer(
 	
 	
 	VmaAllocationCreateInfo memReq = {};
-	memReq.usage = aMemUsage;
+	memReq.usage = iMemUsage;
 	
-	VkBuffer buffer = (VkBuffer)aBuffer;
+	VkBuffer buffer = (VkBuffer)oBuffer;
 	
-	vmaCreateBuffer(aAllocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer, &aAllocation, nullptr);
+	vmaCreateBuffer(iAllocator, &(VkBufferCreateInfo)buf_info, &memReq, &buffer, &oAllocation, nullptr);
 	
-	aBuffer = (vk::Buffer)buffer;
+	oBuffer = (vk::Buffer)buffer;
+
+	return true;
+}
+
+
+inline bool CreateSimpleImage(
+	VmaAllocator iAllocator,
+	VmaAllocation& oAllocation,
+	VmaMemoryUsage iMemUsage,
+	vk::ImageUsageFlags iUsageFlags,
+	vk::Format iFormat,
+	vk::ImageLayout iLayout,
+	vk::Image& oImage,
+	uint32_t iWidth, uint32_t iHeight)
+{
+
+	vk::ImageCreateInfo imageInfo = vk::ImageCreateInfo()
+		.setImageType(ImageType::e2D)
+		.setExtent(vk::Extent3D(iWidth, iHeight, 1))
+		.setMipLevels(1)
+		.setArrayLayers(1)
+		.setFormat(iFormat)
+		.setTiling(ImageTiling::eOptimal)
+		.setInitialLayout(iLayout)
+		.setUsage(iUsageFlags)
+		.setSharingMode(SharingMode::eExclusive)
+		.setSamples(vk::SampleCountFlagBits::e1);
+
+	VmaAllocationCreateInfo alloc_info = {};
+	alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	VkImage img = (VkImage)oImage;
+
+	vmaCreateImage(iAllocator,
+		&(VkImageCreateInfo)imageInfo,
+		&alloc_info,
+		&img,
+		&oAllocation,
+		nullptr);
+
+	oImage = img;
 
 	return true;
 }

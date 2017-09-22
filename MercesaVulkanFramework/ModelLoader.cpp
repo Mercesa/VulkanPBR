@@ -186,8 +186,6 @@ void ModelLoader::ProcessNode(aiNode* const a_Node, const aiScene* const a_Scene
 }
 
 
-
-
 bool is_file_exist(const char *fileName)
 {
 	std::ifstream infile(fileName);
@@ -271,7 +269,7 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 	{
 		LOG(INFO) << "ModelLoader Assbin version created of asset";
 		Exporter exporter;
-		scene = importer.ReadFile(filePathToBeLoaded.c_str(), aiProcess_FlipUVs | aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace);
+		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace);
 		exporter.Export(scene, "assbin", assbinString, 0);
 	}
 
