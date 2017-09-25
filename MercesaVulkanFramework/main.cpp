@@ -48,6 +48,7 @@ Create and destroy a Vulkan surface on an SDL window.
 
 #include <fstream>
 
+#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
 
 #include "easylogging++.h"
 INITIALIZE_EASYLOGGINGPP
@@ -60,6 +61,9 @@ INITIALIZE_EASYLOGGINGPP
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <ostream>
+#include <sstream>
+#include <string.h>
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
 #define NUM_DESCRIPTOR_SETS 1
@@ -80,7 +84,7 @@ std::vector<vk::Framebuffer> framebuffers;
 
 // Descriptor set layout
 std::vector<vk::DescriptorSetLayout> desc_layout;
-std::vector<vk::DescriptorSet> desc_set;
+std::vector<vk::DescriptorSet> descriptor_set;
 
 vk::PipelineLayout pipelineLayout;
 
@@ -168,7 +172,16 @@ vk::Rect2D scissor;
 
 std::vector<RawMeshData> rawMeshData;
 
+vk::Sampler testImageSampler;
 vk::Sampler testSampler;
+
+vk::Semaphore imageAcquiredSemaphore;
+vk::Semaphore rendererFinishedSemaphore;
+
+#include "camera.h"
+
+std::unique_ptr<Camera> cam;
+
 
 PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;
 //
@@ -220,14 +233,32 @@ void SetupApplication()
 		std::cout << e.layerName << std::endl;
 		//layerNames.push_back(e.layerName);
 	}
-	
+
 	layerNames.push_back("VK_LAYER_LUNARG_standard_validation");
+	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
+	//layerNames.push_back("VK_LAYER_LUNARG_api_dump");
+
+	std::vector<const char*> removeExtensions = { "VK_KHR_get_surface_capabilities2", "VK_KHX_device_group_creation", "VK_KHR_external_fence_capabilities" };
+
 
 	std::vector<vk::ExtensionProperties> extProps = vk::enumerateInstanceExtensionProperties();
 
+	bool foundUnwantedExtension = false;
 	for (auto& e : extProps)
 	{
-		extensions.push_back(e.extensionName);
+		foundUnwantedExtension = false;
+		for (auto& eTwo : removeExtensions)
+		{
+			if (strcmp(e.extensionName, eTwo) == 0)
+			{
+				foundUnwantedExtension = true;
+			}
+		}
+		
+		if (foundUnwantedExtension == false)
+		{
+			extensions.push_back(e.extensionName);
+		}
 	}
 
 	for (auto &e : extensions)
@@ -331,6 +362,8 @@ void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout
 
 		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
 		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
 	}
 	else
 	{
@@ -378,14 +411,29 @@ void SetupDevice()
 	std::vector<LayerProperties> deviceLayerProps = physicalDevices[0].enumerateDeviceLayerProperties();
 
 	//Unsupported extensions
-	std::vector<const char*> removeExtensions = { "VK_KHX_external_memory", "VK_KHX_external_memory_win32", "VK_KHX_external_semaphore",  "VK_KHX_external_semaphore_win32", "VK_KHX_win32_keyed_mutex" };
+	std::vector<const char*> removeExtensions = { "VK_KHX_external_memory_win32", "VK_KHX_external_semaphore",  "VK_KHX_external_semaphore_win32", "VK_KHX_external_memory", "VK_KHX_win32_keyed_mutex"};
 
 	
+	bool foundUnsupportedExtension = false;
 	// Fill our extensions and names in
 	for (auto& e : deviceExtProps)
 	{
-		deviceExtensions.push_back(e.extensionName);
-		std::cout << e.extensionName << std::endl;
+		foundUnsupportedExtension = false;
+		
+		for (auto& eSec : removeExtensions)
+		{
+
+			if (strcmp(e.extensionName,eSec) == 0)
+			{
+				foundUnsupportedExtension = true;
+			}
+		}
+
+		if (foundUnsupportedExtension != true)
+		{
+			deviceExtensions.push_back(e.extensionName);
+			std::cout << e.extensionName << std::endl;
+		}
 	}
 
 	for (auto& e : deviceLayerProps)
@@ -691,8 +739,6 @@ void SetupDepthbuffer()
 	depthBuffer.format = Format::eD16Unorm;
 
 	depthBuffer.view = device.createImageView(view_info);
-
-	
 }
 
 void SetupUniformbuffer()
@@ -719,7 +765,7 @@ void UpdateUniformBufferTest()
 	float derp2 = (sinf(derp) + 1.0f) / 2.0f;
 	
 	projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
-	viewMatrix = glm::lookAt(glm::vec3(0.0, 1.0f, 2.0f), glm::vec3(cosf(derp), 1.0f, sinf(derp)), glm::vec3(0.0f, 1.0f, 0.0f));
+	viewMatrix = cam->GetViewMatrix();
 	modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01));
 	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
@@ -749,8 +795,17 @@ void SetupPipelineLayout()
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
+
+	vk::DescriptorSetLayoutBinding pureSampler_layout_binding = vk::DescriptorSetLayoutBinding()
+		.setBinding(2)
+		.setDescriptorCount(1)
+		.setDescriptorType(DescriptorType::eSampler)
+		.setPImmutableSamplers(nullptr)
+		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+
 	
-	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { layout_binding, sampler_layout_binding };
+	std::array<vk::DescriptorSetLayoutBinding, 3> bindings = { layout_binding, sampler_layout_binding, pureSampler_layout_binding };
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
@@ -773,12 +828,15 @@ void SetupPipelineLayout()
 
 void SetupDescriptorSet()
 {
-	std::array<vk::DescriptorPoolSize, 2> type_count;
+	std::array<vk::DescriptorPoolSize, 3> type_count;
 	type_count[0].type = vk::DescriptorType::eUniformBuffer;
 	type_count[0].descriptorCount = 1;
+	
 	type_count[1].type = vk::DescriptorType::eCombinedImageSampler;
 	type_count[1].descriptorCount = 1;
-
+	
+	type_count[2].type = vk::DescriptorType::eSampler;
+	type_count[2].descriptorCount = 1;
 
 	vk::DescriptorPoolCreateInfo descriptor_pool = vk::DescriptorPoolCreateInfo()
 		.setPNext(NULL)
@@ -794,15 +852,15 @@ void SetupDescriptorSet()
 	alloc_info[0].setDescriptorSetCount(NUM_DESCRIPTOR_SETS);
 	alloc_info[0].setPSetLayouts(desc_layout.data());
 
-	desc_set.resize(1);
-	device.allocateDescriptorSets(alloc_info, desc_set.data());
-
+	descriptor_set.resize(1);
+	device.allocateDescriptorSets(alloc_info, descriptor_set.data());
 	
-	std::array<vk::WriteDescriptorSet, 2> writes = {};
+	
+	std::array<vk::WriteDescriptorSet, 3> writes = {};
 
 	writes[0] = {};
 	writes[0].pNext = NULL;
-	writes[0].dstSet = desc_set[0];
+	writes[0].dstSet = descriptor_set[0];
 	writes[0].descriptorCount = 1;
 	writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
 	writes[0].pBufferInfo = &uniformBufferMVP.descriptorInfo;
@@ -814,20 +872,37 @@ void SetupDescriptorSet()
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo imageInfo = {};
 	imageInfo.imageView = testTexture.view;
-	imageInfo.sampler = testSampler;
-
+	imageInfo.sampler = testImageSampler;
+	
 
 	writes[1] = {};
 	writes[1].pNext = NULL;
-	writes[1].dstSet = desc_set[0];
+	writes[1].dstSet = descriptor_set[0];
 	writes[1].descriptorCount = 1;
 	writes[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
 	writes[1].pImageInfo = &imageInfo;
 	writes[1].dstArrayElement = 0;
 	writes[1].dstBinding = 1;
 
+	// Create image info for the image descriptor
+	vk::DescriptorImageInfo pureSamplerInfo = {};
+
+	pureSamplerInfo.imageView = vk::ImageView(nullptr);
+	pureSamplerInfo.sampler = testSampler;
+
+	writes[2] = {};
+	writes[2].pNext = NULL;
+	writes[2].dstSet = descriptor_set[0];
+	writes[2].descriptorCount = 1; 
+	writes[2].descriptorType = vk::DescriptorType::eSampler;
+	writes[2].pImageInfo = &pureSamplerInfo;
+	writes[2].dstArrayElement = 0;
+	writes[2].dstBinding = 2;
+
+
 	
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+
 }
 
 void SetupRenderPass()
@@ -1095,21 +1170,8 @@ void SetupShaders()
 	shaderStages.push_back(shaderStageCInfoFragment);
 
 	std::vector<unsigned int> vtx_spv;
-
-
-	//glslang::InitializeProcess();
-	//
-	//GLSLtoSPV(VK_SHADER_STAGE_VERTEX_BIT, vertShaderText, vtx_spv);
-	//
-	//glslang::FinalizeProcess()	
 }
 
-
-//void Execute_queue_command_buffer()
-//{
-//	const vk::CommandBuffer cmd_bufs[] = { commandBuffer };
-//	vk::FenceCreateInfo
-//}
 
 void SetupFramebuffers()
 {
@@ -1200,8 +1262,6 @@ void SetupIndexBuffer()
 		indexBuffers.push_back(indexBufferT);
 		indexBuffersStaging.push_back(indexBufferStageT);
 	}
-
-
 }
 
 void SetupVertexBuffer()
@@ -1292,9 +1352,7 @@ void SetupVertexBuffer()
 	}
 }
 
-#include <ostream>
-#include <sstream>
-#include <string.h>
+
 VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
 	size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
 	void *pUserData) {
@@ -1356,7 +1414,7 @@ void SetupPipeline()
 	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eClockwise)
+		.setFrontFace(vk::FrontFace::eCounterClockwise)
 		.setDepthClampEnable(VK_FALSE)
 		.setRasterizerDiscardEnable(VK_FALSE)
 		.setDepthBiasEnable(VK_FALSE)
@@ -1400,10 +1458,10 @@ void SetupPipeline()
 	vk::PipelineDepthStencilStateCreateInfo ds = vk::PipelineDepthStencilStateCreateInfo()
 		.setDepthTestEnable(VK_TRUE)
 		.setDepthWriteEnable(VK_TRUE)
-		.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+		.setDepthCompareOp(vk::CompareOp::eLess)
 		.setDepthBoundsTestEnable(VK_FALSE)
 		.setMinDepthBounds(0)
-		.setMaxDepthBounds(0)
+		.setMaxDepthBounds(1.0f)
 		.setStencilTestEnable(VK_FALSE);
 		//.setBack(vk::StencilOpState(StencilOp::eKeep, StencilOp::eKeep, StencilOp::eKeep, CompareOp::eAlways, 0));
 
@@ -1476,9 +1534,6 @@ void SetupDeviceQueue()
 }
 
 
-vk::Semaphore imageAcquiredSemaphore;
-vk::Semaphore rendererFinishedSemaphore;
-
 
 void SetupSemaphores()
 {
@@ -1516,7 +1571,7 @@ void SetupCommandBuffers()
 
 		commandBuffers[i].beginRenderPass(&rp_begin, SubpassContents::eInline);
 		commandBuffers[i].bindPipeline(PipelineBindPoint::eGraphics, pipeline);
-		commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, desc_set.data(), 0, NULL);
+		commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
 
 		InitViewports(commandBuffers[i]);
 		InitScissors(commandBuffers[i]);
@@ -1529,7 +1584,7 @@ void SetupCommandBuffers()
 			commandBuffers[i].drawIndexed(rawMeshData[j].indices.size(), 1, 0, 0, 0);
 		}
 
-		//commandBuffers[i].draw(12 * 3, 1, 0, 0);
+		//commandBuffers[i].draw(12 * 3, 1, 0, 0);s
 
 		commandBuffers[i].endRenderPass();
 		// End the pipeline
@@ -1633,7 +1688,10 @@ void CreateTextureSampler(vk::Device const aDevice)
 		.setMinLod(0.0f)
 		.setMaxLod(0.0f);
 
+	testImageSampler = aDevice.createSampler(samplerInfo);
+
 	testSampler = aDevice.createSampler(samplerInfo);
+
 }
 
 void DrawFrame()
@@ -1669,6 +1727,8 @@ void DrawFrame()
 	presentQueue.waitIdle();
 }
 
+
+
 int main()
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
@@ -1702,6 +1762,7 @@ int main()
 	SetupDevice();
 
 	SetupSwapchain();
+
 	SetupUniformbuffer();
 	SetupPipelineLayout();
 	SetupRenderPass();
@@ -1729,12 +1790,20 @@ int main()
 	SetupDescriptorSet();
 	SetupCommandBuffers();
 
-
-	
+	cam = std::make_unique<Camera>();
 
 	std::cout << "setup completed" << std::endl;
 
-	
+	static float camX, camY, camZ;
+	static float camRotX, camRotY, camRotZ;
+
+	camX = 0.0f;
+	camY = 0.0f;
+	camZ = 0.0f;
+
+	camRotX = 0.0f;
+	camRotY = 0.0f;
+	camRotZ = 0.0f;
 
     // Poll for user input.
     bool stillRunning = true;
@@ -1754,6 +1823,37 @@ int main()
 				{
 					stillRunning = false;
 				}
+
+				if (event.key.keysym.sym == SDLK_w)
+				{
+					camY += 1.0f;
+				}
+
+				if (event.key.keysym.sym == SDLK_a)
+				{
+					camX += 1.0f;
+				}
+
+				if (event.key.keysym.sym == SDLK_s)
+				{
+					camY -= 1.0f;
+				}
+
+				if (event.key.keysym.sym == SDLK_d)
+				{
+					camX -= 1.0f;
+				}
+
+				if (event.key.keysym.sym == SDLK_q)
+				{
+					camRotY -= 1.0f;
+				}
+
+				if (event.key.keysym.sym == SDLK_e)
+				{
+					camRotY += 1.0f;
+				}
+
 				break;
 
             default:
@@ -1761,6 +1861,9 @@ int main()
                 break;
             }	
         }
+		cam->SetPosition(glm::vec3(camX, camY, camZ));
+		cam->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
+
 		UpdateUniformBufferTest();
 		DrawFrame();
 		
@@ -1769,6 +1872,8 @@ int main()
 	
 
 
+	device.destroySampler(testSampler);
+	device.destroySampler(testImageSampler);
 	vmaDestroyImage(allocator, (VkImage)testTexture.image, testTexture.allocation);
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
 	vmaDestroyBuffer(allocator, (VkBuffer)uniformBufferMVP.buffer, uniformBufferMVP.allocation);

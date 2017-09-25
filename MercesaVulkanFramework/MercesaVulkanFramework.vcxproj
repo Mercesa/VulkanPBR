@@ -155,10 +155,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="easylogging++.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
     <ClInclude Include="GraphicsStructures.h" />
