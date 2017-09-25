@@ -29,6 +29,12 @@ struct VertexBufferVulkan
 	VmaAllocation allocation;
 };
 
+struct ModelVulkan
+{
+	BufferVulkan indexBuffer;
+	VertexBufferVulkan vertexBuffer;
+};
+
 // A uniform buffer is..
 // - A buffer object
 // - Memory handle

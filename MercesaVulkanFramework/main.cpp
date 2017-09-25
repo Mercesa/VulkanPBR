@@ -139,6 +139,7 @@ std::vector<BufferVulkan> indexBuffersStaging;
 std::vector<BufferVulkan> vertexBufferStaging;
 std::vector<VertexBufferVulkan> vertexBuffers;
 
+std::vector<ModelVulkan> models;
 
 TextureVulkan testTexture;
 
@@ -184,9 +185,7 @@ std::unique_ptr<Camera> cam;
 
 
 PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;
-//
 PFN_vkDebugReportMessageEXT DebugReportMessageCallback = VK_NULL_HANDLE;
-//
 PFN_vkDestroyDebugReportCallbackEXT dbgReportCallBack = VK_NULL_HANDLE;
 
 VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
@@ -1790,7 +1789,7 @@ int main()
 	SetupDescriptorSet();
 	SetupCommandBuffers();
 
-	cam = std::make_unique<Camera>();
+	cam = std::make_unique<Camera>();i
 
 	std::cout << "setup completed" << std::endl;
 
