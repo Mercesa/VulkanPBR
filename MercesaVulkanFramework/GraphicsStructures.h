@@ -55,4 +55,3 @@ struct RawMeshData
 	VEC4f sphericalCollider;
 };
 
-

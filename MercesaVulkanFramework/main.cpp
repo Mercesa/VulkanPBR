@@ -125,23 +125,19 @@ std::vector<QueueFamilyProperties> familyProperties;
 
 SwapchainVulkan swapchain;
 
-//BufferVulkan indexBuffer;
-//BufferVulkan indexBufferStaging;
 
-std::vector<BufferVulkan> indexBuffers;
-std::vector<BufferVulkan> indexBuffersStaging;
 
 
 //BufferVulkan vertexBufferStaging;
 //VertexBufferVulkan vertexBuffer;
 
 
-std::vector<BufferVulkan> vertexBufferStaging;
-std::vector<VertexBufferVulkan> vertexBuffers;
+//std::vector<VertexBufferVulkan> vertexBuffers;
 
 std::vector<ModelVulkan> models;
 
 TextureVulkan testTexture;
+TextureVulkan testTexture2;
 
 VmaAllocator allocator;
 
@@ -153,11 +149,6 @@ int32_t familyPresenteIndex = 0;
 
 SDL_Window* window = nullptr;
 
-glm::mat4 projectionMatrix;
-glm::mat4 viewMatrix;
-glm::mat4 modelMatrix;
-glm::mat4 clipMatrix;
-glm::mat4 mvpMatrix;
 
 std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
@@ -740,6 +731,9 @@ void SetupDepthbuffer()
 	depthBuffer.view = device.createImageView(view_info);
 }
 
+#include "ConstantBuffers.h"
+CBMatrix matrixConstantBufferData;
+
 void SetupUniformbuffer()
 {
 	CreateSimpleBuffer(allocator, 
@@ -747,14 +741,14 @@ void SetupUniformbuffer()
 		VMA_MEMORY_USAGE_CPU_TO_GPU, 
 		uniformBufferMVP.buffer, 
 		vk::BufferUsageFlagBits::eUniformBuffer, 
-		sizeof(mvpMatrix));
+		sizeof(CBMatrix));
 	
-	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&mvpMatrix, sizeof(mvpMatrix));
+	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
 
 	uniformBufferMVP.descriptorInfo.buffer = uniformBufferMVP.buffer;
 	uniformBufferMVP.descriptorInfo.offset = 0;
-	uniformBufferMVP.descriptorInfo.range = sizeof(mvpMatrix);
+	uniformBufferMVP.descriptorInfo.range = sizeof(matrixConstantBufferData);
 }
 
 void UpdateUniformBufferTest()
@@ -763,18 +757,22 @@ void UpdateUniformBufferTest()
 	derp += 0.01f;
 	float derp2 = (sinf(derp) + 1.0f) / 2.0f;
 	
-	projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
-	viewMatrix = cam->GetViewMatrix();
-	modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01));
-	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+	glm::mat4 viewMatrix = cam->GetViewMatrix();
+	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01));
+	glm::mat4 clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f);
 
-	mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
+	
+	matrixConstantBufferData.modelMatrix = modelMatrix;
+	matrixConstantBufferData.viewMatrix = viewMatrix;
+	matrixConstantBufferData.projectionMatrix = projectionMatrix;
+	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
+	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
-
-	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&mvpMatrix, sizeof(mvpMatrix));
+	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
@@ -802,7 +800,6 @@ void SetupPipelineLayout()
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
-
 	
 	std::array<vk::DescriptorSetLayoutBinding, 3> bindings = { layout_binding, sampler_layout_binding, pureSampler_layout_binding };
 
@@ -828,22 +825,25 @@ void SetupPipelineLayout()
 void SetupDescriptorSet()
 {
 	std::array<vk::DescriptorPoolSize, 3> type_count;
-	type_count[0].type = vk::DescriptorType::eUniformBuffer;
-	type_count[0].descriptorCount = 1;
+	type_count[1].type = vk::DescriptorType::eUniformBuffer;
+	type_count[1].descriptorCount = 2;
 	
-	type_count[1].type = vk::DescriptorType::eCombinedImageSampler;
-	type_count[1].descriptorCount = 1;
+	type_count[2].type = vk::DescriptorType::eCombinedImageSampler;
+	type_count[2].descriptorCount = 2;
 	
-	type_count[2].type = vk::DescriptorType::eSampler;
-	type_count[2].descriptorCount = 1;
+	type_count[0].type = vk::DescriptorType::eSampler;
+	type_count[0].descriptorCount = 2;
 
+
+	
 	vk::DescriptorPoolCreateInfo descriptor_pool = vk::DescriptorPoolCreateInfo()
 		.setPNext(NULL)
-		.setMaxSets(1)
+		.setMaxSets(NUM_DESCRIPTOR_SETS)
 		.setPoolSizeCount(static_cast<uint32_t>(type_count.size()))
 		.setPPoolSizes(type_count.data());
 
 	descriptorPool = device.createDescriptorPool(descriptor_pool);
+
 
 	vk::DescriptorSetAllocateInfo alloc_info[1] = {};
 	alloc_info[0].pNext = NULL;
@@ -851,8 +851,9 @@ void SetupDescriptorSet()
 	alloc_info[0].setDescriptorSetCount(NUM_DESCRIPTOR_SETS);
 	alloc_info[0].setPSetLayouts(desc_layout.data());
 
-	descriptor_set.resize(1);
+	descriptor_set.resize(NUM_DESCRIPTOR_SETS);
 	device.allocateDescriptorSets(alloc_info, descriptor_set.data());
+	
 	
 	
 	std::array<vk::WriteDescriptorSet, 3> writes = {};
@@ -897,10 +898,11 @@ void SetupDescriptorSet()
 	writes[2].pImageInfo = &pureSamplerInfo;
 	writes[2].dstArrayElement = 0;
 	writes[2].dstBinding = 2;
-
+	
 
 	
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+
 
 }
 
@@ -1166,9 +1168,8 @@ void SetupShaders()
 		.setStage(vk::ShaderStageFlagBits::eFragment)
 		.setPName("main")
 		.setModule(fragmentShaderModule);
-	shaderStages.push_back(shaderStageCInfoFragment);
 
-	std::vector<unsigned int> vtx_spv;
+	shaderStages.push_back(shaderStageCInfoFragment);
 }
 
 
@@ -1232,47 +1233,39 @@ void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width
 	EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
 }
 
-void SetupIndexBuffer()
+void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
 {
-	for (auto& e : rawMeshData)
-	{
-		BufferVulkan indexBufferStageT;
-		BufferVulkan indexBufferT;
+	
+	BufferVulkan indexBufferStageT;
 
-		CreateSimpleBuffer(
-			allocator,
-			indexBufferStageT.allocation,
-			VMA_MEMORY_USAGE_CPU_ONLY,
-			indexBufferStageT.buffer,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			sizeof(uint32_t) * e.indices.size());
+	CreateSimpleBuffer(
+		allocator,
+		indexBufferStageT.allocation,
+		VMA_MEMORY_USAGE_CPU_ONLY,
+		indexBufferStageT.buffer,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		sizeof(uint32_t) * iRawMeshData.indices.size());
 
-		CopyDataToBuffer(device, indexBufferStageT.allocation, e.indices.data(), sizeof(uint32_t) * e.indices.size());
+	CopyDataToBuffer(device, indexBufferStageT.allocation, (void*)iRawMeshData.indices.data(), sizeof(uint32_t) * iRawMeshData.indices.size());
 
-		CreateSimpleBuffer(
-			allocator,
-			indexBufferT.allocation,
-			VMA_MEMORY_USAGE_GPU_ONLY,
-			indexBufferT.buffer,
-			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			sizeof(uint32_t) * e.indices.size());
+	CreateSimpleBuffer(
+		allocator,
+		oIndexBuffer.allocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		oIndexBuffer.buffer,
+		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+		sizeof(uint32_t) * iRawMeshData.indices.size());
 
-		CopyBufferMemory(indexBufferStageT.buffer, indexBufferT.buffer, indexBufferT.allocation->GetSize());
-		indexBuffers.push_back(indexBufferT);
-		indexBuffersStaging.push_back(indexBufferStageT);
-	}
+	CopyBufferMemory(indexBufferStageT.buffer, oIndexBuffer.buffer, oIndexBuffer.allocation->GetSize());
+
+	vmaDestroyBuffer(allocator, indexBufferStageT.buffer, indexBufferStageT.allocation);
 }
 
-void SetupVertexBuffer()
+void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata)
 {
-
-	for (auto& e : rawMeshData)
-	{
-		size_t dataSize = sizeof(VertexData) * e.vertices.size();
-
+		size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
 
 		BufferVulkan stagingT;
-		VertexBufferVulkan vertexBufferT;
 
 		CreateSimpleBuffer(allocator,
 			stagingT.allocation,
@@ -1284,22 +1277,22 @@ void SetupVertexBuffer()
 
 		CopyDataToBuffer((VkDevice)device,
 			stagingT.allocation,
-			e.vertices.data(),
+			(void*)iRawMeshdata.vertices.data(),
 			dataSize);
 
 
 		CreateSimpleBuffer(allocator,
-			vertexBufferT.allocation,
+			oVertexBuffer.allocation,
 			VMA_MEMORY_USAGE_GPU_ONLY,
-			vertexBufferT.buffer,
+			oVertexBuffer.buffer,
 			BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
 			dataSize);
 
 		// end of setup
 
-		vertexBufferT.inputDescription.binding = 0;
-		vertexBufferT.inputDescription.inputRate = vk::VertexInputRate::eVertex;
-		vertexBufferT.inputDescription.stride = sizeof(VertexData);
+		oVertexBuffer.inputDescription.binding = 0;
+		oVertexBuffer.inputDescription.inputRate = vk::VertexInputRate::eVertex;
+		oVertexBuffer.inputDescription.stride = sizeof(VertexData);
 
 		// 12 bits 
 		// 8 bits offset = 12
@@ -1336,19 +1329,16 @@ void SetupVertexBuffer()
 		att5.offset = 44;
 
 
-		vertexBufferT.inputAttributes.push_back(att1);
-		vertexBufferT.inputAttributes.push_back(att2);
-		vertexBufferT.inputAttributes.push_back(att3);
-		vertexBufferT.inputAttributes.push_back(att4);
-		vertexBufferT.inputAttributes.push_back(att5);
+		oVertexBuffer.inputAttributes.push_back(att1);
+		oVertexBuffer.inputAttributes.push_back(att2);
+		oVertexBuffer.inputAttributes.push_back(att3);
+		oVertexBuffer.inputAttributes.push_back(att4);
+		oVertexBuffer.inputAttributes.push_back(att5);
 		// Create staging buffer
 
-		CopyBufferMemory(stagingT.buffer, vertexBufferT.buffer, vertexBufferT.allocation->GetSize());
+		CopyBufferMemory(stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
 
-		vertexBuffers.push_back(vertexBufferT);
-		vertexBufferStaging.push_back(stagingT);
-
-	}
+		vmaDestroyBuffer(allocator, stagingT.buffer, stagingT.allocation);
 }
 
 
@@ -1401,8 +1391,8 @@ void SetupPipeline()
 	
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
 		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
-		.setPVertexBindingDescriptions(&vertexBuffers[0].inputDescription)
-		.setPVertexAttributeDescriptions(vertexBuffers[0].inputAttributes.data())
+		.setPVertexBindingDescriptions(&models[0].vertexBuffer.inputDescription)
+		.setPVertexAttributeDescriptions(models[0].vertexBuffer.inputAttributes.data())
 		.setVertexAttributeDescriptionCount(5)
 		.setVertexBindingDescriptionCount(1);
 
@@ -1570,17 +1560,18 @@ void SetupCommandBuffers()
 
 		commandBuffers[i].beginRenderPass(&rp_begin, SubpassContents::eInline);
 		commandBuffers[i].bindPipeline(PipelineBindPoint::eGraphics, pipeline);
+
 		commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
 
 		InitViewports(commandBuffers[i]);
 		InitScissors(commandBuffers[i]);
 
 	
-		for (int j = 0; j < vertexBuffers.size(); ++j)
+		for (int j = 0; j < models.size(); ++j)
 		{
-			commandBuffers[i].bindVertexBuffers(0, 1, &vertexBuffers[j].buffer, offsets);
-			commandBuffers[i].bindIndexBuffer(indexBuffers[j].buffer, 0, IndexType::eUint32);
-			commandBuffers[i].drawIndexed(rawMeshData[j].indices.size(), 1, 0, 0, 0);
+			commandBuffers[i].bindVertexBuffers(0, 1, &models[j].vertexBuffer.buffer, offsets);
+			commandBuffers[i].bindIndexBuffer(models[j].indexBuffer.buffer, 0, IndexType::eUint32);
+			commandBuffers[i].drawIndexed(models[j].indiceCount, 1, 0, 0, 0);
 		}
 
 		//commandBuffers[i].draw(12 * 3, 1, 0, 0);s
@@ -1602,8 +1593,15 @@ void SetupTextureImage(vk::Device iDevice, std::string iFilePath, vk::Image& oIm
 
 	if (!pixels)
 	{
-		LOG(ERROR) << "Load texture failed!";
+		LOG(ERROR) << "Load texture failed! Fallback to error texture..";
+		pixels = stbi_load("textures/ErrorTexture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+		imageSize = texWidth * texHeight * 4;
+		if (!pixels)
+		{
+			LOG(FATAL) << "FAILED TO LOAD ERRORTEXTURE, THIS SHOULD NOT HAPPEN";
+		}
 	}
+
 
 	// Create staging buffer for image
 	BufferVulkan stagingBuffer;
@@ -1646,10 +1644,6 @@ void SetupTextureImage(vk::Device iDevice, std::string iFilePath, vk::Image& oIm
 	vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
 }
 
-void SetupCustomTexture()
-{
-
-}
 
 vk::ImageView CreateImageView(vk::Device aDevice, vk::Image aImage, vk::Format aFormat)
 {
@@ -1727,7 +1721,6 @@ void DrawFrame()
 }
 
 
-
 int main()
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
@@ -1739,16 +1732,6 @@ int main()
 	freopen("conout$", "w", stdout);
 	freopen("conout$", "w", stderr);
 #endif
-
-	projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
-	viewMatrix = glm::lookAt(glm::vec3(-5, 3, -10), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-	modelMatrix = glm::mat4(1.0f);
-	clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f);
-
-	mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
 	rawMeshData = ModelLoader::LoadModel("Models/Sponza/sponza.obj", false);
 
@@ -1774,22 +1757,37 @@ int main()
 
 	SetupDeviceQueue();
 	TransitionImageLayout(depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-	SetupVertexBuffer();
-	SetupIndexBuffer();
+	
+	
+	for (auto& e : rawMeshData)
+	{
+		ModelVulkan tModV;
+		SetupVertexBuffer(tModV.vertexBuffer, e);
+		SetupIndexBuffer(tModV.indexBuffer, e);
+
+		tModV.indiceCount = e.indices.size();
+
+		models.push_back(tModV);
+	}
+
 
 	SetupPipeline();
 	SetupSemaphores();
 
 	// Prepare our texture
-	SetupTextureImage(device, "textures/statue-1275469_1920.jpg", testTexture.image, testTexture.allocation);
+	SetupTextureImage(device, "textures/statue-e1275469_1920.jpg", testTexture.image, testTexture.allocation);
 	testTexture.view = CreateImageView(device, testTexture.image, Format::eR8G8B8A8Unorm);
+
+	SetupTextureImage(device, "textures/Kingston_rnd1_dirt.jpg", testTexture2.image, testTexture2.allocation);
+	testTexture2.view = CreateImageView(device, testTexture2.image, Format::eR8G8B8A8Unorm);
+
 
 	CreateTextureSampler(device);
 
 	SetupDescriptorSet();
 	SetupCommandBuffers();
 
-	cam = std::make_unique<Camera>();i
+	cam = std::make_unique<Camera>();
 
 	std::cout << "setup completed" << std::endl;
 
@@ -1877,15 +1875,11 @@ int main()
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
 	vmaDestroyBuffer(allocator, (VkBuffer)uniformBufferMVP.buffer, uniformBufferMVP.allocation);
 
-
-	for (int i = 0; i < vertexBuffers.size(); ++i)
+	for (auto& e : models)
 	{
-		vmaDestroyBuffer(allocator, (VkBuffer)vertexBuffers[i].buffer, vertexBuffers[i].allocation);
-		vmaDestroyBuffer(allocator, (VkBuffer)vertexBufferStaging[i].buffer, vertexBufferStaging[i].allocation);
-		vmaDestroyBuffer(allocator, (VkBuffer)indexBuffers[i].buffer, indexBuffers[i].allocation);
-		vmaDestroyBuffer(allocator, (VkBuffer)indexBuffersStaging[i].buffer, indexBuffersStaging[i].allocation);
+		vmaDestroyBuffer(allocator, e.vertexBuffer.buffer, e.vertexBuffer.allocation);
+		vmaDestroyBuffer(allocator, e.indexBuffer.buffer, e.indexBuffer.allocation);
 	}
-
 
 	device.destroyImageView(testTexture.view, nullptr);
 	//device.destroyImage(depthImage);

@@ -33,6 +33,7 @@ struct ModelVulkan
 {
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
+	uint32_t indiceCount = 0;
 };
 
 // A uniform buffer is..

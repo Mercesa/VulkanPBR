@@ -164,57 +164,57 @@ inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer,
 }
 
 
-
-inline void LoadTextureSimple(vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
-{
-	// Load texture with stbi
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-	vk::DeviceSize imageSize = texWidth * texHeight * 4;
-
-	if (!pixels)
-	{
-		LOG(ERROR) << "Load texture failed!";
-	}
-
-	// Create staging buffer for image
-	BufferVulkan stagingBuffer;
-
-	// create simple buffer
-	CreateSimpleBuffer(allocator,
-		stagingBuffer.allocation,
-		VMA_MEMORY_USAGE_CPU_ONLY,
-		stagingBuffer.buffer,
-		BufferUsageFlagBits::eTransferSrc,
-		imageSize);
-
-	// Copy image data to buffer
-	CopyDataToBuffer(VkDevice(device), stagingBuffer.allocation, pixels, imageSize);
-
-	// Free image
-	stbi_image_free(pixels);
-
-
-	CreateSimpleImage(allocator,
-		oAllocation,
-		VMA_MEMORY_USAGE_GPU_ONLY,
-		ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled,
-		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
-		oImage, texWidth, texHeight);
-
-	TransitionImageLayout(oImage,
-		vk::Format::eR8G8B8A8Unorm,
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eTransferDstOptimal);
-
-	CopyBufferToImage(stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-	TransitionImageLayout(oImage,
-		vk::Format::eR8G8B8A8Unorm,
-		vk::ImageLayout::eTransferDstOptimal,
-		vk::ImageLayout::eShaderReadOnlyOptimal);
-
-
-	vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
-}
+#include "stb_image.h"
+//inline void LoadTextureSimple(const vk::Device iDevice, const VmaAllocator& iAllocator, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
+//{
+//	// Load texture with stbi
+//	int texWidth, texHeight, texChannels;
+//	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+//
+//	vk::DeviceSize imageSize = texWidth * texHeight * 4;
+//
+//	if (!pixels)
+//	{
+//		LOG(ERROR) << "Load texture failed!";
+//	}
+//
+//	// Create staging buffer for image
+//	BufferVulkan stagingBuffer;
+//
+//	// create simple buffer
+//	CreateSimpleBuffer(iAllocator,
+//		stagingBuffer.allocation,
+//		VMA_MEMORY_USAGE_CPU_ONLY,
+//		stagingBuffer.buffer,
+//		BufferUsageFlagBits::eTransferSrc,
+//		imageSize);
+//
+//	// Copy image data to buffer
+//	CopyDataToBuffer(VkDevice(device), stagingBuffer.allocation, pixels, imageSize);
+//
+//	// Free image
+//	stbi_image_free(pixels);
+//
+//
+//	CreateSimpleImage(iAllocator,
+//		oAllocation,
+//		VMA_MEMORY_USAGE_GPU_ONLY,
+//		ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled,
+//		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
+//		oImage, texWidth, texHeight);
+//
+//	TransitionImageLayout(oImage,
+//		vk::Format::eR8G8B8A8Unorm,
+//		vk::ImageLayout::eUndefined,
+//		vk::ImageLayout::eTransferDstOptimal);
+//
+//	CopyBufferToImage(stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+//
+//	TransitionImageLayout(oImage,
+//		vk::Format::eR8G8B8A8Unorm,
+//		vk::ImageLayout::eTransferDstOptimal,
+//		vk::ImageLayout::eShaderReadOnlyOptimal);
+//
+//
+//	vmaDestroyBuffer(iAllocator, stagingBuffer.buffer, stagingBuffer.allocation);
+//}
