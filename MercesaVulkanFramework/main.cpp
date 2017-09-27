@@ -224,7 +224,7 @@ void SetupApplication()
 	}
 
 	layerNames.push_back("VK_LAYER_LUNARG_standard_validation");
-	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
+	layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_api_dump");
 
 	std::vector<const char*> removeExtensions = { "VK_KHR_get_surface_capabilities2", "VK_KHX_device_group_creation", "VK_KHR_external_fence_capabilities" };
@@ -773,6 +773,9 @@ void UpdateUniformBufferTest()
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
+std::vector<vk::DescriptorSetLayoutBinding> bindings;
+std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
+
 void SetupPipelineLayout()
 {
 	vk::DescriptorSetLayoutBinding sampler_layout_binding = vk::DescriptorSetLayoutBinding()
@@ -790,8 +793,16 @@ void SetupPipelineLayout()
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
+	vk::DescriptorSetLayoutBinding pureImage_layout_binding = vk::DescriptorSetLayoutBinding()
+		.setBinding(2)
+		.setDescriptorCount(1)
+		.setDescriptorType(DescriptorType::eSampledImage)
+		.setPImmutableSamplers(nullptr)
+		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+
 	
-	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { sampler_layout_binding, pureSampler_layout_binding };
+	bindings = { sampler_layout_binding, pureSampler_layout_binding, pureImage_layout_binding };
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
@@ -806,15 +817,13 @@ void SetupPipelineLayout()
 		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
 		.setPImmutableSamplers(NULL);
 
-	std::array<vk::DescriptorSetLayoutBinding, 1> uniformBinding = { uniform_binding };
+	uniformBinding = { uniform_binding };
 
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layoutUniform = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
 		.setBindingCount(static_cast<uint32_t>(uniformBinding.size()))
 		.setPBindings(uniformBinding.data());
-
-
 
 	//desc_layout.resize(NUM_DESCRIPTOR_SETS);
 
@@ -827,14 +836,14 @@ void SetupDescriptorSet()
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 	
-	descriptorPool->Create(device, 100, 10, 10, 10);
+	descriptorPool->Create(device, 100, 2, 2, 2, 2);
 
 	descriptor_set.resize(NUM_DESCRIPTOR_SETS);
 
-	descriptor_set= descriptorPool->AllocateDescriptorSet(device, 2, desc_layout);
-	
-	
-	std::array<vk::WriteDescriptorSet, 2> writes = {};
+	descriptor_set[0] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[0], bindings)[0];
+	descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[1], uniformBinding)[0];
+
+	std::array<vk::WriteDescriptorSet, 3> writes = {};
 
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo imageInfo = {};
@@ -865,7 +874,23 @@ void SetupDescriptorSet()
 	writes[1].pImageInfo = &pureSamplerInfo;
 	writes[1].dstArrayElement = 0;
 	writes[1].dstBinding = 1;
-	
+
+	vk::DescriptorImageInfo pureImageInfo = {};
+
+	pureImageInfo.imageView = vk::ImageView(nullptr);
+	pureImageInfo.imageView = testTexture2.view;
+
+
+	writes[2] = {};
+	writes[2].pNext = NULL;
+	writes[2].dstSet = descriptor_set[0];
+	writes[2].descriptorCount = 1;
+	writes[2].descriptorType = vk::DescriptorType::eSampledImage;
+	writes[2].pImageInfo = &pureImageInfo;
+	writes[2].dstArrayElement = 0;
+	writes[2].dstBinding = 2;
+
+
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
 
 	std::array<vk::WriteDescriptorSet, 1> uniform_writes = {};

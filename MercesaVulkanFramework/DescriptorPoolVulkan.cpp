@@ -6,16 +6,12 @@ DescriptorPoolVulkan::DescriptorPoolVulkan() : hasInitialized(false)
 {
 }
 
-
-//DescriptorPoolVulkan::~DescriptorPoolVulkan()
-//{
-//}
-
 bool DescriptorPoolVulkan::Create(const vk::Device aDevice, 
-	const int32_t iMaxSets,
-	const int32_t iCombinedImgSamplerCount,
-	const int32_t iSamplerCount,
-	const int32_t iUniformBufferCount)
+	uint32_t iMaxSets,
+	uint32_t iCombinedImgSamplerCount,
+	uint32_t iSamplerCount,
+	uint32_t iUniformBufferCount,
+	uint32_t iSampledImgCount)
 {
 	if (hasInitialized)
 	{
@@ -23,7 +19,8 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 		return false;
 	}
 
-	std::array<vk::DescriptorPoolSize, 3> type_count;
+	std::array<vk::DescriptorPoolSize, 4> type_count;
+	
 
 	// Initialize our pool with these values
 	type_count[0].type = vk::DescriptorType::eCombinedImageSampler;
@@ -31,24 +28,28 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 
 	type_count[1].type = vk::DescriptorType::eSampler;
 	type_count[1].descriptorCount = iSamplerCount;
-
+	
 	type_count[2].type = vk::DescriptorType::eUniformBuffer;
 	type_count[2].descriptorCount = iUniformBufferCount;
+
+	type_count[3].type = vk::DescriptorType::eSampledImage;
+	type_count[3].descriptorCount = iSampledImgCount;
+
 
 	currentResources.combinedImgSamplerCount = iCombinedImgSamplerCount;
 	currentResources.samplerCount = iSamplerCount;
 	currentResources.uniformBufferCount = iUniformBufferCount;
-
+	currentResources.setCount = iMaxSets;
 
 	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
 		.setPNext(nullptr)
 		.setMaxSets(iMaxSets)
-		.setPoolSizeCount(static_cast<uint32_t>(type_count.size()))
+		.setPoolSizeCount(1)
 		.setPPoolSizes(type_count.data());
 
+	pool = aDevice.createDescriptorPool(createInfo);
+
 	// Create the descriptor pool
-	pool = aDevice.createDescriptorPool(createInfo);	
-		
 	hasInitialized = true;
 	return true;
 }
@@ -63,7 +64,7 @@ bool DescriptorPoolVulkan::Destroy(const vk::Device aDevice)
 	return true;
 }
 
-bool DescriptorPoolVulkan::ValidateResourcesAmounts(const DescriptorSizes& iResourceAmount)
+bool DescriptorPoolVulkan::ValidateResourcesAmounts(const PoolData& iResourceAmount)
 {
 	// Validate if we have enough resources 
 	if (this->currentResources.combinedImgSamplerCount - iResourceAmount.combinedImgSamplerCount < 0)
@@ -71,12 +72,17 @@ bool DescriptorPoolVulkan::ValidateResourcesAmounts(const DescriptorSizes& iReso
 		return false;
 	}
 
-	if (this->currentResources.samplerCount - iResourceAmount.samplerCount < 0)
+	if ((this->currentResources.samplerCount - iResourceAmount.samplerCount) < 0)
 	{
 		return false;
 	}
 
-	if (this->currentResources.samplerCount - iResourceAmount.uniformBufferCount < 0)
+	if (this->currentResources.uniformBufferCount- iResourceAmount.uniformBufferCount < 0)
+	{
+		return false;
+	}
+
+	if (this->currentResources.setCount - iResourceAmount.setCount < 0)
 	{
 		return false;
 	}
@@ -84,20 +90,27 @@ bool DescriptorPoolVulkan::ValidateResourcesAmounts(const DescriptorSizes& iReso
 	return true;
 }
 
-bool DescriptorPoolVulkan::UpdateResourceAmounts(const DescriptorSizes& iResourceAmounts)
+bool DescriptorPoolVulkan::UpdateResourceAmounts(const PoolData& iResourceAmounts)
 {
-	currentResources.combinedImgSamplerCount - iResourceAmounts.combinedImgSamplerCount;
-	currentResources.samplerCount - iResourceAmounts.samplerCount;
-	currentResources.uniformBufferCount - iResourceAmounts.uniformBufferCount;
+	currentResources.combinedImgSamplerCount -= iResourceAmounts.combinedImgSamplerCount;
+	currentResources.samplerCount -= iResourceAmounts.samplerCount;
+	currentResources.uniformBufferCount -= iResourceAmounts.uniformBufferCount;
+	currentResources.sampledImgCount -= iResourceAmounts.sampledImgCount;
+
+	currentResources.setCount -= iResourceAmounts.setCount;
 
 	return true;
 }
 
 bool DescriptorPoolVulkan::CalculateResourceCostOfDescriptorSet(
 	const std::vector<vk::DescriptorSetLayoutBinding>& iLayoutBindings,
-	DescriptorSizes& oCost)
+	const uint32_t& iSetAmount,
+	PoolData& oCost)
 {
-	DescriptorSizes tCost;
+	if (iSetAmount == 0)
+	{
+		return false;
+	}
 
 	// Calculate the resources for all the bindings
 	for (auto& e : iLayoutBindings)
@@ -105,15 +118,19 @@ bool DescriptorPoolVulkan::CalculateResourceCostOfDescriptorSet(
 		switch (e.descriptorType)
 		{
 		case vk::DescriptorType::eCombinedImageSampler:
-			tCost.combinedImgSamplerCount += e.descriptorCount;
+			oCost.combinedImgSamplerCount += e.descriptorCount * iSetAmount;
 			break;
 
 		case vk::DescriptorType::eSampler:
-			tCost.samplerCount += e.descriptorCount;
+			oCost.samplerCount += e.descriptorCount * iSetAmount;
 			break;
 
 		case vk::DescriptorType::eUniformBuffer:
-			tCost.uniformBufferCount += e.descriptorCount;
+			oCost.uniformBufferCount += e.descriptorCount * iSetAmount;
+			break;
+
+		case vk::DescriptorType::eSampledImage:
+			oCost.sampledImgCount += e.descriptorCount * iSetAmount;
 			break;
 
 		default:
@@ -123,37 +140,42 @@ bool DescriptorPoolVulkan::CalculateResourceCostOfDescriptorSet(
 		}
 	}
 
+	oCost.setCount += iSetAmount;
+
 	return true;
 }
 
-std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
-	const vk::Device iDevice,
-	const uint32_t iNumToAllocate,
-	const std::vector<vk::DescriptorSetLayout>& iDescriptorLayouts)
-{
-	assert(hasInitialized);
-
-	// If the user inputs 0 descriptors, throw a warning
-	if (iNumToAllocate == 0)
-	{
-		LOG(WARNING) << "DescriptorPoolVulkan::AllocateDescriptorSet iNumToAllocate needs to be more than zero";
-		return std::vector<vk::DescriptorSet>();
-	}
-
-	vk::DescriptorSetAllocateInfo alloc_info[1] = {};
-	alloc_info[0].pNext = NULL;
-	alloc_info[0].setDescriptorPool(pool);
-	alloc_info[0].setDescriptorSetCount(iNumToAllocate);
-	alloc_info[0].setPSetLayouts(&iDescriptorLayouts[0]);
-
-	// Prepare a vector to fill with descriptors
-	std::vector<vk::DescriptorSet> tDescriptors;
-	tDescriptors.resize(iNumToAllocate);
-
-	iDevice.allocateDescriptorSets(alloc_info, tDescriptors.data());
-
-	return tDescriptors;
-}
+//std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
+//	const vk::Device iDevice,
+//	const uint32_t iNumToAllocate,
+//	const std::vector<vk::DescriptorSetLayout>& iDescriptorLayouts)
+//{
+//	assert(hasInitialized);
+//
+//	// If the user inputs 0 descriptors, throw a warning
+//	if (iNumToAllocate == 0)
+//	{
+//		LOG(WARNING) << "DescriptorPoolVulkan::AllocateDescriptorSet iNumToAllocate needs to be more than zero";
+//		return std::vector<vk::DescriptorSet>();
+//	}
+//
+//	vk::DescriptorSetAllocateInfo alloc_info[1] = {};
+//	alloc_info[0].pNext = NULL;
+//	alloc_info[0].setDescriptorPool(pool);
+//	alloc_info[0].setDescriptorSetCount(iNumToAllocate);
+//	alloc_info[0].setPSetLayouts(&iDescriptorLayouts[0]);
+//
+//	// Prepare a vector to fill with descriptors
+//	std::vector<vk::DescriptorSet> tDescriptors;
+//	tDescriptors.resize(iNumToAllocate);
+//
+//	if (iDevice.allocateDescriptorSets(alloc_info, tDescriptors.data()) == vk::Result::eSuccess)
+//	{
+//		LOG(INFO) << "AllocateDescriptorSet Succesfully allocated descriptor";
+//	}
+//
+//	return tDescriptors;
+//}
 
 std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
 	const vk::Device iDevice,
@@ -162,7 +184,7 @@ std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
 	const std::vector<vk::DescriptorSetLayoutBinding>& iDescriptorLayoutBindings)
 {
 	assert(hasInitialized);
-
+	
 	// If the user inputs 0 descriptors, throw a warning
 	if (iNumToAllocate == 0)
 	{
@@ -170,35 +192,41 @@ std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
 		return std::vector<vk::DescriptorSet>();
 	}
 
-	// Calculate the cost of our single descriptor layout
+	PoolData tResourceCost{};
 
-	DescriptorSizes tResourceCost; 
-	if (!CalculateResourceCostOfDescriptorSet(iDescriptorLayoutBindings, tResourceCost))
+	// Calculate the cost of our single descriptor layout
+	if (!CalculateResourceCostOfDescriptorSet(iDescriptorLayoutBindings, iNumToAllocate, tResourceCost))
 	{
 		LOG(WARNING) << "DescriptorPoolVulkan::AllocateDescriptorSet Resource cost query failed, consider allocation invalid";
+		return std::vector<vk::DescriptorSet>() = { vk::DescriptorSet() };
 	}
 
+	// Validate if we have enough resources left in our pool
 	if (!ValidateResourcesAmounts(tResourceCost))
 	{
-		LOG(WARNING) << "DescriptorPoolVulkan::AlocateDescriptorSet Insufficient resources to allocate descriptor set";
+		LOG(WARNING) << "DescriptorPoolVulkan::AlocateDescriptorSet Insufficient resources to allocate descriptor set, consider allocation invalid";
+		return std::vector<vk::DescriptorSet>() = { vk::DescriptorSet() };
 	}
 
-	vk::DescriptorSetAllocateInfo alloc_info[1] = {};
-	alloc_info[0].pNext = NULL;
-	alloc_info[0].setDescriptorPool(pool);
-	alloc_info[0].setDescriptorSetCount(iNumToAllocate);
-	alloc_info[0].setPSetLayouts(&iDescriptorLayouts);
+	vk::DescriptorSetAllocateInfo alloc_info = {};
+	alloc_info.pNext = NULL;
+	alloc_info.setDescriptorPool(pool);
+	alloc_info.setDescriptorSetCount(iNumToAllocate);
+	alloc_info.setPSetLayouts(&iDescriptorLayouts);
 
 	std::vector<vk::DescriptorSet> tDescriptors;
 	tDescriptors.resize(iNumToAllocate);
 
-	iDevice.allocateDescriptorSets(alloc_info, tDescriptors.data());
+	// Allocate descriptors if all is well
+	if (iDevice.allocateDescriptorSets(&alloc_info, tDescriptors.data()) == vk::Result::eSuccess)
+	{
+		LOG(INFO) << "DescriptorPoolVulkan::AllocateDescriptorSet Allocated set!";
+	}
 
 	// Update our resources
 	UpdateResourceAmounts(tResourceCost);
 
 	return tDescriptors;
-
 }
 
 const vk::DescriptorPool DescriptorPoolVulkan::GetDescriptorPool()

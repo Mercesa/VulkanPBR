@@ -3,8 +3,8 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout(set = 0, binding = 0) uniform sampler2D texSampler;
-layout(set = 0, binding = 1) uniform sampler2D realTextureSampler;
-//layout(set = 1, binding = 2) uniform sampler2D realTexture;
+layout(set = 0, binding = 1) uniform sampler realTextureSampler;
+layout(set = 0, binding = 2) uniform texture2D realTexture;
 
 
 layout (location = 0) in vec4 color;
@@ -19,5 +19,5 @@ void main() {
 
 	vec3 lightDir = normalize(vec3(0.0f, 0.5f, 0.5));
 	float test = max(dot(lightDir, normal), 0.0f);
-	outColor = texture(texSampler, uv) * test;
+	outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * test;
 }

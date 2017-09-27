@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(std140, set = 0, binding = 0) uniform bufferVals{
+layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 modelMatrix;
 	mat4 viewMatrix;
 	mat4 projectionMatrix;
