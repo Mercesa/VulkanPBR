@@ -35,19 +35,20 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 	type_count[3].type = vk::DescriptorType::eSampledImage;
 	type_count[3].descriptorCount = iSampledImgCount;
 
+	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
+		.setPNext(nullptr)
+		.setMaxSets(iMaxSets)
+		.setPoolSizeCount(1)
+		.setPPoolSizes(type_count.data());
+	pool = aDevice.createDescriptorPool(createInfo);
 
 	currentResources.combinedImgSamplerCount = iCombinedImgSamplerCount;
 	currentResources.samplerCount = iSamplerCount;
 	currentResources.uniformBufferCount = iUniformBufferCount;
 	currentResources.setCount = iMaxSets;
 
-	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
-		.setPNext(nullptr)
-		.setMaxSets(iMaxSets)
-		.setPoolSizeCount(1)
-		.setPPoolSizes(type_count.data());
 
-	pool = aDevice.createDescriptorPool(createInfo);
+
 
 	// Create the descriptor pool
 	hasInitialized = true;
@@ -221,6 +222,11 @@ std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
 	if (iDevice.allocateDescriptorSets(&alloc_info, tDescriptors.data()) == vk::Result::eSuccess)
 	{
 		LOG(INFO) << "DescriptorPoolVulkan::AllocateDescriptorSet Allocated set!";
+	}
+
+	else
+	{
+		LOG(WARNING) << " DescriptorPoolVulkan::AllocatDescriptorSet FAILED TO ALLOCATE";
 	}
 
 	// Update our resources

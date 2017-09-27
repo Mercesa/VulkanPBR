@@ -4,7 +4,7 @@
 
 layout(set = 0, binding = 0) uniform sampler2D texSampler;
 layout(set = 0, binding = 1) uniform sampler realTextureSampler;
-layout(set = 0, binding = 2) uniform texture2D realTexture;
+layout(set = 2, binding = 0) uniform texture2D realTexture;
 
 
 layout (location = 0) in vec4 color;

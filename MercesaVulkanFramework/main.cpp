@@ -71,7 +71,7 @@ INITIALIZE_EASYLOGGINGPP
 CBMatrix matrixConstantBufferData;
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
-#define NUM_DESCRIPTOR_SETS 2
+#define NUM_DESCRIPTOR_SETS 3
 #define FENCE_TIMEOUT 100000000
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window);
@@ -90,6 +90,7 @@ std::vector<vk::Framebuffer> framebuffers;
 // Descriptor set layout
 std::vector<vk::DescriptorSetLayout> desc_layout;
 std::vector<vk::DescriptorSet> descriptor_set;
+
 
 vk::PipelineLayout pipelineLayout;
 
@@ -775,6 +776,7 @@ void UpdateUniformBufferTest()
 
 std::vector<vk::DescriptorSetLayoutBinding> bindings;
 std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
+std::vector<vk::DescriptorSetLayoutBinding> normalTextureBinding;
 
 void SetupPipelineLayout()
 {
@@ -793,16 +795,9 @@ void SetupPipelineLayout()
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
-	vk::DescriptorSetLayoutBinding pureImage_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(2)
-		.setDescriptorCount(1)
-		.setDescriptorType(DescriptorType::eSampledImage)
-		.setPImmutableSamplers(nullptr)
-		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-
 
 	
-	bindings = { sampler_layout_binding, pureSampler_layout_binding, pureImage_layout_binding };
+	bindings = { sampler_layout_binding, pureSampler_layout_binding };
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
@@ -825,10 +820,25 @@ void SetupPipelineLayout()
 		.setBindingCount(static_cast<uint32_t>(uniformBinding.size()))
 		.setPBindings(uniformBinding.data());
 
-	//desc_layout.resize(NUM_DESCRIPTOR_SETS);
+
+	vk::DescriptorSetLayoutBinding pureImage_layout_binding = vk::DescriptorSetLayoutBinding()
+		.setBinding(0)
+		.setDescriptorCount(1)
+		.setDescriptorType(DescriptorType::eSampledImage)
+		.setPImmutableSamplers(nullptr)
+		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+	normalTextureBinding = { pureImage_layout_binding };
+
+	vk::DescriptorSetLayoutCreateInfo descripor_layoutTexture = vk::DescriptorSetLayoutCreateInfo()
+		.setPNext(NULL)
+		.setBindingCount(static_cast<uint32_t>(normalTextureBinding.size()))
+		.setPBindings(normalTextureBinding.data());
+
 
 	desc_layout.push_back(device.createDescriptorSetLayout(descriptor_layout));
 	desc_layout.push_back(device.createDescriptorSetLayout(descriptor_layoutUniform));
+	desc_layout.push_back(device.createDescriptorSetLayout(descripor_layoutTexture));
 
 }
 
@@ -836,14 +846,45 @@ void SetupDescriptorSet()
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 	
-	descriptorPool->Create(device, 100, 2, 2, 2, 2);
+	descriptorPool->Create(device, 400, 2, 2, 2, 400);
 
 	descriptor_set.resize(NUM_DESCRIPTOR_SETS);
 
 	descriptor_set[0] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[0], bindings)[0];
 	descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[1], uniformBinding)[0];
+	
 
-	std::array<vk::WriteDescriptorSet, 3> writes = {};
+	std::array<vk::WriteDescriptorSet, 1> textureWrites = {};
+
+	for (auto& e : models)
+	{
+		e.textureSet = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[2], normalTextureBinding)[0];
+
+
+		vk::DescriptorImageInfo pureImageInfo = {};
+
+		//pureImageInfo.imageView = vk::ImageView(nullptr);
+		pureImageInfo.imageView =  e.texture.view;
+
+
+
+		textureWrites[0] = {};
+		textureWrites[0].pNext = NULL;
+		textureWrites[0].dstSet = e.textureSet;
+		textureWrites[0].descriptorCount = 1;
+		textureWrites[0].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[0].pImageInfo = &pureImageInfo;
+		textureWrites[0].dstArrayElement = 0;
+		textureWrites[0].dstBinding = 0;
+
+		device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
+	}
+
+
+
+	//descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[2], uniformBinding)[0];
+
+	std::array<vk::WriteDescriptorSet, 2> writes = {};
 
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo imageInfo = {};
@@ -874,21 +915,6 @@ void SetupDescriptorSet()
 	writes[1].pImageInfo = &pureSamplerInfo;
 	writes[1].dstArrayElement = 0;
 	writes[1].dstBinding = 1;
-
-	vk::DescriptorImageInfo pureImageInfo = {};
-
-	pureImageInfo.imageView = vk::ImageView(nullptr);
-	pureImageInfo.imageView = testTexture2.view;
-
-
-	writes[2] = {};
-	writes[2].pNext = NULL;
-	writes[2].dstSet = descriptor_set[0];
-	writes[2].descriptorCount = 1;
-	writes[2].descriptorType = vk::DescriptorType::eSampledImage;
-	writes[2].pImageInfo = &pureImageInfo;
-	writes[2].dstArrayElement = 0;
-	writes[2].dstBinding = 2;
 
 
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
@@ -1572,7 +1598,6 @@ void SetupCommandBuffers()
 		commandBuffers[i].beginRenderPass(&rp_begin, SubpassContents::eInline);
 		commandBuffers[i].bindPipeline(PipelineBindPoint::eGraphics, pipeline);
 
-		commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
 
 		InitViewports(commandBuffers[i]);
 		InitScissors(commandBuffers[i]);
@@ -1580,6 +1605,8 @@ void SetupCommandBuffers()
 	
 		for (int j = 0; j < models.size(); ++j)
 		{
+			descriptor_set[2] = models[j].textureSet;
+			commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
 			commandBuffers[i].bindVertexBuffers(0, 1, &models[j].vertexBuffer.buffer, offsets);
 			commandBuffers[i].bindIndexBuffer(models[j].indexBuffer.buffer, 0, IndexType::eUint32);
 			commandBuffers[i].drawIndexed(models[j].indiceCount, 1, 0, 0, 0);
@@ -1778,12 +1805,16 @@ int main()
 
 		tModV.indiceCount = e.indices.size();
 
+		SetupTextureImage(device, e.filepaths[0].c_str(), tModV.texture.image, tModV.texture.allocation);
+		tModV.texture.view = CreateImageView(device, tModV.texture.image, Format::eR8G8B8A8Unorm);
 		models.push_back(tModV);
 	}
 
 
 	SetupPipeline();
 	SetupSemaphores();
+
+
 
 	// Prepare our texture
 	SetupTextureImage(device, "textures/statue-e1275469_1920.jpg", testTexture.image, testTexture.allocation);

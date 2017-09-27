@@ -29,11 +29,27 @@ struct VertexBufferVulkan
 	VmaAllocation allocation;
 };
 
+// A texture in vulkan is made out of..
+// - An image (physical object)
+// - A view ( GPU based )
+// - A chunk of memory allocated from the device
+// - Format denoting what kind of texture it is
+struct TextureVulkan
+{
+	vk::Image image;
+	vk::ImageView view;
+	VmaAllocation allocation;
+	vk::Format format;
+};
+
 struct ModelVulkan
 {
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
+	TextureVulkan texture;
+	vk::DescriptorSet textureSet;
 	uint32_t indiceCount = 0;
+	
 };
 
 // A uniform buffer is..
@@ -49,18 +65,6 @@ struct UniformBufferVulkan
 };
 
 
-// A texture in vulkan is made out of..
-// - An image (physical object)
-// - A view ( GPU based )
-// - A chunk of memory allocated from the device
-// - Format denoting what kind of texture it is
-struct TextureVulkan
-{
-	vk::Image image;
-	vk::ImageView view;
-	VmaAllocation allocation;
-	vk::Format format;
-};
 
 struct SwapchainVulkan
 {
