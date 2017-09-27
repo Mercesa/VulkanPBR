@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{3d427416-2d90-498f-833a-b8cf00b1c44c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan Structures">
+      <UniqueIdentifier>{9387b496-4cd2-4707-a8eb-968bb2cf91a6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -26,6 +29,9 @@
     </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorPoolVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -61,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="ConstantBuffers.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorPoolVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

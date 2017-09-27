@@ -64,9 +64,14 @@ INITIALIZE_EASYLOGGINGPP
 #include <ostream>
 #include <sstream>
 #include <string.h>
+#include <iterator>
+#include "ConstantBuffers.h"
+#include "DescriptorPoolVulkan.h"
+
+CBMatrix matrixConstantBufferData;
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
-#define NUM_DESCRIPTOR_SETS 1
+#define NUM_DESCRIPTOR_SETS 2
 #define FENCE_TIMEOUT 100000000
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window);
@@ -96,7 +101,6 @@ TextureVulkan depthBuffer;
 
 UniformBufferVulkan uniformBufferMVP;
 
-vk::DescriptorPool descriptorPool;
 
 vk::RenderPass renderPass;
 
@@ -123,10 +127,9 @@ std::vector<const char*> extensions;
 vk::PhysicalDeviceMemoryProperties memoryProperties;
 std::vector<QueueFamilyProperties> familyProperties;
 
+std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
+
 SwapchainVulkan swapchain;
-
-
-
 
 //BufferVulkan vertexBufferStaging;
 //VertexBufferVulkan vertexBuffer;
@@ -141,9 +144,7 @@ TextureVulkan testTexture2;
 
 VmaAllocator allocator;
 
-
 // Family indices
-
 int32_t familyGraphicsIndex = 0;
 int32_t familyPresenteIndex = 0;
 
@@ -202,8 +203,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(
 	std::cerr << pMessage << std::endl;
 	return VK_FALSE;
 }
-
-
 
 void SetupApplication()
 {
@@ -376,7 +375,6 @@ void EnumerateLayers()
 {
 	layers = vk::enumerateInstanceLayerProperties();
 }
-#include <iterator>
 
 void SetupDevice()
 {
@@ -731,8 +729,7 @@ void SetupDepthbuffer()
 	depthBuffer.view = device.createImageView(view_info);
 }
 
-#include "ConstantBuffers.h"
-CBMatrix matrixConstantBufferData;
+
 
 void SetupUniformbuffer()
 {
@@ -778,15 +775,8 @@ void UpdateUniformBufferTest()
 
 void SetupPipelineLayout()
 {
-	vk::DescriptorSetLayoutBinding layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(0)
-		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-		.setDescriptorCount(1)
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
-		.setPImmutableSamplers(NULL);
-
 	vk::DescriptorSetLayoutBinding sampler_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(1)
+		.setBinding(0)
 		.setDescriptorCount(1)
 		.setDescriptorType(DescriptorType::eCombinedImageSampler)
 		.setPImmutableSamplers(nullptr)
@@ -794,80 +784,57 @@ void SetupPipelineLayout()
 
 
 	vk::DescriptorSetLayoutBinding pureSampler_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(2)
+		.setBinding(1)
 		.setDescriptorCount(1)
 		.setDescriptorType(DescriptorType::eSampler)
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
 	
-	std::array<vk::DescriptorSetLayoutBinding, 3> bindings = { layout_binding, sampler_layout_binding, pureSampler_layout_binding };
+	std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { sampler_layout_binding, pureSampler_layout_binding };
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
 		.setBindingCount(static_cast<uint32_t>(bindings.size()))
 		.setPBindings(bindings.data());
 
+
+	vk::DescriptorSetLayoutBinding uniform_binding = vk::DescriptorSetLayoutBinding()
+		.setBinding(0)
+		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+		.setDescriptorCount(1)
+		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+		.setPImmutableSamplers(NULL);
+
+	std::array<vk::DescriptorSetLayoutBinding, 1> uniformBinding = { uniform_binding };
+
+
+	vk::DescriptorSetLayoutCreateInfo descriptor_layoutUniform = vk::DescriptorSetLayoutCreateInfo()
+		.setPNext(NULL)
+		.setBindingCount(static_cast<uint32_t>(uniformBinding.size()))
+		.setPBindings(uniformBinding.data());
+
+
+
 	//desc_layout.resize(NUM_DESCRIPTOR_SETS);
 
 	desc_layout.push_back(device.createDescriptorSetLayout(descriptor_layout));
+	desc_layout.push_back(device.createDescriptorSetLayout(descriptor_layoutUniform));
 
-	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
-		.setPNext(NULL)
-		.setPushConstantRangeCount(0)
-		.setPPushConstantRanges(NULL)
-		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
-		.setPSetLayouts(desc_layout.data());
-
-	pipelineLayout = device.createPipelineLayout(pPipelineLayoutCreateInfo);
 }
 
 void SetupDescriptorSet()
 {
-	std::array<vk::DescriptorPoolSize, 3> type_count;
-	type_count[1].type = vk::DescriptorType::eUniformBuffer;
-	type_count[1].descriptorCount = 2;
+	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 	
-	type_count[2].type = vk::DescriptorType::eCombinedImageSampler;
-	type_count[2].descriptorCount = 2;
-	
-	type_count[0].type = vk::DescriptorType::eSampler;
-	type_count[0].descriptorCount = 2;
-
-
-	
-	vk::DescriptorPoolCreateInfo descriptor_pool = vk::DescriptorPoolCreateInfo()
-		.setPNext(NULL)
-		.setMaxSets(NUM_DESCRIPTOR_SETS)
-		.setPoolSizeCount(static_cast<uint32_t>(type_count.size()))
-		.setPPoolSizes(type_count.data());
-
-	descriptorPool = device.createDescriptorPool(descriptor_pool);
-
-
-	vk::DescriptorSetAllocateInfo alloc_info[1] = {};
-	alloc_info[0].pNext = NULL;
-	alloc_info[0].setDescriptorPool(descriptorPool);
-	alloc_info[0].setDescriptorSetCount(NUM_DESCRIPTOR_SETS);
-	alloc_info[0].setPSetLayouts(desc_layout.data());
+	descriptorPool->Create(device, 100, 10, 10, 10);
 
 	descriptor_set.resize(NUM_DESCRIPTOR_SETS);
-	device.allocateDescriptorSets(alloc_info, descriptor_set.data());
-	
-	
-	
-	std::array<vk::WriteDescriptorSet, 3> writes = {};
 
-	writes[0] = {};
-	writes[0].pNext = NULL;
-	writes[0].dstSet = descriptor_set[0];
-	writes[0].descriptorCount = 1;
-	writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-	writes[0].pBufferInfo = &uniformBufferMVP.descriptorInfo;
-	writes[0].dstArrayElement = 0;
-	writes[0].dstBinding = 0;
-
+	descriptor_set= descriptorPool->AllocateDescriptorSet(device, 2, desc_layout);
 	
+	
+	std::array<vk::WriteDescriptorSet, 2> writes = {};
 
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo imageInfo = {};
@@ -875,14 +842,14 @@ void SetupDescriptorSet()
 	imageInfo.sampler = testImageSampler;
 	
 
-	writes[1] = {};
-	writes[1].pNext = NULL;
-	writes[1].dstSet = descriptor_set[0];
-	writes[1].descriptorCount = 1;
-	writes[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-	writes[1].pImageInfo = &imageInfo;
-	writes[1].dstArrayElement = 0;
-	writes[1].dstBinding = 1;
+	writes[0] = {};
+	writes[0].pNext = NULL;
+	writes[0].dstSet = descriptor_set[0];
+	writes[0].descriptorCount = 1;
+	writes[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+	writes[0].pImageInfo = &imageInfo;
+	writes[0].dstArrayElement = 0;
+	writes[0].dstBinding = 0;
 
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo pureSamplerInfo = {};
@@ -890,20 +857,29 @@ void SetupDescriptorSet()
 	pureSamplerInfo.imageView = vk::ImageView(nullptr);
 	pureSamplerInfo.sampler = testSampler;
 
-	writes[2] = {};
-	writes[2].pNext = NULL;
-	writes[2].dstSet = descriptor_set[0];
-	writes[2].descriptorCount = 1; 
-	writes[2].descriptorType = vk::DescriptorType::eSampler;
-	writes[2].pImageInfo = &pureSamplerInfo;
-	writes[2].dstArrayElement = 0;
-	writes[2].dstBinding = 2;
-	
-
+	writes[1] = {};
+	writes[1].pNext = NULL;
+	writes[1].dstSet = descriptor_set[0];
+	writes[1].descriptorCount = 1; 
+	writes[1].descriptorType = vk::DescriptorType::eSampler;
+	writes[1].pImageInfo = &pureSamplerInfo;
+	writes[1].dstArrayElement = 0;
+	writes[1].dstBinding = 1;
 	
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
 
+	std::array<vk::WriteDescriptorSet, 1> uniform_writes = {};
 
+	uniform_writes[0] = {};
+	uniform_writes[0].pNext = NULL;
+	uniform_writes[0].dstSet = descriptor_set[1];
+	uniform_writes[0].descriptorCount = 1;
+	uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+	uniform_writes[0].pBufferInfo = &uniformBufferMVP.descriptorInfo;
+	uniform_writes[0].dstArrayElement = 0;
+	uniform_writes[0].dstBinding = 0;
+
+	device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
 }
 
 void SetupRenderPass()
@@ -1382,6 +1358,16 @@ VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugRe
 
 void SetupPipeline()
 {
+
+	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
+		.setPNext(NULL)
+		.setPushConstantRangeCount(0)
+		.setPPushConstantRanges(NULL)
+		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
+		.setPSetLayouts(desc_layout.data());
+
+	pipelineLayout = device.createPipelineLayout(pPipelineLayoutCreateInfo);
+
 	std::vector<vk::DynamicState> dynamicStateEnables;
 	dynamicStateEnables.resize(VK_DYNAMIC_STATE_RANGE_SIZE); //[VK_DYNAMIC_STATE_RANGE_SIZE];
 	
@@ -1868,6 +1854,7 @@ int main()
     }
 	
 
+	descriptorPool->Destroy(device);
 
 	device.destroySampler(testSampler);
 	device.destroySampler(testImageSampler);
