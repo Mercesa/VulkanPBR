@@ -1399,11 +1399,15 @@ void SetupDeviceQueue()
 
 
 
+vk::Fence graphicsQueueFinishedFence;
 void SetupSemaphores()
 {
 	vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
 	imageAcquiredSemaphore = device.createSemaphore(semaphoreInfo);
 	rendererFinishedSemaphore = device.createSemaphore(semaphoreInfo);
+
+	vk::FenceCreateInfo fenceInfo = vk::FenceCreateInfo();
+	graphicsQueueFinishedFence = device.createFence(fenceInfo);
 }
 
 
@@ -1565,6 +1569,11 @@ void CreateTextureSampler(vk::Device const aDevice)
 
 void DrawFrame()
 {
+
+	device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
+
+	device.resetFences(graphicsQueueFinishedFence);
+
 	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
 	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 	device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
@@ -1582,7 +1591,7 @@ void DrawFrame()
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 	// start the pipeline
 
-	graphicsQueue.submit(1, submit_info, vk::Fence(nullptr));
+	graphicsQueue.submit(1, submit_info, graphicsQueueFinishedFence);
 
 	vk::PresentInfoKHR present;
 	present.swapchainCount = 1;	
@@ -1593,7 +1602,8 @@ void DrawFrame()
 	present.pResults = 0;	
 
 	presentQueue.presentKHR(&present);
-	presentQueue.waitIdle();
+	
+	//presentQueue.waitIdle();
 }
 
 
@@ -1651,7 +1661,6 @@ int main()
 
 	SetupPipeline();
 	SetupSemaphores();
-
 
 
 	// Prepare our texture
@@ -1741,7 +1750,7 @@ int main()
 		cam->SetPosition(glm::vec3(camX, camY, camZ));
 		cam->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
 
-		UpdateUniformBufferTest();
+		//UpdateUniformBufferTest();
 		DrawFrame();
 		
         SDL_Delay(10);
@@ -1749,6 +1758,9 @@ int main()
 	
 
 	descriptorPool->Destroy(device);
+
+	device.destroySemaphore(rendererFinishedSemaphore);
+	device.destroySemaphore(imageAcquiredSemaphore);
 
 	device.destroySampler(testSampler);
 	device.destroySampler(testImageSampler);
