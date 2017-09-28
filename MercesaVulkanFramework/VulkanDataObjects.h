@@ -49,6 +49,9 @@ struct ModelVulkan
 	TextureVulkan texture;
 	vk::DescriptorSet textureSet;
 	uint32_t indiceCount = 0;
+	uint32_t indiceOffset = 0;
+
+	ModelVulkan() = default;
 	
 };
 

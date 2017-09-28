@@ -159,6 +159,7 @@
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
+    <ClCompile Include="RendererVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -169,6 +170,7 @@
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
     <ClInclude Include="vk_mem_alloc.h" />
     <ClInclude Include="VulkanDataObjects.h" />
