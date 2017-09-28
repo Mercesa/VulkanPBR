@@ -91,15 +91,9 @@ std::vector<vk::Framebuffer> framebuffers;
 std::vector<vk::DescriptorSetLayout> desc_layout;
 std::vector<vk::DescriptorSet> descriptor_set;
 
-
 vk::PipelineLayout pipelineLayout;
 
-
-// Depth buffer information
-
-
 TextureVulkan depthBuffer;
-
 UniformBufferVulkan uniformBufferMVP;
 
 
@@ -140,8 +134,6 @@ SwapchainVulkan swapchain;
 
 std::vector<ModelVulkan> models;
 
-TextureVulkan testTexture;
-TextureVulkan testTexture2;
 
 VmaAllocator allocator;
 
@@ -224,8 +216,11 @@ void SetupApplication()
 		//layerNames.push_back(e.layerName);
 	}
 
+#ifdef _DEBUG
 	layerNames.push_back("VK_LAYER_LUNARG_standard_validation");
 	layerNames.push_back("VK_LAYER_LUNARG_core_validation");
+
+#endif;
 	//layerNames.push_back("VK_LAYER_LUNARG_api_dump");
 
 	std::vector<const char*> removeExtensions = { "VK_KHR_get_surface_capabilities2", "VK_KHX_device_group_creation", "VK_KHR_external_fence_capabilities" };
@@ -494,7 +489,8 @@ void SetupCommandBuffer()
 {
 	vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
 		.setPNext(nullptr)
-		.setQueueFamilyIndex(familyGraphicsIndex);
+		.setQueueFamilyIndex(familyGraphicsIndex)
+		.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
 
 	commandPool = device.createCommandPool(commandPoolInfo);
 	
@@ -780,24 +776,16 @@ std::vector<vk::DescriptorSetLayoutBinding> normalTextureBinding;
 
 void SetupPipelineLayout()
 {
-	vk::DescriptorSetLayoutBinding sampler_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(0)
-		.setDescriptorCount(1)
-		.setDescriptorType(DescriptorType::eCombinedImageSampler)
-		.setPImmutableSamplers(nullptr)
-		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-
 
 	vk::DescriptorSetLayoutBinding pureSampler_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(1)
+		.setBinding(0)
 		.setDescriptorCount(1)
 		.setDescriptorType(DescriptorType::eSampler)
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
 
 
-	
-	bindings = { sampler_layout_binding, pureSampler_layout_binding };
+	bindings = { pureSampler_layout_binding };
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
 		.setPNext(NULL)
@@ -884,22 +872,8 @@ void SetupDescriptorSet()
 
 	//descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[2], uniformBinding)[0];
 
-	std::array<vk::WriteDescriptorSet, 2> writes = {};
+	std::array<vk::WriteDescriptorSet, 1> writes = {};
 
-	// Create image info for the image descriptor
-	vk::DescriptorImageInfo imageInfo = {};
-	imageInfo.imageView = testTexture.view;
-	imageInfo.sampler = testImageSampler;
-	
-
-	writes[0] = {};
-	writes[0].pNext = NULL;
-	writes[0].dstSet = descriptor_set[0];
-	writes[0].descriptorCount = 1;
-	writes[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-	writes[0].pImageInfo = &imageInfo;
-	writes[0].dstArrayElement = 0;
-	writes[0].dstBinding = 0;
 
 	// Create image info for the image descriptor
 	vk::DescriptorImageInfo pureSamplerInfo = {};
@@ -907,14 +881,14 @@ void SetupDescriptorSet()
 	pureSamplerInfo.imageView = vk::ImageView(nullptr);
 	pureSamplerInfo.sampler = testSampler;
 
-	writes[1] = {};
-	writes[1].pNext = NULL;
-	writes[1].dstSet = descriptor_set[0];
-	writes[1].descriptorCount = 1; 
-	writes[1].descriptorType = vk::DescriptorType::eSampler;
-	writes[1].pImageInfo = &pureSamplerInfo;
-	writes[1].dstArrayElement = 0;
-	writes[1].dstBinding = 1;
+	writes[0] = {};
+	writes[0].pNext = NULL;
+	writes[0].dstSet = descriptor_set[0];
+	writes[0].descriptorCount = 1; 
+	writes[0].descriptorType = vk::DescriptorType::eSampler;
+	writes[0].pImageInfo = &pureSamplerInfo;
+	writes[0].dstArrayElement = 0;
+	writes[0].dstBinding = 0;
 
 
 	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
@@ -1411,55 +1385,53 @@ void SetupSemaphores()
 }
 
 
-void SetupCommandBuffers()
-{
-	for (int i = 0; i < commandBuffers.size(); ++i)
-	{
-		vk::CommandBufferBeginInfo cmd_begin = vk::CommandBufferBeginInfo();
+void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
+{	
+	vk::CommandBufferBeginInfo cmd_begin = vk::CommandBufferBeginInfo();
 
-		commandBuffers[i].begin(cmd_begin);
+	iBuffer.begin(cmd_begin);
 
 
-		vk::ClearValue clear_values[2] = {};
-		clear_values[0].color.float32[0] = 0.2f;
-		clear_values[0].color.float32[1] = 0.2f;
-		clear_values[0].color.float32[2] = 0.2f;
-		clear_values[0].color.float32[3] = 0.2f;
-		clear_values[1].depthStencil.depth = 1.0f;
-		clear_values[1].depthStencil.stencil = 0;
+	vk::ClearValue clear_values[2] = {};
+	clear_values[0].color.float32[0] = 0.2f;
+	clear_values[0].color.float32[1] = 0.2f;
+	clear_values[0].color.float32[2] = 0.2f;
+	clear_values[0].color.float32[3] = 0.2f;
+	clear_values[1].depthStencil.depth = 1.0f;
+	clear_values[1].depthStencil.stencil = 0;
 
-		const vk::DeviceSize offsets[1] = { 0 };
+	const vk::DeviceSize offsets[1] = { 0 };
 
-		vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
-			.setRenderPass(renderPass)
-			.setFramebuffer(framebuffers[i])
-			.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-			.setClearValueCount(2)
-			.setPClearValues(clear_values);
+	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
+		.setRenderPass(renderPass)
+		.setFramebuffer(framebuffers[index])
+		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
+		.setClearValueCount(2)
+		.setPClearValues(clear_values);
 
-		commandBuffers[i].beginRenderPass(&rp_begin, SubpassContents::eInline);
-		commandBuffers[i].bindPipeline(PipelineBindPoint::eGraphics, pipeline);
+	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
+	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipeline);
 
 
-		InitViewports(commandBuffers[i]);
-		InitScissors(commandBuffers[i]);
+	InitViewports(iBuffer);
+	InitScissors(iBuffer);
 
 	
-		for (int j = 0; j < models.size(); ++j)
-		{
-			descriptor_set[2] = models[j].textureSet;
-			commandBuffers[i].bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
-			commandBuffers[i].bindVertexBuffers(0, 1, &models[j].vertexBuffer.buffer, offsets);
-			commandBuffers[i].bindIndexBuffer(models[j].indexBuffer.buffer, 0, IndexType::eUint32);
-			commandBuffers[i].drawIndexed(models[j].indiceCount, 1, 0, 0, 0);
-		}
-
-		//commandBuffers[i].draw(12 * 3, 1, 0, 0);s
-
-		commandBuffers[i].endRenderPass();
-		// End the pipeline
-		commandBuffers[i].end();
+	for (int j = 0; j < models.size(); ++j)
+	{
+		descriptor_set[2] = models[j].textureSet;
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
+		iBuffer.bindVertexBuffers(0, 1, &models[j].vertexBuffer.buffer, offsets);
+		iBuffer.bindIndexBuffer(models[j].indexBuffer.buffer, 0, IndexType::eUint32);
+		iBuffer.drawIndexed(models[j].indiceCount, 1, 0, 0, 0);
 	}
+
+	//iBfufer.draw(12 * 3, 1, 0, 0);s
+
+	iBuffer.endRenderPass();
+	// End the pipeline
+	iBuffer.end();
+	
 }
 
 
@@ -1567,11 +1539,27 @@ void CreateTextureSampler(vk::Device const aDevice)
 
 }
 
+bool firstFrame = true;
 void DrawFrame()
 {
-
+	//if (firstFrame)
+	//{
+	//	SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer);
+	//	firstFrame = false;
+	//}
+	//
+	//else
+	//{
+	//	SetupCommandBuffers(commandBuffers[(currentBuffer+1)%2], (currentBuffer+1)%2);
+	//
+	//
+	//	device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
+	//	//LOG(INFO) << "FENCE WAITING OVER";
+	//	LOG(INFO) << "Current buffer " << currentBuffer;
+	//	device.resetFences(graphicsQueueFinishedFence);
+	//
+	//}
 	device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-
 	device.resetFences(graphicsQueueFinishedFence);
 
 	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
@@ -1603,7 +1591,7 @@ void DrawFrame()
 
 	presentQueue.presentKHR(&present);
 	
-	//presentQueue.waitIdle();
+	presentQueue.waitIdle();
 }
 
 
@@ -1662,20 +1650,12 @@ int main()
 	SetupPipeline();
 	SetupSemaphores();
 
-
-	// Prepare our texture
-	SetupTextureImage(device, "textures/statue-e1275469_1920.jpg", testTexture.image, testTexture.allocation);
-	testTexture.view = CreateImageView(device, testTexture.image, Format::eR8G8B8A8Unorm);
-
-	SetupTextureImage(device, "textures/Kingston_rnd1_dirt.jpg", testTexture2.image, testTexture2.allocation);
-	testTexture2.view = CreateImageView(device, testTexture2.image, Format::eR8G8B8A8Unorm);
-
-
 	CreateTextureSampler(device);
 
 	SetupDescriptorSet();
-	SetupCommandBuffers();
 
+	SetupCommandBuffers(commandBuffers[0], 0);
+	SetupCommandBuffers(commandBuffers[1], 1);
 	cam = std::make_unique<Camera>();
 
 	std::cout << "setup completed" << std::endl;
@@ -1690,6 +1670,7 @@ int main()
 	camRotX = 0.0f;
 	camRotY = 0.0f;
 	camRotZ = 0.0f;
+	UpdateUniformBufferTest();
 
     // Poll for user input.
     bool stillRunning = true;
@@ -1750,7 +1731,6 @@ int main()
 		cam->SetPosition(glm::vec3(camX, camY, camZ));
 		cam->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
 
-		//UpdateUniformBufferTest();
 		DrawFrame();
 		
         SDL_Delay(10);
@@ -1764,7 +1744,6 @@ int main()
 
 	device.destroySampler(testSampler);
 	device.destroySampler(testImageSampler);
-	vmaDestroyImage(allocator, (VkImage)testTexture.image, testTexture.allocation);
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
 	vmaDestroyBuffer(allocator, (VkBuffer)uniformBufferMVP.buffer, uniformBufferMVP.allocation);
 
@@ -1772,9 +1751,8 @@ int main()
 	{
 		vmaDestroyBuffer(allocator, e.vertexBuffer.buffer, e.vertexBuffer.allocation);
 		vmaDestroyBuffer(allocator, e.indexBuffer.buffer, e.indexBuffer.allocation);
+		vmaDestroyImage(allocator, e.texture.image, e.texture.allocation);
 	}
-
-	device.destroyImageView(testTexture.view, nullptr);
 	//device.destroyImage(depthImage);
 	//device.destroyImage(testTexture.image);
 
