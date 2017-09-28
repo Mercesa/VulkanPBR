@@ -89,12 +89,15 @@ std::vector<vk::Framebuffer> framebuffers;
 
 // Descriptor set layout
 std::vector<vk::DescriptorSetLayout> desc_layout;
-std::vector<vk::DescriptorSet> descriptor_set;
+std::vector<std::vector<vk::DescriptorSet>> descriptor_set;
 
 vk::PipelineLayout pipelineLayout;
 
 TextureVulkan depthBuffer;
-UniformBufferVulkan uniformBufferMVP;
+
+
+std::vector<UniformBufferVulkan> uniformBufferMVP;
+
 
 
 vk::RenderPass renderPass;
@@ -383,8 +386,6 @@ void SetupDevice()
 
 	// Cache the memory properties of our physical device
 	memoryProperties = physicalDevices[0].getMemoryProperties();
-
-
 
 	float queue_priorities[1] = { 0.0 };
 
@@ -730,22 +731,31 @@ void SetupDepthbuffer()
 
 void SetupUniformbuffer()
 {
-	CreateSimpleBuffer(allocator, 
-		uniformBufferMVP.allocation, 
-		VMA_MEMORY_USAGE_CPU_TO_GPU, 
-		uniformBufferMVP.buffer, 
-		vk::BufferUsageFlagBits::eUniformBuffer, 
-		sizeof(CBMatrix));
-	
-	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+	for (int i = 0; i < 2; ++i)
+	{
+
+		UniformBufferVulkan tUniformBuff;
+
+		CreateSimpleBuffer(allocator,
+			tUniformBuff.allocation,
+			VMA_MEMORY_USAGE_CPU_TO_GPU,
+			tUniformBuff.buffer,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			sizeof(CBMatrix));
+
+		CopyDataToBuffer(VkDevice(device), tUniformBuff.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
 
-	uniformBufferMVP.descriptorInfo.buffer = uniformBufferMVP.buffer;
-	uniformBufferMVP.descriptorInfo.offset = 0;
-	uniformBufferMVP.descriptorInfo.range = sizeof(matrixConstantBufferData);
+		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		tUniformBuff.descriptorInfo.offset = 0;
+		tUniformBuff.descriptorInfo.range = sizeof(matrixConstantBufferData);
+
+		uniformBufferMVP.push_back(tUniformBuff);
+	}
+
 }
 
-void UpdateUniformBufferTest()
+void UpdateUniformBufferTest(int32_t iCurrentBuff)
 {
 	static float derp = 1.0f;
 	derp += 0.01f;
@@ -766,7 +776,7 @@ void UpdateUniformBufferTest()
 	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
 	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
-	CopyDataToBuffer(VkDevice(device), uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+	CopyDataToBuffer(VkDevice(device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
@@ -836,11 +846,18 @@ void SetupDescriptorSet()
 	
 	descriptorPool->Create(device, 400, 2, 2, 2, 400);
 
-	descriptor_set.resize(NUM_DESCRIPTOR_SETS);
+	for (int i = 0; i < 2; ++i)
+	{
+		std::vector<DescriptorSet> tDescSet;
+		tDescSet.resize(NUM_DESCRIPTOR_SETS);
 
-	descriptor_set[0] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[0], bindings)[0];
-	descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[1], uniformBinding)[0];
-	
+		tDescSet[0] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[0], bindings)[0];
+		tDescSet[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[1], uniformBinding)[0];
+
+		descriptor_set.push_back(tDescSet);
+	}
+
+
 
 	std::array<vk::WriteDescriptorSet, 1> textureWrites = {};
 
@@ -868,43 +885,46 @@ void SetupDescriptorSet()
 		device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
 	}
 
-
-
 	//descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[2], uniformBinding)[0];
 
-	std::array<vk::WriteDescriptorSet, 1> writes = {};
+
+	for (int i = 0; i < descriptor_set.size(); ++i)
+	{
+		std::array<vk::WriteDescriptorSet, 1> writes = {};
 
 
-	// Create image info for the image descriptor
-	vk::DescriptorImageInfo pureSamplerInfo = {};
+		// Create image info for the image descriptor
+		vk::DescriptorImageInfo pureSamplerInfo = {};
 
-	pureSamplerInfo.imageView = vk::ImageView(nullptr);
-	pureSamplerInfo.sampler = testSampler;
+		pureSamplerInfo.imageView = vk::ImageView(nullptr);
+		pureSamplerInfo.sampler = testSampler;
 
-	writes[0] = {};
-	writes[0].pNext = NULL;
-	writes[0].dstSet = descriptor_set[0];
-	writes[0].descriptorCount = 1; 
-	writes[0].descriptorType = vk::DescriptorType::eSampler;
-	writes[0].pImageInfo = &pureSamplerInfo;
-	writes[0].dstArrayElement = 0;
-	writes[0].dstBinding = 0;
+		writes[0] = {};
+		writes[0].pNext = NULL;
+		writes[0].dstSet = descriptor_set[i][0];
+		writes[0].descriptorCount = 1;
+		writes[0].descriptorType = vk::DescriptorType::eSampler;
+		writes[0].pImageInfo = &pureSamplerInfo;
+		writes[0].dstArrayElement = 0;
+		writes[0].dstBinding = 0;
 
 
-	device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+		device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
 
-	std::array<vk::WriteDescriptorSet, 1> uniform_writes = {};
+		std::array<vk::WriteDescriptorSet, 1> uniform_writes = {};
 
-	uniform_writes[0] = {};
-	uniform_writes[0].pNext = NULL;
-	uniform_writes[0].dstSet = descriptor_set[1];
-	uniform_writes[0].descriptorCount = 1;
-	uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-	uniform_writes[0].pBufferInfo = &uniformBufferMVP.descriptorInfo;
-	uniform_writes[0].dstArrayElement = 0;
-	uniform_writes[0].dstBinding = 0;
+		uniform_writes[0] = {};
+		uniform_writes[0].pNext = NULL;
+		uniform_writes[0].dstSet = descriptor_set[i][1];
+		uniform_writes[0].descriptorCount = 1;
+		uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniform_writes[0].pBufferInfo = &uniformBufferMVP[i].descriptorInfo;
+		uniform_writes[0].dstArrayElement = 0;
+		uniform_writes[0].dstBinding = 0;
 
-	device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
+		device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
+	}
+
 }
 
 void SetupRenderPass()
@@ -1419,14 +1439,12 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 	
 	for (int j = 0; j < models.size(); ++j)
 	{
-		descriptor_set[2] = models[j].textureSet;
-		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set.data(), 0, NULL);
+		descriptor_set[index][2] = models[j].textureSet;
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &models[j].vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(models[j].indexBuffer.buffer, 0, IndexType::eUint32);
 		iBuffer.drawIndexed(models[j].indiceCount, 1, 0, 0, 0);
 	}
-
-	//iBfufer.draw(12 * 3, 1, 0, 0);s
 
 	iBuffer.endRenderPass();
 	// End the pipeline
@@ -1536,31 +1554,30 @@ void CreateTextureSampler(vk::Device const aDevice)
 	testImageSampler = aDevice.createSampler(samplerInfo);
 
 	testSampler = aDevice.createSampler(samplerInfo);
-
 }
 
 bool firstFrame = true;
 void DrawFrame()
 {
-	//if (firstFrame)
-	//{
-	//	SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer);
-	//	firstFrame = false;
-	//}
-	//
-	//else
-	//{
-	//	SetupCommandBuffers(commandBuffers[(currentBuffer+1)%2], (currentBuffer+1)%2);
-	//
-	//
-	//	device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-	//	//LOG(INFO) << "FENCE WAITING OVER";
-	//	LOG(INFO) << "Current buffer " << currentBuffer;
-	//	device.resetFences(graphicsQueueFinishedFence);
-	//
-	//}
-	device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-	device.resetFences(graphicsQueueFinishedFence);
+	if (firstFrame)
+	{
+		SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer);
+		firstFrame = false;
+	}
+	
+	else
+	{
+		std::thread CommandSetup = std::thread(SetupCommandBuffers,commandBuffers[(currentBuffer+1)%2], (currentBuffer+1)%2);
+	
+	
+		device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
+		//LOG(INFO) << "FENCE WAITING OVER";
+		LOG(INFO) << "Current buffer " << currentBuffer;
+		device.resetFences(graphicsQueueFinishedFence);
+		CommandSetup.join();
+	}
+	//device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
+	//device.resetFences(graphicsQueueFinishedFence);
 
 	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
 	vmaSetCurrentFrameIndex(allocator, currentBuffer);
@@ -1654,8 +1671,8 @@ int main()
 
 	SetupDescriptorSet();
 
-	SetupCommandBuffers(commandBuffers[0], 0);
-	SetupCommandBuffers(commandBuffers[1], 1);
+	//SetupCommandBuffers(commandBuffers[0], 0);
+	//SetupCommandBuffers(commandBuffers[1], 1);
 	cam = std::make_unique<Camera>();
 
 	std::cout << "setup completed" << std::endl;
@@ -1670,7 +1687,6 @@ int main()
 	camRotX = 0.0f;
 	camRotY = 0.0f;
 	camRotZ = 0.0f;
-	UpdateUniformBufferTest();
 
     // Poll for user input.
     bool stillRunning = true;
@@ -1731,6 +1747,7 @@ int main()
 		cam->SetPosition(glm::vec3(camX, camY, camZ));
 		cam->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
 
+		UpdateUniformBufferTest((currentBuffer + 1) % 2);
 		DrawFrame();
 		
         SDL_Delay(10);
@@ -1745,7 +1762,12 @@ int main()
 	device.destroySampler(testSampler);
 	device.destroySampler(testImageSampler);
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
-	vmaDestroyBuffer(allocator, (VkBuffer)uniformBufferMVP.buffer, uniformBufferMVP.allocation);
+	
+
+	for (auto& e : uniformBufferMVP)
+	{
+		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
+	}
 
 	for (auto& e : models)
 	{
