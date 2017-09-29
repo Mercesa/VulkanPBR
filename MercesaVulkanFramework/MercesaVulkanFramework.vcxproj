@@ -156,6 +156,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CommandpoolVulkan.cpp" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
@@ -163,6 +164,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="CommandpoolVulkan.h" />
     <ClInclude Include="ConstantBuffers.h" />
     <ClInclude Include="DescriptorPoolVulkan.h" />
     <ClInclude Include="easylogging++.h" />

@@ -33,7 +33,8 @@ public:
 
 	bool Destroy(const vk::Device aDevice);
 
-	bool ValidateResourcesAmounts(const PoolData& aResourceAmount);
+
+	inline bool ValidateResourcesAmounts(const PoolData& aResourceAmount);
 	bool CalculateResourceCostOfDescriptorSet(
 		const std::vector<vk::DescriptorSetLayoutBinding>& iLayoutBindings,
 		const uint32_t& iAmount,
@@ -64,5 +65,7 @@ private:
 	bool hasInitialized;
 	vk::DescriptorPool pool;
 	PoolData currentResources;
+
+	std::vector<vk::DescriptorSet> allocatedSets;
 };
 

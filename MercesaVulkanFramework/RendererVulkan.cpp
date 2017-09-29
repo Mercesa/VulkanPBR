@@ -41,7 +41,9 @@
 #include <string.h>
 #include <iterator>
 #include "ConstantBuffers.h"
+
 #include "DescriptorPoolVulkan.h"
+#include "CommandpoolVulkan.h"
 
 #include "easylogging++.h"
 
@@ -85,10 +87,7 @@ vk::Instance instance;
 vk::Queue graphicsQueue;
 vk::Queue presentQueue;
 
-// Command pool and buffer
-vk::CommandPool commandPool;
-//vk::CommandBuffer commandBuffer;
-
+std::unique_ptr<CommandpoolVulkan> cmdPool;
 std::vector<vk::CommandBuffer> commandBuffers;
 
 // Physical devices, layers and information
@@ -357,7 +356,7 @@ void EnumerateDevices()
 
 void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 {
-	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, commandPool);
+	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 
 	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
 		.setOldLayout(oldLayout)
@@ -411,7 +410,7 @@ void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout
 		0, nullptr,
 		1, &barrier);
 
-	EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
+	EndSingleTimeCommands(device, commandBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
 void EnumerateLayers()
@@ -532,22 +531,9 @@ void SetupSDL()
 
 void SetupCommandBuffer()
 {
-	vk::CommandPoolCreateInfo commandPoolInfo = vk::CommandPoolCreateInfo()
-		.setPNext(nullptr)
-		.setQueueFamilyIndex(familyGraphicsIndex)
-		.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
-
-	commandPool = device.createCommandPool(commandPoolInfo);
-
-
-	vk::CommandBufferAllocateInfo commandBuffAllInfo = vk::CommandBufferAllocateInfo()
-		.setPNext(NULL)
-		.setLevel(CommandBufferLevel::ePrimary)
-		.setCommandBufferCount(framebuffers.size())
-		.setCommandPool(commandPool);
-
-	commandBuffers = device.allocateCommandBuffers(commandBuffAllInfo);
-
+	cmdPool = std::make_unique<CommandpoolVulkan>();
+	cmdPool->Create(device, familyGraphicsIndex, CommandPoolCreateFlagBits::eResetCommandBuffer);
+	commandBuffers = cmdPool->AllocateBuffer(device, CommandBufferLevel::ePrimary, framebuffers.size());
 }
 
 void SetupSwapchain()
@@ -797,43 +783,7 @@ void SetupUniformbuffer()
 
 }
 
-void RendererVulkan::Destroy()
-{
-	descriptorPool->Destroy(device);
 
-	device.destroySemaphore(rendererFinishedSemaphore);
-	device.destroySemaphore(imageAcquiredSemaphore);
-
-	device.destroySampler(testSampler);
-	device.destroySampler(testImageSampler);
-	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
-
-
-	for (auto& e : uniformBufferMVP)
-	{
-		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
-	}
-
-	for (auto& e : models)
-	{
-		vmaDestroyBuffer(allocator, e.vertexBuffer.buffer, e.vertexBuffer.allocation);
-		vmaDestroyBuffer(allocator, e.indexBuffer.buffer, e.indexBuffer.allocation);
-		vmaDestroyImage(allocator, e.texture.image, e.texture.allocation);
-	}
-	//device.destroyImage(depthImage);
-	//device.destroyImage(testTexture.image);
-
-
-	// Clean up.
-	vmaDestroyAllocator(allocator);
-
-	device.waitIdle();
-	device.destroy();
-	instance.destroySurfaceKHR(swapchain.surface);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
-	instance.destroy();
-}
 
 void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam)
 {
@@ -1130,7 +1080,7 @@ void SetupFramebuffers()
 
 void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
 {
-	vk::CommandBuffer tCmdBuffer = BeginSingleTimeCommands(device, commandPool);
+	vk::CommandBuffer tCmdBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 
 	vk::BufferCopy copyRegion = vk::BufferCopy()
 		.setSrcOffset(0)
@@ -1139,12 +1089,12 @@ void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize
 
 	tCmdBuffer.copyBuffer(srcBuffer, destBuffer, 1, &copyRegion);
 
-	EndSingleTimeCommands(device, tCmdBuffer, commandPool, graphicsQueue);
+	EndSingleTimeCommands(device, tCmdBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
 void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
 {
-	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, commandPool);
+	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 	vk::BufferImageCopy region = vk::BufferImageCopy()
 		.setBufferOffset(0)
 		.setBufferRowLength(0)
@@ -1164,7 +1114,7 @@ void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width
 		1,
 		&region);
 
-	EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
+	EndSingleTimeCommands(device, commandBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
 void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
@@ -1739,5 +1689,70 @@ void RendererVulkan::Create()
 	CreateTextureSampler(device);
 
 	SetupDescriptorSet();
+}
 
+void RendererVulkan::Destroy()
+{
+	descriptorPool->Destroy(device);
+
+	device.destroySemaphore(rendererFinishedSemaphore);
+	device.destroySemaphore(imageAcquiredSemaphore);
+
+	device.destroySampler(testSampler);
+	device.destroySampler(testImageSampler);
+
+
+	device.destroyFence(graphicsQueueFinishedFence);
+
+	device.destroyShaderModule(vertexShaderModule);
+	device.destroyShaderModule(fragmentShaderModule);
+
+	cmdPool->Destroy(device);
+	//device.destroyCommandPool(commandPool);
+	//vice.destroySwapchainKHR(swapchain.swapchain);
+
+	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
+
+
+
+	for (auto& e : desc_layout)
+	{
+		device.destroyDescriptorSetLayout(e);
+	}
+
+	for (auto& e : framebuffers)
+	{
+		device.destroyFramebuffer(e);
+	}
+
+
+	device.destroyPipeline(pipeline);
+	device.destroyPipelineLayout(pipelineLayout);
+	device.destroyRenderPass(renderPass);
+
+	for (auto& e : uniformBufferMVP)
+	{
+		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
+	}
+
+	for (auto& e : models)
+	{
+		vmaDestroyBuffer(allocator, e.vertexBuffer.buffer, e.vertexBuffer.allocation);
+		vmaDestroyBuffer(allocator, e.indexBuffer.buffer, e.indexBuffer.allocation);
+		vmaDestroyImage(allocator, e.texture.image, e.texture.allocation);
+		device.destroyImageView(e.texture.view);
+	}
+	//device.destroyImage(depthImage);
+	//device.destroyImage(testTexture.image);
+
+
+	// Clean up.
+	vmaDestroyAllocator(allocator);
+
+	device.waitIdle();
+	device.destroy();
+	instance.destroySurfaceKHR(swapchain.surface);
+	SDL_DestroyWindow(window);
+	SDL_Quit();
+	instance.destroy();
 }

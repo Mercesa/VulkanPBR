@@ -12,5 +12,7 @@ public:
 	void BeginFrame(const Camera& iCamera);
 	void Render();
 	void Destroy();
+
+
 };
 

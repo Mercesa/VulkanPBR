@@ -61,6 +61,9 @@ bool DescriptorPoolVulkan::Destroy(const vk::Device aDevice)
 	//assert(pool != VK_NULL_HANDLE);
 	assert(hasInitialized);
 
+
+	aDevice.freeDescriptorSets(pool, allocatedSets);
+
 	aDevice.destroyDescriptorPool(pool);
 	return true;
 }

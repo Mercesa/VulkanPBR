@@ -36,6 +36,9 @@
     <ClCompile Include="RendererVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="CommandpoolVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RenderingIncludes.h">
@@ -75,6 +78,9 @@
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="RendererVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandpoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
