@@ -19,15 +19,18 @@
     <Filter Include="Vulkan Structures">
       <UniqueIdentifier>{9387b496-4cd2-4707-a8eb-968bb2cf91a6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Libs">
+      <UniqueIdentifier>{efca6207-94ad-4ec3-8a3c-59ab1de575f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent">
+      <UniqueIdentifier>{2610fa9c-8761-40a0-8b5e-72469540d9ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{27261af7-700d-4a7a-bd63-e339a85e3383}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ModelLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DescriptorPoolVulkan.cpp">
@@ -39,40 +42,16 @@
     <ClCompile Include="CommandpoolVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RenderingIncludes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanDataObjects.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vk_mem_alloc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GenericMathValueStructs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GraphicsStructures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ModelLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="easylogging++.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanHelper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Helper.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConstantBuffers.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DescriptorPoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
@@ -82,6 +61,36 @@
     </ClInclude>
     <ClInclude Include="CommandpoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanHelper.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="easylogging++.h">
+      <Filter>Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_mem_alloc.h">
+      <Filter>Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderingIncludes.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanDataObjects.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsStructures.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="ConstantBuffers.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="GenericMathValueStructs.h">
+      <Filter>Platform Independent</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

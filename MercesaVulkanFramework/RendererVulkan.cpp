@@ -52,6 +52,7 @@ CBMatrix matrixConstantBufferData;
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
 #define NUM_DESCRIPTOR_SETS 3
 #define FENCE_TIMEOUT 100000000
+#define NUM_FRAMES 2
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window);
 
@@ -73,7 +74,7 @@ std::vector<std::vector<vk::DescriptorSet>> descriptor_set;
 vk::PipelineLayout pipelineLayout;
 
 TextureVulkan depthBuffer;
-
+TextureVulkan postProcBuffer;
 
 std::vector<UniformBufferVulkan> uniformBufferMVP;
 
@@ -105,12 +106,9 @@ SwapchainVulkan swapchain;
 
 //BufferVulkan vertexBufferStaging;
 //VertexBufferVulkan vertexBuffer;
-
-
 //std::vector<VertexBufferVulkan> vertexBuffers;
 
 std::vector<ModelVulkan> models;
-
 
 VmaAllocator allocator;
 
@@ -533,7 +531,7 @@ void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
 	cmdPool->Create(device, familyGraphicsIndex, CommandPoolCreateFlagBits::eResetCommandBuffer);
-	commandBuffers = cmdPool->AllocateBuffer(device, CommandBufferLevel::ePrimary, framebuffers.size());
+	commandBuffers = cmdPool->AllocateBuffer(device, CommandBufferLevel::ePrimary, NUM_FRAMES);
 }
 
 void SetupSwapchain()
@@ -783,8 +781,6 @@ void SetupUniformbuffer()
 
 }
 
-
-
 void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam)
 {
 	static float derp = 1.0f;
@@ -812,7 +808,6 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam)
 
 void SetupPipelineLayout()
 {
-
 	vk::DescriptorSetLayoutBinding pureSampler_layout_binding = vk::DescriptorSetLayoutBinding()
 		.setBinding(0)
 		.setDescriptorCount(1)
@@ -1059,7 +1054,8 @@ void SetupShaders()
 
 void SetupFramebuffers()
 {
-	vk::ImageView attachments[2] = {};
+	vk::ImageView attachments[3] = {};
+	attachments[2] = postProcBuffer.view;
 	attachments[1] = depthBuffer.view;
 	attachments[0] = vk::ImageView(nullptr);
 
@@ -1119,7 +1115,6 @@ void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width
 
 void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
 {
-
 	BufferVulkan indexBufferStageT;
 
 	CreateSimpleBuffer(
@@ -1172,15 +1167,13 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 		BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
 		dataSize);
 
-	// end of setup
-
 	oVertexBuffer.inputDescription.binding = 0;
 	oVertexBuffer.inputDescription.inputRate = vk::VertexInputRate::eVertex;
 	oVertexBuffer.inputDescription.stride = sizeof(VertexData);
 
 	// 12 bits 
-	// 8 bits offset = 12
-	// 12 bits == 
+	// 8  bits 
+	// 12 bits
 	// 12 bits
 	// 12 bits
 	vk::VertexInputAttributeDescription att1;
@@ -1477,6 +1470,19 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 
 }
 
+void SetupRTTexture(
+	vk::Device iDevice, 
+	uint32_t iTextureWidth, uint32_t iTextureHeight, 
+	vk::Image& oImage, VmaAllocation& oAllocation)
+{
+	CreateSimpleImage(allocator,
+		oAllocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		ImageUsageFlagBits::eColorAttachment | ImageUsageFlagBits::eSampled,
+		Format::eR8G8B8A8Unorm, ImageLayout::ePreinitialized,
+		oImage, iTextureWidth, iTextureHeight);
+
+}
 
 void SetupTextureImage(vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
 {
@@ -1633,7 +1639,7 @@ void RendererVulkan::Render()
 
 	presentQueue.presentKHR(&present);
 
-	presentQueue.waitIdle();
+	//presentQueue.waitIdle();
 }
 
 void RendererVulkan::BeginFrame(const Camera& iCamera)
@@ -1661,6 +1667,8 @@ void RendererVulkan::Create()
 	SetupShaders();
 
 	SetupDepthbuffer();
+	SetupRTTexture(device, screenWidth, screenHeight, postProcBuffer.image, postProcBuffer.allocation);
+	postProcBuffer.view = CreateImageView(device, postProcBuffer.image, Format::eR8G8B8A8Unorm);
 
 	SetupFramebuffers();
 	SetupCommandBuffer();
@@ -1693,6 +1701,13 @@ void RendererVulkan::Create()
 
 void RendererVulkan::Destroy()
 {
+	
+	presentQueue.waitIdle();
+	for (auto& e : commandBuffers)
+	{
+		e.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+	}
+
 	descriptorPool->Destroy(device);
 
 	device.destroySemaphore(rendererFinishedSemaphore);
@@ -1712,7 +1727,6 @@ void RendererVulkan::Destroy()
 	//vice.destroySwapchainKHR(swapchain.swapchain);
 
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
-
 
 
 	for (auto& e : desc_layout)
@@ -1742,6 +1756,9 @@ void RendererVulkan::Destroy()
 		vmaDestroyImage(allocator, e.texture.image, e.texture.allocation);
 		device.destroyImageView(e.texture.view);
 	}
+
+	vmaDestroyImage(allocator, postProcBuffer.image, postProcBuffer.allocation);
+	device.destroyImageView(postProcBuffer.view);
 	//device.destroyImage(depthImage);
 	//device.destroyImage(testTexture.image);
 
