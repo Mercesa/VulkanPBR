@@ -28,6 +28,9 @@
     <Filter Include="Utility">
       <UniqueIdentifier>{27261af7-700d-4a7a-bd63-e339a85e3383}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Game application">
+      <UniqueIdentifier>{12dc8bb7-3e27-4ce7-90f4-9201680ba230}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -47,6 +50,12 @@
     </ClCompile>
     <ClCompile Include="ModelLoader.cpp">
       <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="PipelineVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>Game application</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -91,6 +100,12 @@
     </ClInclude>
     <ClInclude Include="GenericMathValueStructs.h">
       <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>Game application</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -158,8 +158,10 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CommandpoolVulkan.cpp" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
+    <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
+    <ClCompile Include="PipelineVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -168,10 +170,12 @@
     <ClInclude Include="ConstantBuffers.h" />
     <ClInclude Include="DescriptorPoolVulkan.h" />
     <ClInclude Include="easylogging++.h" />
+    <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="PipelineVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
     <ClInclude Include="vk_mem_alloc.h" />

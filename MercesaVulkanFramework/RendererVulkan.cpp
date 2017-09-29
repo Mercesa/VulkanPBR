@@ -48,6 +48,7 @@
 #include "easylogging++.h"
 
 CBMatrix matrixConstantBufferData;
+CBLights lightConstantBufferData ;
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
 #define NUM_DESCRIPTOR_SETS 3
@@ -77,6 +78,7 @@ TextureVulkan depthBuffer;
 TextureVulkan postProcBuffer;
 
 std::vector<UniformBufferVulkan> uniformBufferMVP;
+std::vector<UniformBufferVulkan> uniformBufferLights;
 
 vk::RenderPass renderPass;
 
@@ -97,7 +99,6 @@ std::vector<LayerProperties> layers;
 std::vector<const char*> extensions;
 
 // Information about our device its memory and family properties
-vk::PhysicalDeviceMemoryProperties memoryProperties;
 std::vector<QueueFamilyProperties> familyProperties;
 
 std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
@@ -123,8 +124,7 @@ std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
 vk::Pipeline pipeline;
 
-vk::ShaderModule vertexShaderModule;
-vk::ShaderModule fragmentShaderModule;
+
 
 VkDebugReportCallbackEXT callback;
 
@@ -142,6 +142,8 @@ vk::Semaphore rendererFinishedSemaphore;
 std::vector<vk::DescriptorSetLayoutBinding> bindings;
 std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
 std::vector<vk::DescriptorSetLayoutBinding> normalTextureBinding;
+
+std::vector<ShaderVulkan> shaders;
 
 RendererVulkan::RendererVulkan()
 {
@@ -215,8 +217,6 @@ vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* win
 		throw std::system_error(std::error_code(), "Unsupported window manager is in use.");
 	}
 }
-
-
 
 VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
 	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
@@ -352,9 +352,8 @@ void EnumerateDevices()
 	assert(physicalDevices.size() != 0);
 }
 
-void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 {
-	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 
 	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
 		.setOldLayout(oldLayout)
@@ -400,7 +399,7 @@ void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout
 		LOG(ERROR) << "Unsupported layout transition";
 	}
 
-	commandBuffer.pipelineBarrier(
+	iBuffer.pipelineBarrier(
 		sourceStage,
 		destinationStage,
 		vk::DependencyFlagBits(0),
@@ -408,7 +407,6 @@ void TransitionImageLayout(vk::Image aImage, vk::Format aFormat, vk::ImageLayout
 		0, nullptr,
 		1, &barrier);
 
-	EndSingleTimeCommands(device, commandBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
 void EnumerateLayers()
@@ -424,9 +422,6 @@ void SetupDevice()
 
 
 	assert(familyProperties.size() >= 1);
-
-	// Cache the memory properties of our physical device
-	memoryProperties = physicalDevices[0].getMemoryProperties();
 
 	float queue_priorities[1] = { 0.0 };
 
@@ -757,9 +752,9 @@ void SetupDepthbuffer()
 
 void SetupUniformbuffer()
 {
-	for (int i = 0; i < 2; ++i)
+	// Create our uniform buffers
+	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
-
 		UniformBufferVulkan tUniformBuff;
 
 		CreateSimpleBuffer(allocator,
@@ -779,9 +774,29 @@ void SetupUniformbuffer()
 		uniformBufferMVP.push_back(tUniformBuff);
 	}
 
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		UniformBufferVulkan tUniformBuff;
+
+		CreateSimpleBuffer(allocator,
+			tUniformBuff.allocation,
+			VMA_MEMORY_USAGE_CPU_TO_GPU,
+			tUniformBuff.buffer,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			sizeof(CBMatrix));
+
+		CopyDataToBuffer(VkDevice(device), tUniformBuff.allocation, (void*)&lightConstantBufferData, sizeof(CBLights));
+
+
+		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		tUniformBuff.descriptorInfo.offset = 0;
+		tUniformBuff.descriptorInfo.range = sizeof(CBLights);
+
+		uniformBufferLights.push_back(tUniformBuff);
+	}
 }
 
-void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam)
+void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std::vector<Light>& iLights)
 {
 	static float derp = 1.0f;
 	derp += 0.01f;
@@ -803,6 +818,16 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam)
 	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
 	CopyDataToBuffer(VkDevice(device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+
+	lightConstantBufferData.currAmountOfLights = std::min(static_cast<uint32_t>(iLights.size()), (uint32_t)16);
+
+	for (int i = 0; i < lightConstantBufferData.currAmountOfLights; ++i)
+	{
+		lightConstantBufferData.lights[i] = iLights[i];
+	}
+
+	CopyDataToBuffer(VkDevice(device), uniformBufferLights[iCurrentBuff].allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
+
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
@@ -828,10 +853,17 @@ void SetupPipelineLayout()
 		.setBinding(0)
 		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
 		.setDescriptorCount(1)
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex)
+		.setStageFlags(vk::ShaderStageFlagBits::eVertex |  vk::ShaderStageFlagBits::eFragment)
 		.setPImmutableSamplers(NULL);
 
-	uniformBinding = { uniform_binding };
+	vk::DescriptorSetLayoutBinding light_binding = vk::DescriptorSetLayoutBinding()
+		.setBinding(1)
+		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
+		.setDescriptorCount(1)
+		.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
+		.setPImmutableSamplers(NULL);
+
+	uniformBinding = { uniform_binding, light_binding };
 
 
 	vk::DescriptorSetLayoutCreateInfo descriptor_layoutUniform = vk::DescriptorSetLayoutCreateInfo()
@@ -846,6 +878,8 @@ void SetupPipelineLayout()
 		.setDescriptorType(DescriptorType::eSampledImage)
 		.setPImmutableSamplers(nullptr)
 		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
+
+
 
 	normalTextureBinding = { pureImage_layout_binding };
 
@@ -865,7 +899,7 @@ void SetupDescriptorSet()
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 
-	descriptorPool->Create(device, 400, 2, 2, 2, 400);
+	descriptorPool->Create(device, 400, 10, 10, 10, 400);
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -932,7 +966,7 @@ void SetupDescriptorSet()
 
 		device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
 
-		std::array<vk::WriteDescriptorSet, 1> uniform_writes = {};
+		std::array<vk::WriteDescriptorSet, 2> uniform_writes = {};
 
 		uniform_writes[0] = {};
 		uniform_writes[0].pNext = NULL;
@@ -942,6 +976,16 @@ void SetupDescriptorSet()
 		uniform_writes[0].pBufferInfo = &uniformBufferMVP[i].descriptorInfo;
 		uniform_writes[0].dstArrayElement = 0;
 		uniform_writes[0].dstBinding = 0;
+
+		uniform_writes[1] = {};
+		uniform_writes[1].pNext = NULL;
+		uniform_writes[1].dstSet = descriptor_set[i][1];
+		uniform_writes[1].descriptorCount = 1;
+		uniform_writes[1].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniform_writes[1].pBufferInfo = &uniformBufferLights[i].descriptorInfo;
+		uniform_writes[1].dstArrayElement = 0;
+		uniform_writes[1].dstBinding = 1;
+
 
 		device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
 	}
@@ -1015,41 +1059,24 @@ void SetupRenderPass()
 	renderPass = device.createRenderPass(rp_info);
 }
 
+
 void SetupShaders()
 {
-	auto codeVertex = readFile("Shaders/vert.spv");
+	auto vertexShader = CreateShader(device, "Shaders/vert.spv", "main", ShaderStageFlagBits::eVertex);
+	auto fragmentShader = CreateShader(device ,"Shaders/frag.spv", "main", ShaderStageFlagBits::eFragment);
 
-	vk::ShaderModuleCreateInfo vertexInfo = vk::ShaderModuleCreateInfo()
-		.setCodeSize(codeVertex.size())
-		.setPCode(reinterpret_cast<const uint32_t*>(codeVertex.data()));
+	shaders.push_back(vertexShader);
+	shaders.push_back(fragmentShader);
 
-	vertexShaderModule = device.createShaderModule(vertexInfo);
+	for (int i = 0; i < 2; ++i)
+	{
+		PipelineShaderStageCreateInfo shaderCInfo = vk::PipelineShaderStageCreateInfo()
+			.setStage(shaders[i].shaderStage)
+			.setPName(shaders[i].entryPointName.c_str())
+			.setModule(shaders[i].shaderModule);
 
-
-	auto codeFragment = readFile("Shaders/frag.spv");
-
-	vk::ShaderModuleCreateInfo fragmentInfo = vk::ShaderModuleCreateInfo()
-		.setCodeSize(codeFragment.size())
-		.setPCode(reinterpret_cast<const uint32_t*>(codeFragment.data()));
-
-	fragmentShaderModule = device.createShaderModule(fragmentInfo);
-
-
-	vk::PipelineShaderStageCreateInfo shaderStageCInfoVertex = vk::PipelineShaderStageCreateInfo()
-		.setStage(vk::ShaderStageFlagBits::eVertex)
-		.setPName("main")
-		.setModule(vertexShaderModule);
-
-
-	shaderStages.push_back(shaderStageCInfoVertex);
-
-
-	vk::PipelineShaderStageCreateInfo shaderStageCInfoFragment = vk::PipelineShaderStageCreateInfo()
-		.setStage(vk::ShaderStageFlagBits::eFragment)
-		.setPName("main")
-		.setModule(fragmentShaderModule);
-
-	shaderStages.push_back(shaderStageCInfoFragment);
+		shaderStages.push_back(shaderCInfo);
+	}
 }
 
 void SetupFramebuffers()
@@ -1088,9 +1115,8 @@ void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize
 	EndSingleTimeCommands(device, tCmdBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
-void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
+void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
 {
-	vk::CommandBuffer commandBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 	vk::BufferImageCopy region = vk::BufferImageCopy()
 		.setBufferOffset(0)
 		.setBufferRowLength(0)
@@ -1103,14 +1129,12 @@ void CopyBufferToImage(vk::Buffer srcBuffer, vk::Image destImage, uint32_t width
 	region.imageSubresource.baseArrayLayer = 0;
 	region.imageSubresource.layerCount = 1;
 
-	commandBuffer.copyBufferToImage(
+	iBuffer.copyBufferToImage(
 		srcBuffer,
 		destImage,
 		ImageLayout::eTransferDstOptimal,
 		1,
 		&region);
-
-	EndSingleTimeCommands(device, commandBuffer, cmdPool->GetPool(), graphicsQueue);
 }
 
 void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
@@ -1274,7 +1298,7 @@ void SetupPipeline()
 
 	vk::PipelineDynamicStateCreateInfo dynamicState = PipelineDynamicStateCreateInfo()
 		.setPDynamicStates(dynamicStateEnables.data())
-		.setDynamicStateCount(0);
+		.setDynamicStateCount(1);
 
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
 		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
@@ -1429,7 +1453,6 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 
 	iBuffer.begin(cmd_begin);
 
-
 	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 0.2f;
 	clear_values[0].color.float32[1] = 0.2f;
@@ -1450,7 +1473,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
 	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipeline);
 
-
+	
 	InitViewports(iBuffer);
 	InitScissors(iBuffer);
 
@@ -1484,7 +1507,8 @@ void SetupRTTexture(
 
 }
 
-void SetupTextureImage(vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
+
+void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
 {
 	// Load texture with stbi
 	int texWidth, texHeight, texChannels;
@@ -1529,20 +1553,22 @@ void SetupTextureImage(vk::Device iDevice, std::string iFilePath, vk::Image& oIm
 		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
 		oImage, texWidth, texHeight);
 
-	TransitionImageLayout(oImage,
+	TransitionImageLayout(iBuffer,
+		oImage,
 		vk::Format::eR8G8B8A8Unorm,
 		vk::ImageLayout::eUndefined,
 		vk::ImageLayout::eTransferDstOptimal);
 
-	CopyBufferToImage(stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	CopyBufferToImage(iBuffer, stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 
-	TransitionImageLayout(oImage,
+	TransitionImageLayout(iBuffer,
+		oImage,
 		vk::Format::eR8G8B8A8Unorm,
 		vk::ImageLayout::eTransferDstOptimal,
 		vk::ImageLayout::eShaderReadOnlyOptimal);
 
 
-	vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);
+	oStaging.push_back(stagingBuffer);
 }
 
 
@@ -1607,12 +1633,9 @@ void RendererVulkan::Render()
 		device.resetFences(graphicsQueueFinishedFence);
 		CommandSetup.join();
 	}
-	//device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-	//device.resetFences(graphicsQueueFinishedFence);
 
-	//device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(currentBuffer));
-	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 	device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
+	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 
 
 	vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -1625,7 +1648,6 @@ void RendererVulkan::Render()
 	submit_info[0].pCommandBuffers = &commandBuffers[currentBuffer];
 	submit_info[0].signalSemaphoreCount = 1;
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
-	// start the pipeline
 
 	graphicsQueue.submit(1, submit_info, graphicsQueueFinishedFence);
 
@@ -1642,9 +1664,9 @@ void RendererVulkan::Render()
 	//presentQueue.waitIdle();
 }
 
-void RendererVulkan::BeginFrame(const Camera& iCamera)
+void RendererVulkan::BeginFrame(const Camera& iCamera, const std::vector<Light>& lights)
 {
-	UpdateUniformBufferTest((currentBuffer + 1) % 2, iCamera);
+	UpdateUniformBufferTest((currentBuffer + 1) % 2, iCamera, lights);
 }
 
 void RendererVulkan::Create()
@@ -1674,9 +1696,14 @@ void RendererVulkan::Create()
 	SetupCommandBuffer();
 
 	SetupDeviceQueue();
-	TransitionImageLayout(depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	
+	vk::CommandBuffer stageBuffer = BeginSingleTimeCommands(device, cmdPool->GetPool());
 
+	
+	TransitionImageLayout(stageBuffer, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
+	// Staging buffers we will need to delete
+	std::vector<BufferVulkan> stagingBuffers;
 	for (auto& e : rawMeshData)
 	{
 		ModelVulkan tModV;
@@ -1685,11 +1712,16 @@ void RendererVulkan::Create()
 
 		tModV.indiceCount = e.indices.size();
 
-		SetupTextureImage(device, e.filepaths[0].c_str(), tModV.texture.image, tModV.texture.allocation);
+		SetupTextureImage(stageBuffer, device, e.filepaths[0].c_str(), tModV.texture.image, tModV.texture.allocation, stagingBuffers);
 		tModV.texture.view = CreateImageView(device, tModV.texture.image, Format::eR8G8B8A8Unorm);
 		models.push_back(tModV);
 	}
+	EndSingleTimeCommands(device, stageBuffer, cmdPool->GetPool(), graphicsQueue);
 
+	for (auto& e : stagingBuffers)
+	{
+		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
+	}
 
 	SetupPipeline();
 	SetupSemaphores();
@@ -1719,9 +1751,11 @@ void RendererVulkan::Destroy()
 
 	device.destroyFence(graphicsQueueFinishedFence);
 
-	device.destroyShaderModule(vertexShaderModule);
-	device.destroyShaderModule(fragmentShaderModule);
-
+	for (auto& e : shaders)
+	{
+		device.destroyShaderModule(e.shaderModule);
+	}
+	
 	cmdPool->Destroy(device);
 	//device.destroyCommandPool(commandPool);
 	//vice.destroySwapchainKHR(swapchain.swapchain);
@@ -1749,6 +1783,11 @@ void RendererVulkan::Destroy()
 		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
 	}
 
+	for (auto& e : uniformBufferLights)
+	{
+		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
+	}
+
 	for (auto& e : models)
 	{
 		vmaDestroyBuffer(allocator, e.vertexBuffer.buffer, e.vertexBuffer.allocation);
@@ -1761,7 +1800,6 @@ void RendererVulkan::Destroy()
 	device.destroyImageView(postProcBuffer.view);
 	//device.destroyImage(depthImage);
 	//device.destroyImage(testTexture.image);
-
 
 	// Clean up.
 	vmaDestroyAllocator(allocator);

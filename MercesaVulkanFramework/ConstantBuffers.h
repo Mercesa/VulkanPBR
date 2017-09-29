@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderingIncludes.h"
+#include "GraphicsStructures.h"
 
 struct CBMatrix
 {
@@ -10,4 +11,10 @@ struct CBMatrix
 
 	glm::mat4 viewProjectMatrix;
 	glm::mat4 mvpMatrix;
+};
+
+struct CBLights
+{
+	Light lights[16];
+	uint32_t currAmountOfLights;
 };

@@ -45,6 +45,7 @@ INITIALIZE_EASYLOGGINGPP
 
 
 #include "RendererVulkan.h"
+#include "Game.h"
 
 using namespace vk;
 
@@ -54,6 +55,7 @@ using namespace vk;
 #include <memory>
 std::unique_ptr<Camera> cam;
 std::unique_ptr<RendererVulkan> renderer;
+std::unique_ptr<Game> CurrentGame;
 
 int main()
 {
@@ -70,7 +72,9 @@ int main()
 	renderer = std::make_unique<RendererVulkan>();
 	renderer->Create();
 
-	cam = std::make_unique<Camera>();
+	CurrentGame = std::make_unique<Game>();
+	CurrentGame->Init();
+
 
 	std::cout << "setup completed" << std::endl;
 
@@ -141,10 +145,10 @@ int main()
                 break;
             }	
         }
-		cam->SetPosition(glm::vec3(camX, camY, camZ));
-		cam->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
+		CurrentGame->camera->SetPosition(glm::vec3(camX, camY, camZ));
+		CurrentGame->camera->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
 
-		renderer->BeginFrame((*cam.get()));
+		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
 		renderer->Render();
 		
        // SDL_Delay(10);

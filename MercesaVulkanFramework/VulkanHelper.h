@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cassert>
 
 #include "RenderingIncludes.h"
 #include "VulkanDataObjects.h"
 #include "vk_mem_alloc.h"
 #include "vulkan/vulkan.hpp"
+#include "stb_image.h"
+#include "Helper.h"
 
 using namespace vk;
 
@@ -163,8 +166,33 @@ inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer,
 	aDevice.freeCommandBuffers(aPool, aBuffer);
 }
 
+ShaderVulkan CreateShader(
+	const vk::Device& iDevice,
+	const std::string& iFilePath, 
+	const std::string& iEntryPoint,
+	vk::ShaderStageFlagBits iShaderStage)
+{
+	auto code = readFile(iFilePath);
 
-#include "stb_image.h"
+	// Ensure our code is not zero
+	assert(code.size() > 0);
+
+	ShaderVulkan tShader = ShaderVulkan();
+	
+	vk::ShaderModuleCreateInfo moduleInfo = vk::ShaderModuleCreateInfo()
+		.setCodeSize(code.size())
+		.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
+
+	tShader.shaderModule = iDevice.createShaderModule(moduleInfo);
+
+	tShader.entryPointName = iEntryPoint;
+	tShader.shaderFile = iFilePath;
+	tShader.shaderStage = iShaderStage;
+
+	return tShader;
+}
+
+
 //inline void LoadTextureSimple(const vk::Device iDevice, const VmaAllocator& iAllocator, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
 //{
 //	// Load texture with stbi

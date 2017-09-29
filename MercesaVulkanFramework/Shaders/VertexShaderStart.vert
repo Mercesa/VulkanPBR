@@ -2,6 +2,14 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+struct Light
+{
+	// vec4's since if we choose to encode more data, we are able to.
+	vec4 position;
+	vec4 color;
+	vec4 specularColor;
+};
+
 layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 modelMatrix;
 	mat4 viewMatrix;
@@ -10,6 +18,14 @@ layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 viewProjectionMatrix;
 	mat4 mvp;
 } myBufferVals;
+
+layout(std140, set = 1, binding = 1) uniform lightVals{
+	Light lights[16];
+	int currentAmountOfLights;
+} myLightVals;
+
+
+
 
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec2 uv;
