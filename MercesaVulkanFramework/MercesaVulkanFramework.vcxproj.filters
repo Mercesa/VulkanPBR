@@ -57,6 +57,9 @@
     <ClCompile Include="Game.cpp">
       <Filter>Game application</Filter>
     </ClCompile>
+    <ClCompile Include="DeviceVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -106,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Game application</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

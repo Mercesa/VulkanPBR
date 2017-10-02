@@ -58,12 +58,19 @@ struct ModelVulkan
 {
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
-	TextureVulkan texture;
-	vk::DescriptorSet textureSet;
+	
+
+	TextureVulkan normalTexture;
+	TextureVulkan specularTexture;
+	TextureVulkan albedoTexture;
+	vk::DescriptorSet albedoTextureSet;
+
+
 	uint32_t indiceCount = 0;
 	uint32_t indiceOffset = 0;
 
 	ModelVulkan() = default;
+	~ModelVulkan() = default;
 	
 };
 
