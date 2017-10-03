@@ -9,10 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{3d427416-2d90-498f-833a-b8cf00b1c44c}</UniqueIdentifier>
     </Filter>
@@ -30,6 +26,9 @@
     </Filter>
     <Filter Include="Game application">
       <UniqueIdentifier>{12dc8bb7-3e27-4ce7-90f4-9201680ba230}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan Structures\Window">
+      <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +57,15 @@
       <Filter>Game application</Filter>
     </ClCompile>
     <ClCompile Include="DeviceVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="SDLLowLevelWindow.cpp">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicsResourceManagerVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorLayoutHelper.h">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>
@@ -112,6 +120,15 @@
     </ClInclude>
     <ClInclude Include="DeviceVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iLowLevelWindow.h">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="SDLLowLevelWindow.h">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsResourceManagerVulkan.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

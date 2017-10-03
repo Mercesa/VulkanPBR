@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include "GraphicsStructures.h"
 
 class Camera;
 class Light;
@@ -18,5 +19,6 @@ public:
 
 	std::vector<Light> lights;
 	std::unique_ptr<Camera> camera;
+	std::vector<RawMeshData> modelsToBeLoaded;
 };
 

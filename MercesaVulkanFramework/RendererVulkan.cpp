@@ -12,6 +12,7 @@
 #endif
 
 #define NOMINMAX
+//#define WIN32_MEAN_AND_LEAN
 
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -22,6 +23,9 @@
 #include <iostream>
 #include <math.h>
 #include <algorithm>
+#include <utility>
+#include <future>
+#include <map>
 
 #include "VulkanDataObjects.h"
 #include "GraphicsStructures.h"
@@ -47,16 +51,20 @@
 #include "DeviceVulkan.h"
 
 #include "easylogging++.h"
+#include "SDLLowLevelWindow.h"
+#include "libs/Spir-v cross/spirv_glsl.hpp"
 
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData ;
+
+
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
 #define NUM_DESCRIPTOR_SETS 3
 #define FENCE_TIMEOUT 100000000
 #define NUM_FRAMES 2
 
-vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window);
+vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* window);
 
 static const int screenWidth = 1280;
 static const int screenHeight = 720;
@@ -85,45 +93,29 @@ vk::RenderPass renderPass;
 // Device and instance
 vk::Instance instance;
 
-// Queues 
-vk::Queue graphicsQueue;
-vk::Queue presentQueue;
-
 std::unique_ptr<CommandpoolVulkan> cmdPool;
 std::vector<vk::CommandBuffer> commandBuffers;
 
-
+std::shared_ptr<iLowLevelWindow> window;
 // Information about our device its memory and family properties
 std::vector<QueueFamilyProperties> familyProperties;
 
 std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
-SwapchainVulkan swapchain;
 
-//BufferVulkan vertexBufferStaging;
-//VertexBufferVulkan vertexBuffer;
-//std::vector<VertexBufferVulkan> vertexBuffers;
 
 std::vector<std::unique_ptr<ModelVulkan>> models;
 
 VmaAllocator allocator;
 
-// Family indices
-int32_t familyGraphicsIndex = 0;
-int32_t familyPresenteIndex = 0;
-
-SDL_Window* window = nullptr;
-
 std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
 vk::Pipeline pipeline;
 
-VkDebugReportCallbackEXT callback;
 
 vk::Viewport viewPort;
 vk::Rect2D scissor;
 
-std::vector<RawMeshData> rawMeshData;
 
 vk::Sampler testImageSampler;
 vk::Sampler testSampler;
@@ -148,93 +140,18 @@ RendererVulkan::~RendererVulkan()
 {
 }
 
-PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;
-PFN_vkDebugReportMessageEXT DebugReportMessageCallback = VK_NULL_HANDLE;
-PFN_vkDestroyDebugReportCallbackEXT dbgReportCallBack = VK_NULL_HANDLE;
 
 
-vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, SDL_Window* window)
+vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* const window)
 {
-	SDL_SysWMinfo windowInfo;
-	SDL_VERSION(&windowInfo.version);
-	if (!SDL_GetWindowWMInfo(window, &windowInfo)) {
-		throw std::system_error(std::error_code(), "SDK window manager info is not available.");
-	}
-
-	switch (windowInfo.subsystem) {
-
-#if defined(SDL_VIDEO_DRIVER_ANDROID) && defined(VK_USE_PLATFORM_ANDROID_KHR)
-	case SDL_SYSWM_ANDROID: {
-		vk::AndroidSurfaceCreateInfoKHR surfaceInfo = vk::AndroidSurfaceCreateInfoKHR()
-			.setWindow(windowInfo.info.android.window);
-		return instance.createAndroidSurfaceKHR(surfaceInfo);
-	}
-#endif
-
-#if defined(SDL_VIDEO_DRIVER_MIR) && defined(VK_USE_PLATFORM_MIR_KHR)
-	case SDL_SYSWM_MIR: {
-		vk::MirSurfaceCreateInfoKHR surfaceInfo = vk::MirSurfaceCreateInfoKHR()
-			.setConnection(windowInfo.info.mir.connection)
-			.setMirSurface(windowInfo.info.mir.surface);
-		return instance.createMirSurfaceKHR(surfaceInfo);
-	}
-#endif
-
-#if defined(SDL_VIDEO_DRIVER_WAYLAND) && defined(VK_USE_PLATFORM_WAYLAND_KHR)
-	case SDL_SYSWM_WAYLAND: {
-		vk::WaylandSurfaceCreateInfoKHR surfaceInfo = vk::WaylandSurfaceCreateInfoKHR()
-			.setDisplay(windowInfo.info.wl.display)
-			.setSurface(windowInfo.info.wl.surface);
-		return instance.createWaylandSurfaceKHR(surfaceInfo);
-	}
-#endif
-
-#if defined(SDL_VIDEO_DRIVER_WINDOWS) && defined(VK_USE_PLATFORM_WIN32_KHR)
-	case SDL_SYSWM_WINDOWS: {
-		vk::Win32SurfaceCreateInfoKHR surfaceInfo = vk::Win32SurfaceCreateInfoKHR()
-			.setHinstance(GetModuleHandle(NULL))
-			.setHwnd(windowInfo.info.win.window);
-		return instance.createWin32SurfaceKHR(surfaceInfo);
-	}
-#endif
-
-#if defined(SDL_VIDEO_DRIVER_X11) && defined(VK_USE_PLATFORM_XLIB_KHR)
-	case SDL_SYSWM_X11: {
-		vk::XlibSurfaceCreateInfoKHR surfaceInfo = vk::XlibSurfaceCreateInfoKHR()
-			.setDpy(windowInfo.info.x11.display)
-			.setWindow(windowInfo.info.x11.window);
-		return instance.createXlibSurfaceKHR(surfaceInfo);
-	}
-#endif
-
-	default:
-		throw std::system_error(std::error_code(), "Unsupported window manager is in use.");
-	}
+	vk::Win32SurfaceCreateInfoKHR surfaceInfo = vk::Win32SurfaceCreateInfoKHR()
+		.setHinstance(GetModuleHandle(NULL))
+		.setHwnd(window->GetWindowHandle());
+	return instance.createWin32SurfaceKHR(surfaceInfo);
 }
 
-VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pCallback);
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
 
-VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(
-	VkDebugReportFlagsEXT       flags,
-	VkDebugReportObjectTypeEXT  objectType,
-	uint64_t                    object,
-	size_t                      location,
-	int32_t                     messageCode,
-	const char*                 pLayerPrefix,
-	const char*                 pMessage,
-	void*                       pUserData)
-{
-	std::cerr << pMessage << std::endl;
-	return VK_FALSE;
-}
+
 
 void SetupApplication()
 {
@@ -242,36 +159,9 @@ void SetupApplication()
 	// program, which can be useful for layers and tools to provide more debug information.
 	deviceVulkan = std::make_unique<DeviceVulkan>();
 	deviceVulkan->CreateInstance("PBR Vulkan", 1, "Engine", 1, VK_API_VERSION_1_0);
+	deviceVulkan->CreateDebugCallbacks();
 
 	instance = deviceVulkan->instance;
-
-
-	VkDebugReportCallbackCreateInfoEXT callbackCreateInfo;
-	callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-	callbackCreateInfo.pNext = nullptr;
-	callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
-		VK_DEBUG_REPORT_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-	callbackCreateInfo.pfnCallback = &MyDebugReportCallback;
-	callbackCreateInfo.pUserData = nullptr;
-
-	/* Register the callback */
-
-	VkInstance tempInst = VkInstance(instance);
-	//callback = instance.createDebugReportCallbackEXT(callbackCreateInfo);
-	PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT =
-		reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>
-		(vkGetInstanceProcAddr(tempInst, "vkCreateDebugReportCallbackEXT"));
-
-	PFN_vkDebugReportMessageEXT vkDebugReportMessageEXT =
-		reinterpret_cast<PFN_vkDebugReportMessageEXT>
-		(vkGetInstanceProcAddr(tempInst, "vkDebugReportMessageEXT"));
-	PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT =
-		reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>
-		(vkGetInstanceProcAddr(tempInst, "vkDestroyDebugReportCallbackEXT"));
-
-	VkResult result = vkCreateDebugReportCallbackEXT(tempInst, &callbackCreateInfo, nullptr, &callback);
-
 }
 
 
@@ -352,22 +242,13 @@ void SetupDevice()
 
 void SetupSDL()
 {
-	// Create an SDL window that supports Vulkan and OpenGL rendering.
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-		std::cout << "Could not initialize SDL." << std::endl;
-		return;
-	}
+	window = std::make_shared<SDLLowLevelWindow>();
 
-	window = SDL_CreateWindow("Vulkan Window", SDL_WINDOWPOS_CENTERED,
-		SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, SDL_WINDOW_OPENGL);
-	if (window == NULL) {
-		std::cout << "Could not create SDL window." << std::endl;
-		return;
-	}
-
+	window->Create(screenWidth, screenHeight);
+	
 	// Create a Vulkan surface for rendering
 	try {
-		swapchain.surface = createVulkanSurface(instance, window);
+		deviceVulkan->swapchain.surface = createVulkanSurface(instance, window.get());
 	}
 	catch (const std::exception& e) {
 		std::cout << "Failed to create Vulkan surface: " << e.what() << std::endl;
@@ -379,184 +260,13 @@ void SetupSDL()
 void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
-	cmdPool->Create(deviceVulkan->device, familyGraphicsIndex, CommandPoolCreateFlagBits::eResetCommandBuffer);
+	cmdPool->Create(deviceVulkan->device, deviceVulkan->familyIndexGraphics, CommandPoolCreateFlagBits::eResetCommandBuffer);
 	commandBuffers = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, NUM_FRAMES);
 }
 
 void SetupSwapchain()
 {
-	familyProperties = deviceVulkan->physicalDevice.getQueueFamilyProperties();
-	vk::Bool32* pSupportsPresent = (vk::Bool32*)malloc(familyProperties.size() * sizeof(vk::Bool32));
-
-	// Iterate over each queue 
-	for (uint32_t i = 0; i < familyProperties.size(); ++i)
-	{
-		deviceVulkan->physicalDevice.getSurfaceSupportKHR(i, swapchain.surface, &pSupportsPresent[i]);
-	}
-
-
-	familyGraphicsIndex = UINT32_MAX;
-	familyPresenteIndex = UINT32_MAX;
-
-	for (uint32_t i = 0; i < familyProperties.size(); ++i)
-	{
-		if ((familyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
-		{
-			if (familyGraphicsIndex == UINT32_MAX)
-			{
-				familyGraphicsIndex = i;
-			}
-
-			if (pSupportsPresent[i] == VK_TRUE) {
-				familyGraphicsIndex = i;
-				familyPresenteIndex = i;
-				break;
-			}
-		}
-	}
-
-	// Find a seperate queue for present if there is no family that supports both
-	if (familyPresenteIndex == UINT32_MAX)
-	{
-		for (int i = 0; i < familyProperties.size(); ++i)
-		{
-			if (pSupportsPresent[i] == VK_TRUE)
-			{
-				familyPresenteIndex = i;
-				break;
-			}
-		}
-	}
-
-	free(pSupportsPresent);
-
-	if (familyGraphicsIndex == UINT32_MAX && familyPresenteIndex == UINT32_MAX)
-	{
-		std::cout << "Could not find queues for graphics and present\n";
-		exit(-1);
-	}
-
-	// get the list of of supported formats
-	std::vector<SurfaceFormatKHR> surfaceFormats = deviceVulkan->physicalDevice.getSurfaceFormatsKHR(swapchain.surface);
-
-	if (surfaceFormats.size() == 1 && surfaceFormats[0].format == vk::Format::eUndefined)
-	{
-		swapchain.format = vk::Format::eB8G8R8A8Unorm;
-	}
-	else
-	{
-		assert(surfaceFormats.size() >= 1);
-		swapchain.format = surfaceFormats[0].format;
-	}
-
-	// Get the surface capabilities
-	vk::SurfaceCapabilitiesKHR surfCapabilities;
-	std::vector<vk::PresentModeKHR> presentModes;
-
-	// Get surface capabilities and present modes
-	surfCapabilities = deviceVulkan->physicalDevice.getSurfaceCapabilitiesKHR(swapchain.surface);
-	presentModes = deviceVulkan->physicalDevice.getSurfacePresentModesKHR(swapchain.surface);
-
-	vk::Extent2D swapchainExtent;
-
-	// Width and height are either both 0xFFFFFFFFF or both not 0xFFFFFFFF
-	if (surfCapabilities.currentExtent.width == 0xFFFFFFFF)
-	{
-		swapchainExtent.width = screenWidth;
-		swapchainExtent.height = screenHeight;
-
-		// Wrap the boundaries
-		swapchainExtent.width = std::max(swapchainExtent.width, surfCapabilities.minImageExtent.width);
-		swapchainExtent.width = std::min(swapchainExtent.width, surfCapabilities.maxImageExtent.width);
-
-		swapchainExtent.width = std::max(swapchainExtent.height, surfCapabilities.minImageExtent.height);
-		swapchainExtent.width = std::min(swapchainExtent.height, surfCapabilities.maxImageExtent.height);
-	}
-	else
-	{
-		swapchainExtent = surfCapabilities.currentExtent;
-	}
-
-	vk::PresentModeKHR swapchainPresentMode = vk::PresentModeKHR::eFifo;
-
-	uint32_t desiredNumberOfSwapChainImages = surfCapabilities.minImageCount;
-
-	vk::SurfaceTransformFlagBitsKHR preTransform;
-	if (surfCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
-	{
-		preTransform = vk::SurfaceTransformFlagBitsKHR::eIdentity;
-	}
-	else
-	{
-		preTransform = surfCapabilities.currentTransform;
-	}
-
-	vk::CompositeAlphaFlagBitsKHR compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-	vk::CompositeAlphaFlagBitsKHR compositeAlphaFLags[4] = {
-		vk::CompositeAlphaFlagBitsKHR::eOpaque,
-		vk::CompositeAlphaFlagBitsKHR::ePreMultiplied,
-		vk::CompositeAlphaFlagBitsKHR::ePostMultiplied,
-		vk::CompositeAlphaFlagBitsKHR::eInherit
-	};
-
-	for (uint32_t i = 0; i < sizeof(compositeAlphaFLags); i++)
-	{
-		if (surfCapabilities.supportedCompositeAlpha & compositeAlphaFLags[i])
-		{
-			compositeAlpha = compositeAlphaFLags[i];
-			break;
-		}
-	}
-
-	vk::SwapchainCreateInfoKHR swapchainCI = SwapchainCreateInfoKHR()
-		.setPNext(NULL)
-		.setSurface(swapchain.surface)
-		.setMinImageCount(desiredNumberOfSwapChainImages)
-		.setImageFormat(swapchain.format)
-		.setImageExtent(swapchainExtent)
-		.setPreTransform(preTransform)
-		.setCompositeAlpha(compositeAlpha)
-		.setImageArrayLayers(1)
-		.setPresentMode(swapchainPresentMode)
-		.setOldSwapchain(vk::SwapchainKHR(nullptr))
-		.setClipped(true)
-		.setImageColorSpace(vk::ColorSpaceKHR::eSrgbNonlinear)
-		.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
-		.setImageSharingMode(vk::SharingMode::eExclusive)
-		.setQueueFamilyIndexCount(0)
-		.setPQueueFamilyIndices(NULL);
-
-	uint32_t queueFamilyIndices[2] = { familyGraphicsIndex, familyPresenteIndex };
-
-	if (familyGraphicsIndex != familyPresenteIndex)
-	{
-		swapchainCI.setImageSharingMode(vk::SharingMode::eConcurrent);
-		swapchainCI.setQueueFamilyIndexCount(2);
-		swapchainCI.setPQueueFamilyIndices(queueFamilyIndices);
-	}
-
-	swapchain.swapchain = deviceVulkan->device.createSwapchainKHR(swapchainCI);
-
-	std::vector<vk::Image> swapchainImages = deviceVulkan->device.getSwapchainImagesKHR(swapchain.swapchain);
-
-	for (int i = 0; i < swapchainImages.size(); ++i)
-	{
-		swapchain.images.push_back(swapchainImages[i]);
-	}
-
-
-	for (int i = 0; i < swapchain.images.size(); ++i)
-	{
-		vk::ImageViewCreateInfo color_image_view = vk::ImageViewCreateInfo()
-			.setPNext(NULL)
-			.setImage(swapchain.images[i])
-			.setViewType(vk::ImageViewType::e2D)
-			.setFormat(swapchain.format)
-			.setComponents(vk::ComponentMapping(ComponentSwizzle::eR, ComponentSwizzle::eG, ComponentSwizzle::eB))
-			.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1));
-
-		swapchain.views.push_back(deviceVulkan->device.createImageView(color_image_view));
-	}
+	deviceVulkan->CreateSwapchain(screenWidth, screenHeight);
 }
 
 void SetupDepthbuffer()
@@ -651,6 +361,7 @@ void SetupUniformbuffer()
 	}
 }
 
+
 void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std::vector<Light>& iLights)
 {
 	static float derp = 1.0f;
@@ -686,68 +397,199 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
+struct descriptorLayoutIntermediate
+{
+	std::string name = "";
+	uint32_t binding = 0;
+	uint32_t set = 0;
+	uint32_t count = 0;
+	vk::DescriptorType descType;
+	vk::ShaderStageFlags shaderStage;
+};
+
+// Parse the resources
+std::vector<descriptorLayoutIntermediate> ParseResources(
+	const std::vector<spirv_cross::Resource>& iResources,
+	const spirv_cross::Compiler& iCompiler,
+	DescriptorType iDescriptorType,
+	ShaderStageFlagBits iTypeOfShader)
+{
+	std::vector<descriptorLayoutIntermediate> tIntermediates;
+	for (auto& e : iResources)
+	{
+		descriptorLayoutIntermediate tIntermediate;
+
+		tIntermediate.binding = iCompiler.get_decoration(e.id, spv::DecorationBinding);
+		tIntermediate.set = iCompiler.get_decoration(e.id, spv::DecorationDescriptorSet);
+		tIntermediate.name = e.name;
+		tIntermediate.descType = iDescriptorType;
+		tIntermediate.shaderStage = iTypeOfShader;
+
+		// Find out if our descriptor set is an array or not
+		const spirv_cross::SPIRType& type = iCompiler.get_type(e.type_id);
+
+		unsigned tArraySize = 0;
+
+		// If it is no array, only one descriptor present
+		if (type.array.empty())
+		{
+			tArraySize = 1;
+		}
+		else
+		{
+			tArraySize = type.array[0];
+		}
+		tIntermediate.count = tArraySize;
+
+		tIntermediates.push_back(tIntermediate);
+	}
+	return tIntermediates;
+}
+
+// Compile the shader layout per shader
+std::vector<descriptorLayoutIntermediate> CompileShaderLayout(
+	const std::string& iShader, ShaderStageFlagBits iTypeOfShader)
+{
+	std::vector<uint32_t> byteCode = readFileInt(iShader);
+	spirv_cross::Compiler compilerShader(std::move(byteCode));
+	spirv_cross::ShaderResources resourcesShader = compilerShader.get_shader_resources();
+
+	std::vector<descriptorLayoutIntermediate> intermediateLayout;
+
+	// Get all the resources
+	std::vector<descriptorLayoutIntermediate> sampledImagesIntermediate 
+		= ParseResources(resourcesShader.separate_images, compilerShader, DescriptorType::eSampledImage ,iTypeOfShader);
+
+	std::vector<descriptorLayoutIntermediate> samplersIntermediate 
+		= ParseResources(resourcesShader.separate_samplers, compilerShader, DescriptorType::eSampler, iTypeOfShader);
+
+	std::vector<descriptorLayoutIntermediate> uniformBuffersIntermediate 
+		= ParseResources(resourcesShader.uniform_buffers, compilerShader, DescriptorType::eUniformBuffer, iTypeOfShader);
+
+
+	// Put resources in a single 
+	intermediateLayout.insert(intermediateLayout.end(), sampledImagesIntermediate.begin(), sampledImagesIntermediate.end());
+	intermediateLayout.insert(intermediateLayout.end(), samplersIntermediate.begin(), samplersIntermediate.end());
+	intermediateLayout.insert(intermediateLayout.end(), uniformBuffersIntermediate.begin(), uniformBuffersIntermediate.end());
+
+	
+	return intermediateLayout;
+}
+
+//Merge the layouts we have into proper descriptor sets
+// This function will always return the layouts of the sets in ordered fashion
+// from set 0 to 1 to 2 etc
+std::vector<DescriptorSetLayout> MergeLayouts(
+	const std::vector<std::vector<descriptorLayoutIntermediate>> iLayouts)
+{
+	std::vector<descriptorLayoutIntermediate> tIntermediates;
+
+	// go through all elements in the layouts
+	// We could potentially have 5/6 shaders, and they all need to be synced up
+	for (int i = 0; i < iLayouts.size(); ++i)
+	{
+		for (auto& existingLayout : iLayouts[i])
+		{
+			bool unique = true;
+			for (auto& finalLayouts : tIntermediates)
+			{
+				// If in the same set? That is fine, sets can be different types
+				// if same bindings, types NEED to be the same, otherwise we have a mismatch
+				// if same bindings, count NEEDS to be the same, otherwise we have mismatch
+				// if same bindings, and if same count, add the shader stage flag
+				if (existingLayout.set == finalLayouts.set )
+				{
+					// Check if the descriptors match, if they don't we have a mismatch between shaders
+					// If there are different bindings, it is unique and we can skip this
+					if (existingLayout.binding == finalLayouts.binding)
+					{
+						if (existingLayout.count != finalLayouts.count || existingLayout.descType != finalLayouts.descType)
+						{
+							LOG(FATAL) << "MergeLayouts() Sets and bindings of descriptor sets match but the type/count is/are different!";
+							break;
+						}
+						unique = false;
+						// Add our shader stage to it
+						finalLayouts.shaderStage |= existingLayout.shaderStage;
+					}
+				
+				}
+			}
+
+			if (unique == false)
+			{
+				continue;
+			}
+			tIntermediates.push_back(existingLayout);
+		}
+	}
+
+	std::cout << tIntermediates.size() << std::endl;
+
+	// Map our descriptor layouts based on their sets
+	
+	std::map<uint32_t, std::vector<descriptorLayoutIntermediate>> sets;
+	std::vector<DescriptorSetLayout> finalLayouts;
+
+	// Put our entries in the map by their set value
+	for (auto& e : tIntermediates)
+	{
+		sets[e.set].push_back(e);
+	}
+
+	// Now create layouts for the pre-determined sets in the map
+	for (auto& e : sets)
+	{
+		std::vector<DescriptorSetLayoutBinding> tLayoutsBindings;
+		for (auto& e2 : e.second)
+		{
+			vk::DescriptorSetLayoutBinding layoutbinding = vk::DescriptorSetLayoutBinding()
+				.setBinding(e2.binding)
+				.setDescriptorCount(e2.count)
+				.setDescriptorType(e2.descType)
+				.setPImmutableSamplers(nullptr)
+				.setStageFlags(e2.shaderStage);
+
+			tLayoutsBindings.push_back(layoutbinding);
+		}
+	
+
+		vk::DescriptorSetLayoutCreateInfo layout = vk::DescriptorSetLayoutCreateInfo()
+			.setPNext(NULL)
+			.setBindingCount(static_cast<uint32_t>(tLayoutsBindings.size()))
+			.setPBindings(tLayoutsBindings.data());
+
+		finalLayouts.push_back(deviceVulkan->device.createDescriptorSetLayout(layout));
+	}
+
+	return finalLayouts;
+}
+
+
+// compile these shaders into one descriptor layout
+std::vector<vk::DescriptorSetLayout> CompileShadersIntoLayouts(
+	const std::string& iVertexShader, const std::string& iFragmentShader)
+{	
+	std::future<std::vector<descriptorLayoutIntermediate>> futureVertex = 
+		std::async(CompileShaderLayout, iVertexShader, ShaderStageFlagBits::eVertex);
+	
+	std::future<std::vector<descriptorLayoutIntermediate>> futureFragment =
+		std::async(CompileShaderLayout, iFragmentShader, ShaderStageFlagBits::eFragment);
+
+	std::vector<descriptorLayoutIntermediate> vertexLayout;
+	std::vector<descriptorLayoutIntermediate> fragmentLayout;
+
+	vertexLayout = futureVertex.get();
+	fragmentLayout = futureFragment.get();
+
+	std::vector<std::vector<descriptorLayoutIntermediate>> layouts = { std::move(vertexLayout), std::move(fragmentLayout)};
+
+	return MergeLayouts(layouts);
+}
+
 void SetupPipelineLayout()
 {
-	vk::DescriptorSetLayoutBinding pureSampler_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(0)
-		.setDescriptorCount(1)
-		.setDescriptorType(DescriptorType::eSampler)
-		.setPImmutableSamplers(nullptr)
-		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-
-
-	bindings = { pureSampler_layout_binding };
-
-	vk::DescriptorSetLayoutCreateInfo descriptor_layout = vk::DescriptorSetLayoutCreateInfo()
-		.setPNext(NULL)
-		.setBindingCount(static_cast<uint32_t>(bindings.size()))
-		.setPBindings(bindings.data());
-
-
-	vk::DescriptorSetLayoutBinding uniform_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(0)
-		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-		.setDescriptorCount(1)
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex |  vk::ShaderStageFlagBits::eFragment)
-		.setPImmutableSamplers(NULL);
-
-	vk::DescriptorSetLayoutBinding light_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(1)
-		.setDescriptorType(vk::DescriptorType::eUniformBuffer)
-		.setDescriptorCount(1)
-		.setStageFlags(vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-		.setPImmutableSamplers(NULL);
-
-	uniformBinding = { uniform_binding, light_binding };
-
-
-	vk::DescriptorSetLayoutCreateInfo descriptor_layoutUniform = vk::DescriptorSetLayoutCreateInfo()
-		.setPNext(NULL)
-		.setBindingCount(static_cast<uint32_t>(uniformBinding.size()))
-		.setPBindings(uniformBinding.data());
-
-
-	vk::DescriptorSetLayoutBinding pureImage_layout_binding = vk::DescriptorSetLayoutBinding()
-		.setBinding(0)
-		.setDescriptorCount(1)
-		.setDescriptorType(DescriptorType::eSampledImage)
-		.setPImmutableSamplers(nullptr)
-		.setStageFlags(vk::ShaderStageFlagBits::eFragment);
-
-
-
-	normalTextureBinding = { pureImage_layout_binding };
-
-	vk::DescriptorSetLayoutCreateInfo descripor_layoutTexture = vk::DescriptorSetLayoutCreateInfo()
-		.setPNext(NULL)
-		.setBindingCount(static_cast<uint32_t>(normalTextureBinding.size()))
-		.setPBindings(normalTextureBinding.data());
-
-
-	desc_layout.push_back(deviceVulkan->device.createDescriptorSetLayout(descriptor_layout));
-	desc_layout.push_back(deviceVulkan->device.createDescriptorSetLayout(descriptor_layoutUniform));
-	desc_layout.push_back(deviceVulkan->device.createDescriptorSetLayout(descripor_layoutTexture));
-
+	desc_layout = std::move(CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv"));
 }
 
 void SetupDescriptorSet()
@@ -846,7 +688,7 @@ void SetupRenderPass()
 {
 
 	vk::AttachmentDescription attachments[2] = {};
-	attachments[0].format = swapchain.format;
+	attachments[0].format = deviceVulkan->swapchain.format;
 	attachments[0].samples = NUM_SAMPLES;
 	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
 	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
@@ -909,9 +751,10 @@ void SetupRenderPass()
 	renderPass = deviceVulkan->device.createRenderPass(rp_info);
 }
 
+#include "Helper.h"
 void SetupShaders()
 {
-	auto vertexShader = CreateShader(deviceVulkan->device, "Shaders/vert.spv", "main", ShaderStageFlagBits::eVertex);
+	auto vertexShader = CreateShader(deviceVulkan->device, "Shaders/vertex.spv", "main", ShaderStageFlagBits::eVertex);
 	auto fragmentShader = CreateShader(deviceVulkan->device, "Shaders/frag.spv", "main", ShaderStageFlagBits::eFragment);
 
 	shaders.push_back(vertexShader);
@@ -943,9 +786,9 @@ void SetupFramebuffers()
 		.setHeight(screenHeight)
 		.setLayers(1);
 
-	for (int i = 0; i < swapchain.images.size(); ++i)
+	for (int i = 0; i < deviceVulkan->swapchain.images.size(); ++i)
 	{
-		attachments[0] = swapchain.views[i];
+		attachments[0] = deviceVulkan->swapchain.views[i];
 		framebuffers.push_back(deviceVulkan->device.createFramebuffer(fb_info));
 	}
 }
@@ -961,7 +804,7 @@ void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize
 
 	tCmdBuffer.copyBuffer(srcBuffer, destBuffer, 1, &copyRegion);
 
-	EndSingleTimeCommands(deviceVulkan->device, tCmdBuffer, cmdPool->GetPool(), graphicsQueue);
+	EndSingleTimeCommands(deviceVulkan->device, tCmdBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 }
 
 void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
@@ -1269,20 +1112,6 @@ void InitScissors(vk::CommandBuffer aBuffer)
 	aBuffer.setScissor(0, 1, &scissor);
 }
 
-void SetupDeviceQueue()
-{
-	graphicsQueue = deviceVulkan->device.getQueue(familyGraphicsIndex, 0);
-
-	if (familyGraphicsIndex == familyPresenteIndex)
-	{
-		presentQueue = graphicsQueue;
-	}
-	else
-	{
-		presentQueue = deviceVulkan->device.getQueue(familyPresenteIndex, 0);
-	}
-}
-
 
 
 vk::Fence graphicsQueueFinishedFence;
@@ -1486,7 +1315,7 @@ void RendererVulkan::Render()
 		CommandSetup.join();
 	}
 
-	deviceVulkan->device.acquireNextImageKHR(swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
+	deviceVulkan->device.acquireNextImageKHR(deviceVulkan->swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
 	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 
 
@@ -1501,17 +1330,17 @@ void RendererVulkan::Render()
 	submit_info[0].signalSemaphoreCount = 1;
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 
-	graphicsQueue.submit(1, submit_info, graphicsQueueFinishedFence);
+	deviceVulkan->graphicsQueue.submit(1, submit_info, graphicsQueueFinishedFence);
 
 	vk::PresentInfoKHR present;
 	present.swapchainCount = 1;
-	present.pSwapchains = &swapchain.swapchain;
+	present.pSwapchains = &deviceVulkan->swapchain.swapchain;
 	present.pImageIndices = &currentBuffer;
 	present.pWaitSemaphores = &rendererFinishedSemaphore;	//
 	present.waitSemaphoreCount = 1;
 	present.pResults = 0;
 
-	presentQueue.presentKHR(&present);
+	deviceVulkan->presentQueue.presentKHR(&present);
 
 	//presentQueue.waitIdle();
 }
@@ -1521,9 +1350,10 @@ void RendererVulkan::BeginFrame(const Camera& iCamera, const std::vector<Light>&
 	UpdateUniformBufferTest((currentBuffer + 1) % 2, iCamera, lights);
 }
 
-void RendererVulkan::Create()
+std::map<std::string, TextureVulkan> textureMap;
+
+void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 {
-	rawMeshData = ModelLoader::LoadModel("Models/Sponza/sponza.obj", false);
 
 	SetupApplication();
 	SetupSDL();
@@ -1543,35 +1373,75 @@ void RendererVulkan::Create()
 	SetupFramebuffers();
 	SetupCommandBuffer();
 
-	SetupDeviceQueue();
+	deviceVulkan->SetupDeviceQueue();
+	
 	
 	vk::CommandBuffer stageBuffer = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
-
-	
 	TransitionImageLayout(stageBuffer, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
 	// Staging buffers we will need to delete
 	std::vector<BufferVulkan> stagingBuffers;
-	for (auto& e : rawMeshData)
+
+	// load in albedo textures in this loop
+	for (int i = 0; i < iMeshes.size(); ++i)
 	{
+		auto& e = iMeshes[i];
 		std::unique_ptr<ModelVulkan> tModV = std::make_unique<ModelVulkan>();
 		SetupVertexBuffer(tModV->vertexBuffer, e);
 		SetupIndexBuffer(tModV->indexBuffer, e);
 
 		tModV->indiceCount = e.indices.size();
 
-		SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0].c_str(), tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
-		tModV->albedoTexture.view = CreateImageView(deviceVulkan->device, tModV->albedoTexture.image, Format::eR8G8B8A8Unorm);
+		// Check if the texture already exists in the map
+		if (textureMap.find(e.filepaths[0]) == textureMap.end())
+		{
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0].c_str(), tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
+			tModV->albedoTexture.view = CreateImageView(deviceVulkan->device, tModV->albedoTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[0]] = tModV->albedoTexture;
+		}
+		else
+		{
+			//LOG(INFO) << "Found matching";
+			tModV->albedoTexture = textureMap.at(e.filepaths[0]);
+		}
+
+
+		if (textureMap.find(e.filepaths[1]) == textureMap.end())
+		{
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);
+			tModV->normalTexture.view = CreateImageView(deviceVulkan->device, tModV->normalTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[1]] = tModV->normalTexture;
+
+		}
+		else
+		{
+			tModV->normalTexture = textureMap.at(e.filepaths[1]);
+		}
+
+
+		if (textureMap.find(e.filepaths[2]) == textureMap.end())
+		{
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[2].c_str(), tModV->specularTexture.image, tModV->specularTexture.allocation, stagingBuffers);
+			tModV->specularTexture.view = CreateImageView(deviceVulkan->device, tModV->specularTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[2]] = tModV->specularTexture;
+		}
+		else
+		{
+			tModV->specularTexture = textureMap.at(e.filepaths[2]);
+		}
+
 		models.push_back(std::move(tModV));
 	}
-	EndSingleTimeCommands(deviceVulkan->device, stageBuffer, cmdPool->GetPool(), graphicsQueue);
+	EndSingleTimeCommands(deviceVulkan->device, stageBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 
-	rawMeshData.clear();
 
+	
 	for (auto& e : stagingBuffers)
 	{
 		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
 	}
+	stagingBuffers.clear();
+	stagingBuffers.resize(1);
 
 	SetupPipeline();
 	SetupSemaphores();
@@ -1579,12 +1449,14 @@ void RendererVulkan::Create()
 	CreateTextureSampler(deviceVulkan->device);
 
 	SetupDescriptorSet();
+	iMeshes.clear();
+	iMeshes.resize(1);
 }
 
 void RendererVulkan::Destroy()
 {
-	
-	presentQueue.waitIdle();
+
+	deviceVulkan->presentQueue.waitIdle();
 	for (auto& e : commandBuffers)
 	{
 		e.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -1605,7 +1477,7 @@ void RendererVulkan::Destroy()
 	{
 		deviceVulkan->device.destroyShaderModule(e.shaderModule);
 	}
-	
+
 	cmdPool->Destroy(deviceVulkan->device);
 	//device.destroyCommandPool(commandPool);
 	//vice.destroySwapchainKHR(swapchain.swapchain);
@@ -1627,7 +1499,7 @@ void RendererVulkan::Destroy()
 	deviceVulkan->device.destroyPipeline(pipeline);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
 	deviceVulkan->device.destroyRenderPass(renderPass);
-	
+
 	for (auto& e : uniformBufferMVP)
 	{
 		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
@@ -1642,8 +1514,17 @@ void RendererVulkan::Destroy()
 	{
 		vmaDestroyBuffer(allocator, e->vertexBuffer.buffer, e->vertexBuffer.allocation);
 		vmaDestroyBuffer(allocator, e->indexBuffer.buffer, e->indexBuffer.allocation);
-		vmaDestroyImage(allocator, e->albedoTexture.image, e->albedoTexture.allocation);
-		deviceVulkan->device.destroyImageView(e->albedoTexture.view);
+		//vmaDestroyImage(allocator, e->albedoTexture.image, e->albedoTexture.allocation);
+		//vmaDestroyImage(allocator, e->normalTexture.image, e->normalTexture.allocation);
+		//vmaDestroyImage(allocator, e->specularTexture.image, e->specularTexture.allocation);
+
+		//deviceVulkan->device.destroyImageView(e->albedoTexture.view);
+	}
+
+	for (auto& e: textureMap)
+	{
+		vmaDestroyImage(allocator, e.second.image, e.second.allocation);
+		deviceVulkan->device.destroyImageView(e.second.view);
 	}
 
 	vmaDestroyImage(allocator, postProcBuffer.image, postProcBuffer.allocation);
@@ -1653,11 +1534,9 @@ void RendererVulkan::Destroy()
 
 	// Clean up.
 	vmaDestroyAllocator(allocator);
-
+	window->Destroy();
 	deviceVulkan->device.waitIdle();
 	deviceVulkan->device.destroy();
-	instance.destroySurfaceKHR(swapchain.surface);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
+	instance.destroySurfaceKHR(deviceVulkan->swapchain.surface);
 	instance.destroy();
 }

@@ -141,6 +141,7 @@ inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer,
 	aQueue.waitIdle();
 
 	aDevice.freeCommandBuffers(aPool, aBuffer);
+	aDevice.waitIdle();
 }
 
 ShaderVulkan CreateShader(

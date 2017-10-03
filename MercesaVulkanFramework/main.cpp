@@ -38,7 +38,7 @@ Create and destroy a Vulkan surface on an SDL window.
 #include <fstream>
 
 
-#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
+//#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
 
 #include "easylogging++.h"
 INITIALIZE_EASYLOGGINGPP
@@ -69,11 +69,12 @@ int main()
 	freopen("conout$", "w", stderr);
 #endif
 
-	renderer = std::make_unique<RendererVulkan>();
-	renderer->Create();
 
 	CurrentGame = std::make_unique<Game>();
 	CurrentGame->Init();
+
+	renderer = std::make_unique<RendererVulkan>();
+	renderer->Create(CurrentGame->modelsToBeLoaded);
 
 
 	std::cout << "setup completed" << std::endl;
