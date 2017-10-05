@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 
-class Camera;
+class NewCamera;
 class Light;
 struct RawMeshData;
 
@@ -12,7 +12,7 @@ public:
 	~RendererVulkan();
 	
 	void Create(std::vector<RawMeshData>& iMeshes);
-	void BeginFrame(const Camera& iCamera, const std::vector<Light>& iLights);
+	void BeginFrame(const NewCamera& iCamera, const std::vector<Light>& iLights);
 	void Render();
 	void Destroy();
 

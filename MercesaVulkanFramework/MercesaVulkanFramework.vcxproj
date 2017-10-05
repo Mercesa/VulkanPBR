@@ -182,6 +182,7 @@
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="NewCamera.h" />
     <ClInclude Include="PipelineVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
@@ -201,13 +202,13 @@
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\DebugX64;$(ProjectDir)\Libs\Assimp\x64-Debug;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\</LibraryPath>
+    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\DebugX64;$(ProjectDir)\Libs\Assimp\x64-Debug;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Debug</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\ReleaseX64;$(ProjectDir)\Libs\Assimp\x64-Release;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\</LibraryPath>
+    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\ReleaseX64;$(ProjectDir)\Libs\Assimp\x64-Release;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Release</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin32

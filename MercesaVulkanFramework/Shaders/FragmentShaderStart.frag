@@ -27,7 +27,10 @@ layout(std140, set = 1, binding = 1) uniform lightVals{
 
 
 layout(set = 0, binding = 0) uniform sampler realTextureSampler;
-layout(set = 2, binding = 0) uniform texture2D realTexture;
+layout(set = 2, binding = 0) uniform texture2D albedoTexture;
+layout(set = 2, binding = 1) uniform texture2D specularTexture;
+layout(set = 2, binding = 2) uniform texture2D normalTexture;
+
 
 
 layout (location = 0) in vec4 color;
@@ -52,5 +55,6 @@ void main() {
 		float d = max(dot(lightDir, normal), 0.0f);
 		col += d * vec3(myLightVals.lights[0].color);// * (1.0f/(1.0f+1.0f*lengthL));
 	//vec3 lightCol = vec3(myLightVals.lights[0].color);
-	outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
+	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
+	outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv);
 }

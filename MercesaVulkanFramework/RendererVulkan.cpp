@@ -19,7 +19,6 @@
 
 #include "RenderingIncludes.h"
 
-
 #include <iostream>
 #include <math.h>
 #include <algorithm>
@@ -53,6 +52,8 @@
 #include "easylogging++.h"
 #include "SDLLowLevelWindow.h"
 #include "libs/Spir-v cross/spirv_glsl.hpp"
+#include "DescriptorLayoutHelper.h"
+#include "NewCamera.h"
 
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData ;
@@ -102,8 +103,6 @@ std::vector<QueueFamilyProperties> familyProperties;
 
 std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
-
-
 std::vector<std::unique_ptr<ModelVulkan>> models;
 
 VmaAllocator allocator;
@@ -151,8 +150,6 @@ vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow
 }
 
 
-
-
 void SetupApplication()
 {
 	// vk::ApplicationInfo allows the programmer to specifiy some basic information about the
@@ -163,8 +160,6 @@ void SetupApplication()
 
 	instance = deviceVulkan->instance;
 }
-
-
 
 void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 {
@@ -206,7 +201,7 @@ void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Form
 		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
 		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
 
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
 	}
 	else
 	{
@@ -272,7 +267,7 @@ void SetupSwapchain()
 void SetupDepthbuffer()
 {
 	vk::ImageCreateInfo image_Info = {};
-	const vk::Format depth_format = vk::Format::eD16Unorm;
+	const vk::Format depth_format = vk::Format::eD24UnormS8Uint;
 
 	// Query if the format we supplied is supported by our device
 	vk::FormatProperties props = deviceVulkan->physicalDevice.getFormatProperties(depth_format);
@@ -295,7 +290,7 @@ void SetupDepthbuffer()
 	CreateSimpleImage(allocator, depthBuffer.allocation,
 		VMA_MEMORY_USAGE_GPU_ONLY,
 		ImageUsageFlagBits::eDepthStencilAttachment,
-		vk::Format::eD16Unorm,
+		vk::Format::eD24UnormS8Uint,
 		vk::ImageLayout::eUndefined,
 		depthBuffer.image,
 		screenWidth, screenHeight);
@@ -310,7 +305,7 @@ void SetupDepthbuffer()
 		.setViewType(ImageViewType::e2D);
 
 	view_info.image = depthBuffer.image;
-	depthBuffer.format = Format::eD16Unorm;
+	depthBuffer.format = Format::eD24UnormS8Uint;
 
 	depthBuffer.view = deviceVulkan->device.createImageView(view_info);
 }
@@ -362,18 +357,23 @@ void SetupUniformbuffer()
 }
 
 
-void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std::vector<Light>& iLights)
+void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const std::vector<Light>& iLights)
 {
 	static float derp = 1.0f;
 	derp += 0.01f;
 	float derp2 = (sinf(derp) + 1.0f) / 2.0f;
 
-	glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
-	glm::mat4 viewMatrix = iCam.GetViewMatrix();
-	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01));
-	glm::mat4 clipMatrix = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
+	glm::mat4 projectionMatrix = iCam.matrices.perspective;
+	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01f));
+	
+	//viewMatrix[1][3] *= -1;
+	projectionMatrix[0][0] *= -1;
+	
+	glm::mat4 clipMatrix = glm::mat4(
+		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
 		0.0f, 0.0f, 0.5f, 1.0f);
 
 
@@ -381,7 +381,7 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std
 	matrixConstantBufferData.viewMatrix = viewMatrix;
 	matrixConstantBufferData.projectionMatrix = projectionMatrix;
 	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
-	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
+	matrixConstantBufferData.mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
 
 	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
@@ -397,199 +397,10 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const Camera& iCam, const std
 	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
-struct descriptorLayoutIntermediate
-{
-	std::string name = "";
-	uint32_t binding = 0;
-	uint32_t set = 0;
-	uint32_t count = 0;
-	vk::DescriptorType descType;
-	vk::ShaderStageFlags shaderStage;
-};
-
-// Parse the resources
-std::vector<descriptorLayoutIntermediate> ParseResources(
-	const std::vector<spirv_cross::Resource>& iResources,
-	const spirv_cross::Compiler& iCompiler,
-	DescriptorType iDescriptorType,
-	ShaderStageFlagBits iTypeOfShader)
-{
-	std::vector<descriptorLayoutIntermediate> tIntermediates;
-	for (auto& e : iResources)
-	{
-		descriptorLayoutIntermediate tIntermediate;
-
-		tIntermediate.binding = iCompiler.get_decoration(e.id, spv::DecorationBinding);
-		tIntermediate.set = iCompiler.get_decoration(e.id, spv::DecorationDescriptorSet);
-		tIntermediate.name = e.name;
-		tIntermediate.descType = iDescriptorType;
-		tIntermediate.shaderStage = iTypeOfShader;
-
-		// Find out if our descriptor set is an array or not
-		const spirv_cross::SPIRType& type = iCompiler.get_type(e.type_id);
-
-		unsigned tArraySize = 0;
-
-		// If it is no array, only one descriptor present
-		if (type.array.empty())
-		{
-			tArraySize = 1;
-		}
-		else
-		{
-			tArraySize = type.array[0];
-		}
-		tIntermediate.count = tArraySize;
-
-		tIntermediates.push_back(tIntermediate);
-	}
-	return tIntermediates;
-}
-
-// Compile the shader layout per shader
-std::vector<descriptorLayoutIntermediate> CompileShaderLayout(
-	const std::string& iShader, ShaderStageFlagBits iTypeOfShader)
-{
-	std::vector<uint32_t> byteCode = readFileInt(iShader);
-	spirv_cross::Compiler compilerShader(std::move(byteCode));
-	spirv_cross::ShaderResources resourcesShader = compilerShader.get_shader_resources();
-
-	std::vector<descriptorLayoutIntermediate> intermediateLayout;
-
-	// Get all the resources
-	std::vector<descriptorLayoutIntermediate> sampledImagesIntermediate 
-		= ParseResources(resourcesShader.separate_images, compilerShader, DescriptorType::eSampledImage ,iTypeOfShader);
-
-	std::vector<descriptorLayoutIntermediate> samplersIntermediate 
-		= ParseResources(resourcesShader.separate_samplers, compilerShader, DescriptorType::eSampler, iTypeOfShader);
-
-	std::vector<descriptorLayoutIntermediate> uniformBuffersIntermediate 
-		= ParseResources(resourcesShader.uniform_buffers, compilerShader, DescriptorType::eUniformBuffer, iTypeOfShader);
-
-
-	// Put resources in a single 
-	intermediateLayout.insert(intermediateLayout.end(), sampledImagesIntermediate.begin(), sampledImagesIntermediate.end());
-	intermediateLayout.insert(intermediateLayout.end(), samplersIntermediate.begin(), samplersIntermediate.end());
-	intermediateLayout.insert(intermediateLayout.end(), uniformBuffersIntermediate.begin(), uniformBuffersIntermediate.end());
-
-	
-	return intermediateLayout;
-}
-
-//Merge the layouts we have into proper descriptor sets
-// This function will always return the layouts of the sets in ordered fashion
-// from set 0 to 1 to 2 etc
-std::vector<DescriptorSetLayout> MergeLayouts(
-	const std::vector<std::vector<descriptorLayoutIntermediate>> iLayouts)
-{
-	std::vector<descriptorLayoutIntermediate> tIntermediates;
-
-	// go through all elements in the layouts
-	// We could potentially have 5/6 shaders, and they all need to be synced up
-	for (int i = 0; i < iLayouts.size(); ++i)
-	{
-		for (auto& existingLayout : iLayouts[i])
-		{
-			bool unique = true;
-			for (auto& finalLayouts : tIntermediates)
-			{
-				// If in the same set? That is fine, sets can be different types
-				// if same bindings, types NEED to be the same, otherwise we have a mismatch
-				// if same bindings, count NEEDS to be the same, otherwise we have mismatch
-				// if same bindings, and if same count, add the shader stage flag
-				if (existingLayout.set == finalLayouts.set )
-				{
-					// Check if the descriptors match, if they don't we have a mismatch between shaders
-					// If there are different bindings, it is unique and we can skip this
-					if (existingLayout.binding == finalLayouts.binding)
-					{
-						if (existingLayout.count != finalLayouts.count || existingLayout.descType != finalLayouts.descType)
-						{
-							LOG(FATAL) << "MergeLayouts() Sets and bindings of descriptor sets match but the type/count is/are different!";
-							break;
-						}
-						unique = false;
-						// Add our shader stage to it
-						finalLayouts.shaderStage |= existingLayout.shaderStage;
-					}
-				
-				}
-			}
-
-			if (unique == false)
-			{
-				continue;
-			}
-			tIntermediates.push_back(existingLayout);
-		}
-	}
-
-	std::cout << tIntermediates.size() << std::endl;
-
-	// Map our descriptor layouts based on their sets
-	
-	std::map<uint32_t, std::vector<descriptorLayoutIntermediate>> sets;
-	std::vector<DescriptorSetLayout> finalLayouts;
-
-	// Put our entries in the map by their set value
-	for (auto& e : tIntermediates)
-	{
-		sets[e.set].push_back(e);
-	}
-
-	// Now create layouts for the pre-determined sets in the map
-	for (auto& e : sets)
-	{
-		std::vector<DescriptorSetLayoutBinding> tLayoutsBindings;
-		for (auto& e2 : e.second)
-		{
-			vk::DescriptorSetLayoutBinding layoutbinding = vk::DescriptorSetLayoutBinding()
-				.setBinding(e2.binding)
-				.setDescriptorCount(e2.count)
-				.setDescriptorType(e2.descType)
-				.setPImmutableSamplers(nullptr)
-				.setStageFlags(e2.shaderStage);
-
-			tLayoutsBindings.push_back(layoutbinding);
-		}
-	
-
-		vk::DescriptorSetLayoutCreateInfo layout = vk::DescriptorSetLayoutCreateInfo()
-			.setPNext(NULL)
-			.setBindingCount(static_cast<uint32_t>(tLayoutsBindings.size()))
-			.setPBindings(tLayoutsBindings.data());
-
-		finalLayouts.push_back(deviceVulkan->device.createDescriptorSetLayout(layout));
-	}
-
-	return finalLayouts;
-}
-
-
-// compile these shaders into one descriptor layout
-std::vector<vk::DescriptorSetLayout> CompileShadersIntoLayouts(
-	const std::string& iVertexShader, const std::string& iFragmentShader)
-{	
-	std::future<std::vector<descriptorLayoutIntermediate>> futureVertex = 
-		std::async(CompileShaderLayout, iVertexShader, ShaderStageFlagBits::eVertex);
-	
-	std::future<std::vector<descriptorLayoutIntermediate>> futureFragment =
-		std::async(CompileShaderLayout, iFragmentShader, ShaderStageFlagBits::eFragment);
-
-	std::vector<descriptorLayoutIntermediate> vertexLayout;
-	std::vector<descriptorLayoutIntermediate> fragmentLayout;
-
-	vertexLayout = futureVertex.get();
-	fragmentLayout = futureFragment.get();
-
-	std::vector<std::vector<descriptorLayoutIntermediate>> layouts = { std::move(vertexLayout), std::move(fragmentLayout)};
-
-	return MergeLayouts(layouts);
-}
 
 void SetupPipelineLayout()
 {
-	desc_layout = std::move(CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv"));
+	desc_layout = std::move(ShaderLayoutparser::CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv", deviceVulkan->device));
 }
 
 void SetupDescriptorSet()
@@ -611,23 +422,47 @@ void SetupDescriptorSet()
 
 
 
-	std::array<vk::WriteDescriptorSet, 1> textureWrites = {};
+	std::array<vk::WriteDescriptorSet, 3> textureWrites = {};
 
 	for (auto& e : models)
 	{
-		e->albedoTextureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[2], normalTextureBinding)[0];
+		e->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[2], normalTextureBinding)[0];
 
-		vk::DescriptorImageInfo pureImageInfo = {};
-		pureImageInfo.imageView = e->albedoTexture.view;
+		vk::DescriptorImageInfo albedoImageInfo = {};
+		albedoImageInfo.imageView = e->albedoTexture.view;
 
 		textureWrites[0] = {};
 		textureWrites[0].pNext = NULL;
-		textureWrites[0].dstSet = e->albedoTextureSet;
+		textureWrites[0].dstSet = e->textureSet;
 		textureWrites[0].descriptorCount = 1;
 		textureWrites[0].descriptorType = vk::DescriptorType::eSampledImage;
-		textureWrites[0].pImageInfo = &pureImageInfo;
+		textureWrites[0].pImageInfo = &albedoImageInfo;
 		textureWrites[0].dstArrayElement = 0;
 		textureWrites[0].dstBinding = 0;
+
+		vk::DescriptorImageInfo specularImageInfo = {};
+		specularImageInfo.imageView = e->specularTexture.view;
+
+		textureWrites[1] = {};
+		textureWrites[1].pNext = NULL;
+		textureWrites[1].dstSet = e->textureSet;
+		textureWrites[1].descriptorCount = 1;
+		textureWrites[1].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[1].pImageInfo = &specularImageInfo;
+		textureWrites[1].dstArrayElement = 0;
+		textureWrites[1].dstBinding = 1;
+
+		vk::DescriptorImageInfo normalmapImageInfo = {};
+		normalmapImageInfo.imageView = e->normalTexture.view;
+
+		textureWrites[2] = {};
+		textureWrites[2].pNext = NULL;
+		textureWrites[2].dstSet = e->textureSet;
+		textureWrites[2].descriptorCount = 1;
+		textureWrites[2].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[2].pImageInfo = &normalmapImageInfo;
+		textureWrites[2].dstArrayElement = 0;
+		textureWrites[2].dstBinding = 2;
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
 	}
@@ -698,7 +533,7 @@ void SetupRenderPass()
 	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 	attachments[0].flags = AttachmentDescriptionFlagBits(0);
 
-	attachments[1].format = vk::Format::eD16Unorm;
+	attachments[1].format = vk::Format::eD24UnormS8Uint;
 	attachments[1].samples = NUM_SAMPLES;
 	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
 	attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
@@ -773,8 +608,8 @@ void SetupShaders()
 
 void SetupFramebuffers()
 {
-	vk::ImageView attachments[3] = {};
-	attachments[2] = postProcBuffer.view;
+	vk::ImageView attachments[2] = {};
+	//attachments[2] = postProcBuffer.view;
 	attachments[1] = depthBuffer.view;
 	attachments[0] = vk::ImageView(nullptr);
 
@@ -1007,7 +842,7 @@ void SetupPipeline()
 	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eCounterClockwise)
+		.setFrontFace(vk::FrontFace::eClockwise)
 		.setDepthClampEnable(VK_FALSE)
 		.setRasterizerDiscardEnable(VK_FALSE)
 		.setDepthBiasEnable(VK_FALSE)
@@ -1051,7 +886,7 @@ void SetupPipeline()
 	vk::PipelineDepthStencilStateCreateInfo ds = vk::PipelineDepthStencilStateCreateInfo()
 		.setDepthTestEnable(VK_TRUE)
 		.setDepthWriteEnable(VK_TRUE)
-		.setDepthCompareOp(vk::CompareOp::eLess)
+		.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
 		.setDepthBoundsTestEnable(VK_FALSE)
 		.setMinDepthBounds(0)
 		.setMaxDepthBounds(1.0f)
@@ -1159,7 +994,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 
 	for (int j = 0; j < models.size(); ++j)
 	{
-		descriptor_set[index][2] = models[j]->albedoTextureSet;
+		descriptor_set[index][2] = models[j]->textureSet;
 		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &models[j]->vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(models[j]->indexBuffer.buffer, 0, IndexType::eUint32);
@@ -1192,7 +1027,7 @@ void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::strin
 	// Load texture with stbi
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
+	
 	vk::DeviceSize imageSize = texWidth * texHeight * 4;
 
 	if (!pixels)
@@ -1305,14 +1140,14 @@ void RendererVulkan::Render()
 
 	else
 	{
-		std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
-
+		//std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
+		SetupCommandBuffers(commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
 
 		deviceVulkan->device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
 		//LOG(INFO) << "FENCE WAITING OVER";
 		//LOG(INFO) << "Current buffer " << currentBuffer;
 		deviceVulkan->device.resetFences(graphicsQueueFinishedFence);
-		CommandSetup.join();
+		//CommandSetup.join();
 	}
 
 	deviceVulkan->device.acquireNextImageKHR(deviceVulkan->swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
@@ -1345,7 +1180,7 @@ void RendererVulkan::Render()
 	//presentQueue.waitIdle();
 }
 
-void RendererVulkan::BeginFrame(const Camera& iCamera, const std::vector<Light>& lights)
+void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& lights)
 {
 	UpdateUniformBufferTest((currentBuffer + 1) % 2, iCamera, lights);
 }
@@ -1395,7 +1230,7 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 		// Check if the texture already exists in the map
 		if (textureMap.find(e.filepaths[0]) == textureMap.end())
 		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0].c_str(), tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0], tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
 			tModV->albedoTexture.view = CreateImageView(deviceVulkan->device, tModV->albedoTexture.image, Format::eR8G8B8A8Unorm);
 			textureMap[e.filepaths[0]] = tModV->albedoTexture;
 		}
@@ -1405,7 +1240,7 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 			tModV->albedoTexture = textureMap.at(e.filepaths[0]);
 		}
 
-
+		
 		if (textureMap.find(e.filepaths[1]) == textureMap.end())
 		{
 			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);

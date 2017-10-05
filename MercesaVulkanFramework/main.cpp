@@ -38,7 +38,7 @@ Create and destroy a Vulkan surface on an SDL window.
 #include <fstream>
 
 
-//#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
+#define ELPP_DISABLE_DEFAULT_CRASH_HANDLING
 
 #include "easylogging++.h"
 INITIALIZE_EASYLOGGINGPP
@@ -46,7 +46,7 @@ INITIALIZE_EASYLOGGINGPP
 
 #include "RendererVulkan.h"
 #include "Game.h"
-
+#include "NewCamera.h"
 using namespace vk;
 
 
@@ -54,6 +54,7 @@ using namespace vk;
 #include "camera.h"
 #include <memory>
 std::unique_ptr<Camera> cam;
+std::unique_ptr<NewCamera> newCam;
 std::unique_ptr<RendererVulkan> renderer;
 std::unique_ptr<Game> CurrentGame;
 
@@ -76,6 +77,9 @@ int main()
 	renderer = std::make_unique<RendererVulkan>();
 	renderer->Create(CurrentGame->modelsToBeLoaded);
 
+	newCam = std::make_unique<NewCamera>();
+	newCam->setPerspective(45, (float)(1280 / 720), 0.01f, 100.0f);
+	newCam->setPosition(glm::vec3(0.0f, -2.0f, 0.0));
 
 	std::cout << "setup completed" << std::endl;
 
@@ -93,6 +97,11 @@ int main()
     // Poll for user input.
     bool stillRunning = true;
     while(stillRunning) {
+
+		newCam->keys.up = false;
+		newCam->keys.down = false;
+		newCam->keys.left = false;
+		newCam->keys.right = false;
 
         SDL_Event event;
         while(SDL_PollEvent(&event)) {
@@ -112,21 +121,26 @@ int main()
 				if (event.key.keysym.sym == SDLK_w)
 				{
 					camY += 1.0f;
+					newCam->keys.up = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_a)
 				{
 					camX += 1.0f;
+					newCam->keys.left = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_s)
 				{
 					camY -= 1.0f;
+					newCam->keys.down = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_d)
 				{
 					camX -= 1.0f;
+					newCam->keys.right = true;
+
 				}
 
 				if (event.key.keysym.sym == SDLK_q)
@@ -146,10 +160,12 @@ int main()
                 break;
             }	
         }
+		newCam->rotate(glm::vec3(0.0f, camRotY, 0.0f));
+		newCam->update(1.0f);
 		CurrentGame->camera->SetPosition(glm::vec3(camX, camY, camZ));
 		CurrentGame->camera->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
 
-		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
+		renderer->BeginFrame((*newCam.get()), CurrentGame->lights);
 		renderer->Render();
 		
        // SDL_Delay(10);

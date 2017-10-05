@@ -130,6 +130,9 @@
     <ClInclude Include="GraphicsResourceManagerVulkan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="NewCamera.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\VertexShaderStart.vert">

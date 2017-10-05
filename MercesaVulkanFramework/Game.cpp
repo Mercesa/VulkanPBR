@@ -23,7 +23,7 @@ void Game::Init()
 	light.position = glm::vec3(0.0f, 2.0f, 0.0f);
 	lights.push_back(light);
 
-	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sponza/sponza.obj", false);
+	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sponza/Sponza.obj", false);
 
 }
 

@@ -63,7 +63,7 @@ struct ModelVulkan
 	TextureVulkan normalTexture;
 	TextureVulkan specularTexture;
 	TextureVulkan albedoTexture;
-	vk::DescriptorSet albedoTextureSet;
+	vk::DescriptorSet textureSet;
 
 
 	uint32_t indiceCount = 0;

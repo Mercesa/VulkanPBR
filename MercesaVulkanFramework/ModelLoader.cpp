@@ -269,7 +269,7 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 	{
 		LOG(INFO) << "ModelLoader Assbin version created of asset";
 		Exporter exporter;
-		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace);
+		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace );
 		exporter.Export(scene, "assbin", assbinString, 0);
 	}
 

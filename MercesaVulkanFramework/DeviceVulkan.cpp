@@ -305,15 +305,18 @@ void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uin
 		.setApiVersion(iApiVersion);
 
 
-	//for (auto &e : layers)
-	//{
-	//	std::cout << e.layerName << std::endl;
-	//	//layerNames.push_back(e.layerName);
-	//}
+	std::vector<LayerProperties> layers = enumerateInstanceLayerProperties();
+	for (auto &e : layers)
+	{
+		//std::cout << e.layerName << std::endl;
+		//layerNames.push_back(e.layerName);
+	}
 
 #ifdef _DEBUG
 	layerNames.push_back("VK_LAYER_LUNARG_standard_validation");
 	layerNames.push_back("VK_LAYER_LUNARG_core_validation");
+	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
+
 #endif;
 	extensions = getAvailableWSIExtensions();
 
