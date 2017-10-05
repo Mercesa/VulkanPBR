@@ -219,7 +219,6 @@ void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Form
 }
 
 
-
 void SetupDevice()
 {
 	deviceVulkan->CreateDevice();
@@ -368,20 +367,20 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01f));
 	
 	//viewMatrix[1][3] *= -1;
-	projectionMatrix[0][0] *= -1;
+	//projectionMatrix[0][0] *= -1;
 	
 	glm::mat4 clipMatrix = glm::mat4(
 		1.0f, 0.0f, 0.0f, 0.0f,
 		0.0f, -1.0f, 0.0f, 0.0f,
 		0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 1.0f);
+		0.0f, 0.0f, 0.0f, 1.0f);
 
 
 	matrixConstantBufferData.modelMatrix = modelMatrix;
 	matrixConstantBufferData.viewMatrix = viewMatrix;
 	matrixConstantBufferData.projectionMatrix = projectionMatrix;
 	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
-	matrixConstantBufferData.mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
+	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
 	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
@@ -393,8 +392,6 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 	}
 
 	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferLights[iCurrentBuff].allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
-
-	//device.mapMemory(vk::DeviceMemory(uniformBufferMemory), vk::DeviceSize(0), vk::DeviceSize(mem_reqs.size), vk::MemoryMapFlagBits(0), (void**)&pData);
 }
 
 
@@ -419,8 +416,6 @@ void SetupDescriptorSet()
 
 		descriptor_set.push_back(tDescSet);
 	}
-
-
 
 	std::array<vk::WriteDescriptorSet, 3> textureWrites = {};
 
@@ -562,7 +557,6 @@ void SetupRenderPass()
 		.setPDepthStencilAttachment(&depth_reference)
 		.setPreserveAttachmentCount(0)
 		.setPResolveAttachments(NULL);
-
 
 	vk::SubpassDependency dependency = vk::SubpassDependency()
 		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
@@ -842,7 +836,7 @@ void SetupPipeline()
 	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eClockwise)
+		.setFrontFace(vk::FrontFace::eCounterClockwise)
 		.setDepthClampEnable(VK_FALSE)
 		.setRasterizerDiscardEnable(VK_FALSE)
 		.setDepthBiasEnable(VK_FALSE)

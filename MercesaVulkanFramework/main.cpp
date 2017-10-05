@@ -90,14 +90,14 @@ int main()
 	camY = 0.0f;
 	camZ = 0.0f;
 
-	camRotX = 0.0f;
-	camRotY = 0.0f;
-	camRotZ = 0.0f;
 
     // Poll for user input.
     bool stillRunning = true;
     while(stillRunning) {
 
+		camRotX = 0.0f;
+		camRotY = 0.0f;
+		camRotZ = 0.0f;
 		newCam->keys.up = false;
 		newCam->keys.down = false;
 		newCam->keys.left = false;
@@ -126,7 +126,7 @@ int main()
 
 				if (event.key.keysym.sym == SDLK_a)
 				{
-					camX += 1.0f;
+					camX -= 1.0f;
 					newCam->keys.left = true;
 				}
 
@@ -138,7 +138,7 @@ int main()
 
 				if (event.key.keysym.sym == SDLK_d)
 				{
-					camX -= 1.0f;
+					camX += 1.0f;
 					newCam->keys.right = true;
 
 				}

@@ -46,15 +46,16 @@ void main() {
 	vec3 col = vec3(0.0f);
 	for(int i = 0; i < myLightVals.currentAmountOfLights; ++i)
 	{
-
-	}
-		vec3 lightDir =  vec3(myLightVals.lights[0].position) - fragPos;
+		vec3 lightDir =  vec3(myLightVals.lights[i].position) - fragPos;
 		float lengthL = length(lightDir);
 		lightDir = normalize(lightDir);
-
 		float d = max(dot(lightDir, normal), 0.0f);
-		col += d * vec3(myLightVals.lights[0].color);// * (1.0f/(1.0f+1.0f*lengthL));
+		col += d * vec3(myLightVals.lights[i].color) * (1.0f/(1.0f+1.0f*lengthL));
+	}
+		
+
+		
 	//vec3 lightCol = vec3(myLightVals.lights[0].color);
 	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
-	outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv);
+	outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
 }
