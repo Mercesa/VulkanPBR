@@ -364,7 +364,7 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 
 	glm::mat4 projectionMatrix = iCam.matrices.perspective;
 	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01f));
+	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01f)) * glm::translate(glm::vec3(2.0f, 0.0f, 0.0f));
 	
 	//viewMatrix[1][3] *= -1;
 	//projectionMatrix[0][0] *= -1;

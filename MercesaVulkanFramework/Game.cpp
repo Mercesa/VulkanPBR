@@ -18,17 +18,21 @@ void Game::Init()
 {
 	camera = std::make_unique<Camera>();
 	
-	for (int i = 0; i < 4; ++i)
-	{
-		for (int j = 0; i < 4; ++j)
-		{
-			Light light;
-			light.diffuseColor = glm::vec3(i/4.0f, 1.0f, j/4.0f);
-			light.position = glm::vec3(i*2.0f, j*2.0f, 0.0f);
-			lights.push_back(light);
-		}
-	}
+	//for (int i = 0; i < 4; ++i)
+	//{
+	//	for (int j = 0; j < 4; ++j)
+	//	{
+	////		Light light;
+	////		light.diffuseColor = glm::vec3(i%2, (i+j)%2, j%2);
+	////		light.position = glm::vec3(i*8.0f-4, 2.0f, j*3.0f);
+	////		lights.push_back(light);
+	//	}
+	//}
 
+	Light light;
+	light.diffuseColor = glm::vec3(1.0f, 1.0f, 1.0f);
+	light.position = glm::vec3(2.0f, 2.0f, 2.0f);
+	lights.push_back(light);
 
 	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sponza/Sponza.obj", false);
 

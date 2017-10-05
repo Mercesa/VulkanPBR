@@ -28,7 +28,7 @@ private:
 		rotM = glm::rotate(rotM, glm::radians(rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
 		rotM = glm::rotate(rotM, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		transM = glm::translate(glm::mat4(1.0f), position);
+		transM = glm::translate(glm::mat4(1.0f), -position);
 
 		if (type == CameraType::firstperson)
 		{
@@ -121,7 +121,7 @@ public:
 				camFront.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
 				camFront.y = sin(glm::radians(rotation.x));
 				camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
-				camFront = glm::normalize(camFront);
+				camFront = glm::normalize(-camFront);
 
 				float moveSpeed = deltaTime * movementSpeed;
 

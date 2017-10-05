@@ -79,7 +79,7 @@ int main()
 
 	newCam = std::make_unique<NewCamera>();
 	newCam->setPerspective(45, (float)(1280 / 720), 0.01f, 100.0f);
-	newCam->setPosition(glm::vec3(0.0f, -2.0f, 0.0));
+	newCam->setPosition(glm::vec3(0.0f, 2.0f, 0.0));
 
 	std::cout << "setup completed" << std::endl;
 
@@ -160,7 +160,12 @@ int main()
                 break;
             }	
         }
-		newCam->rotate(glm::vec3(0.0f, camRotY, 0.0f));
+
+		//std::cout << "x: " << newCam->camFront.x << std::endl;
+		//std::cout << "y: " << newCam->camFront.y << std::endl;
+		//std::cout << "z: " << newCam->camFront.z << std::endl;
+
+		newCam->rotate(glm::vec3(camRotY, 0.0f, 0.0f));
 		newCam->update(1.0f);
 		CurrentGame->camera->SetPosition(glm::vec3(camX, camY, camZ));
 		CurrentGame->camera->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
