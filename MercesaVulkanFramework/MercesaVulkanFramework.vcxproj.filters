@@ -68,6 +68,9 @@
     <ClCompile Include="DescriptorLayoutHelper.h">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="RenderPassVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -132,6 +135,9 @@
     </ClInclude>
     <ClInclude Include="NewCamera.h">
       <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPassVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

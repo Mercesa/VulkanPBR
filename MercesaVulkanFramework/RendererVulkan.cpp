@@ -54,9 +54,10 @@
 #include "libs/Spir-v cross/spirv_glsl.hpp"
 #include "DescriptorLayoutHelper.h"
 #include "NewCamera.h"
+#include "Helper.h"
 
 CBMatrix matrixConstantBufferData;
-CBLights lightConstantBufferData ;
+CBLights lightConstantBufferData;
 
 
 
@@ -76,6 +77,8 @@ using namespace vk;
 uint32_t currentBuffer = 0;
 
 std::vector<vk::Framebuffer> framebuffers;
+std::vector<vk::Framebuffer> framebufferScene;
+
 
 // Descriptor set layout
 std::vector<vk::DescriptorSetLayout> desc_layout;
@@ -99,7 +102,6 @@ std::vector<vk::CommandBuffer> commandBuffers;
 
 std::shared_ptr<iLowLevelWindow> window;
 // Information about our device its memory and family properties
-std::vector<QueueFamilyProperties> familyProperties;
 
 std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
@@ -140,7 +142,6 @@ RendererVulkan::~RendererVulkan()
 }
 
 
-
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* const window)
 {
 	vk::Win32SurfaceCreateInfoKHR surfaceInfo = vk::Win32SurfaceCreateInfoKHR()
@@ -161,62 +162,6 @@ void SetupApplication()
 	instance = deviceVulkan->instance;
 }
 
-void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
-{
-
-	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
-		.setOldLayout(oldLayout)
-		.setNewLayout(newLayout)
-		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setImage(aImage)
-		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
-		.setSrcAccessMask(vk::AccessFlagBits(0))
-		.setDstAccessMask(vk::AccessFlagBits(0));
-
-	vk::PipelineStageFlagBits sourceStage;
-	vk::PipelineStageFlagBits destinationStage;
-
-
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
-	{
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-		sourceStage = PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
-	{
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-		sourceStage = vk::PipelineStageFlagBits::eTransfer;
-		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
-	}
-	else if (oldLayout == ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
-	{
-		barrier.srcAccessMask = vk::AccessFlagBits(0);
-		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-
-		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
-		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
-
-		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-	}
-	else
-	{
-		LOG(ERROR) << "Unsupported layout transition";
-	}
-
-	iBuffer.pipelineBarrier(
-		sourceStage,
-		destinationStage,
-		vk::DependencyFlagBits(0),
-		0, nullptr,
-		0, nullptr,
-		1, &barrier);
-
-}
 
 
 void SetupDevice()
@@ -231,8 +176,8 @@ void SetupDevice()
 
 	// Create custom allocator
 	vmaCreateAllocator(&createInfo, &allocator);
-
 }
+
 
 void SetupSDL()
 {
@@ -251,6 +196,7 @@ void SetupSDL()
 	}
 }
 
+
 void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
@@ -258,10 +204,12 @@ void SetupCommandBuffer()
 	commandBuffers = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, NUM_FRAMES);
 }
 
+
 void SetupSwapchain()
 {
 	deviceVulkan->CreateSwapchain(screenWidth, screenHeight);
 }
+
 
 void SetupDepthbuffer()
 {
@@ -308,6 +256,7 @@ void SetupDepthbuffer()
 
 	depthBuffer.view = deviceVulkan->device.createImageView(view_info);
 }
+
 
 void SetupUniformbuffer()
 {
@@ -364,7 +313,7 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 
 	glm::mat4 projectionMatrix = iCam.matrices.perspective;
 	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 modelMatrix = glm::scale(glm::vec3(0.01f, 0.01f, 0.01f)) * glm::translate(glm::vec3(2.0f, 0.0f, 0.0f));
+	glm::mat4 modelMatrix = glm::scale(glm::vec3(1.0f, 1.0f, 1.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f));
 	
 	//viewMatrix[1][3] *= -1;
 	//projectionMatrix[0][0] *= -1;
@@ -399,6 +348,7 @@ void SetupPipelineLayout()
 {
 	desc_layout = std::move(ShaderLayoutparser::CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv", deviceVulkan->device));
 }
+
 
 void SetupDescriptorSet()
 {
@@ -514,6 +464,7 @@ void SetupDescriptorSet()
 
 }
 
+
 void SetupRenderPass()
 {
 
@@ -576,11 +527,10 @@ void SetupRenderPass()
 		.setDependencyCount(1)
 		.setPDependencies(&dependency);
 
-
+	
 	renderPass = deviceVulkan->device.createRenderPass(rp_info);
 }
 
-#include "Helper.h"
 void SetupShaders()
 {
 	auto vertexShader = CreateShader(deviceVulkan->device, "Shaders/vertex.spv", "main", ShaderStageFlagBits::eVertex);
@@ -600,27 +550,51 @@ void SetupShaders()
 	}
 }
 
+
+
+
+vk::Framebuffer CreateFrameBuffer(
+	const vk::Device& iDevice,
+	const std::vector<vk::ImageView>& iAttachments,
+	const uint32_t iWidth, const uint32_t iHeight,
+	const vk::RenderPass& iRenderPass)
+{
+	vk::FramebufferCreateInfo fb_info = vk::FramebufferCreateInfo()
+		.setRenderPass(iRenderPass)
+		.setAttachmentCount(iAttachments.size())
+		.setPAttachments(iAttachments.data())
+		.setWidth(iWidth)
+		.setHeight(iHeight)
+		.setLayers(1);
+
+	vk::Framebuffer tFBuffer = iDevice.createFramebuffer(fb_info);
+
+	return tFBuffer;
+}
+
+
 void SetupFramebuffers()
 {
-	vk::ImageView attachments[2] = {};
-	//attachments[2] = postProcBuffer.view;
-	attachments[1] = depthBuffer.view;
-	attachments[0] = vk::ImageView(nullptr);
+	std::vector<vk::ImageView> attachments;
 
-	vk::FramebufferCreateInfo fb_info = vk::FramebufferCreateInfo()
-		.setRenderPass(renderPass)
-		.setAttachmentCount(2)
-		.setPAttachments(attachments)
-		.setWidth(screenWidth)
-		.setHeight(screenHeight)
-		.setLayers(1);
+	//attachments[2] = postProcBuffer.view;
+	attachments.push_back(vk::ImageView(nullptr));
+	attachments.push_back(depthBuffer.view);
+	
 
 	for (int i = 0; i < deviceVulkan->swapchain.images.size(); ++i)
 	{
 		attachments[0] = deviceVulkan->swapchain.views[i];
-		framebuffers.push_back(deviceVulkan->device.createFramebuffer(fb_info));
+		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPass));
 	}
+
+	std::vector<vk::ImageView> attachments2;;
+	
+	attachments2.push_back(postProcBuffer.view);
+	attachments2.push_back(depthBuffer.view);
+	CreateFrameBuffer(deviceVulkan->device, attachments2, screenWidth, screenHeight, renderPass);
 }
+
 
 void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
 {
@@ -635,6 +609,7 @@ void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize
 
 	EndSingleTimeCommands(deviceVulkan->device, tCmdBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 }
+
 
 void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
 {
@@ -657,6 +632,7 @@ void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Imag
 		1,
 		&region);
 }
+
 
 void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
 {
@@ -765,43 +741,7 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 }
 
 
-VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
-	size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
-	void *pUserData) {
-	std::ostringstream message;
 
-	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-		message << "ERROR: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-		message << "WARNING: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-		message << "PERFORMANCE WARNING: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-		message << "INFO: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-		message << "DEBUG: ";
-	}
-	message << "[" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg;
-
-#ifdef _WIN32
-	//MessageBox(NULL, message.str().c_str(), "Alert", MB_OK);
-#else
-	std::cout << message.str() << std::endl;
-#endif
-
-	/*
-	* false indicates that layer should not bail-out of an
-	* API call that had validation failures. This may mean that the
-	* app dies inside the driver due to invalid parameter(s).
-	* That's what would happen without validation layers, so we'll
-	* keep that behavior here.
-	*/
-	return false;
-}
 
 void SetupPipeline()
 {
@@ -1004,39 +944,79 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 void SetupRTTexture(
 	vk::Device iDevice, 
 	uint32_t iTextureWidth, uint32_t iTextureHeight, 
-	vk::Image& oImage, VmaAllocation& oAllocation)
+	vk::Image& oImage, VmaAllocation& oAllocation,
+	vk::ImageView& oImageView)
 {
 	CreateSimpleImage(allocator,
 		oAllocation,
 		VMA_MEMORY_USAGE_GPU_ONLY,
 		ImageUsageFlagBits::eColorAttachment | ImageUsageFlagBits::eSampled,
-		Format::eR8G8B8A8Unorm, ImageLayout::ePreinitialized,
+		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
 		oImage, iTextureWidth, iTextureHeight);
+
+	oImageView = CreateImageView(iDevice, oImage, Format::eR8G8B8A8Unorm);
+
+
+	//std::vector<vk::AttachmentDescription> attachmentDescriptions = {};
+
+	//vk::AttachmentDescription renderTargetAttachment;
+	//
+	//renderTargetAttachment.format = vk::Format::eR8G8B8Unorm;
+	//renderTargetAttachment.samples = NUM_SAMPLES;
+	//renderTargetAttachment.loadOp = AttachmentLoadOp::eClear;
+	//renderTargetAttachment.storeOp = AttachmentStoreOp::eStore;
+	//renderTargetAttachment.stencilLoadOp = AttachmentLoadOp::eDontCare;
+	//renderTargetAttachment.stencilStoreOp= AttachmentStoreOp::eDontCare;
+	//renderTargetAttachment.initialLayout = vk::ImageLayout::eUndefined;
+	//renderTargetAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	//
+	//vk::AttachmentDescription depthTargetAttachment;
+	//
+	//renderTargetAttachment.format = vk::Format::eR8G8B8Unorm;
+	//renderTargetAttachment.samples = NUM_SAMPLES;
+	//renderTargetAttachment.loadOp = AttachmentLoadOp::eClear;
+	//renderTargetAttachment.storeOp = AttachmentStoreOp::eStore;
+	//renderTargetAttachment.stencilLoadOp = AttachmentLoadOp::eDontCare;
+	//renderTargetAttachment.stencilStoreOp = AttachmentStoreOp::eDontCare;
+	//renderTargetAttachment.initialLayout = vk::ImageLayout::eUndefined;
+	//renderTargetAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+	//vk::AttachmentReference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+	//vk::AttachmentReference{ 1, vk::ImageLayout::eDepthStencilAttachmentOptimal };
 
 }
 
-
-void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
+stbi_uc* LoadTexture(const std::string& iFilePath, int& oWidth, int& oHeight, int& oTexChannels, uint64_t& oImageSize)
 {
 	// Load texture with stbi
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	
-	vk::DeviceSize imageSize = texWidth * texHeight * 4;
+	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
+
+	oImageSize = oWidth * oHeight * 4;
 
 	if (!pixels)
 	{
 		stbi_image_free(pixels);
 
 		LOG(ERROR) << "Load texture failed! Fallback to error texture..";
-		pixels = stbi_load("textures/ErrorTexture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		imageSize = texWidth * texHeight * 4;
+		pixels = stbi_load("textures/ErrorTexture.png", &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
+		oImageSize = oWidth * oHeight * 4;
 		if (!pixels)
 		{
 			LOG(FATAL) << "FAILED TO LOAD ERRORTEXTURE, THIS SHOULD NOT HAPPEN";
 		}
 	}
 
+	return pixels;
+}
+
+void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
+{
+	int texWidth = 0;
+	int texHeight = 0;
+	int texChannels = 0;
+	uint64_t imageSize = 0;
+
+	stbi_uc* pixels = LoadTexture(iFilePath, texWidth, texHeight, texChannels, imageSize);
 
 	// Create staging buffer for image
 	BufferVulkan stagingBuffer;
@@ -1047,7 +1027,7 @@ void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::strin
 		VMA_MEMORY_USAGE_CPU_ONLY,
 		stagingBuffer.buffer,
 		BufferUsageFlagBits::eTransferSrc,
-		imageSize);
+		vk::DeviceSize(imageSize));
 
 	// Copy image data to buffer
 	CopyDataToBuffer(VkDevice(deviceVulkan->device), stagingBuffer.allocation, pixels, imageSize);
@@ -1079,25 +1059,8 @@ void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::strin
 
 
 	oStaging.push_back(stagingBuffer);
-	//vmaDestroyBuffer(allocator, stagingBuffer.buffer, stagingBuffer.allocation);	
 }
 
-vk::ImageView CreateImageView(vk::Device aDevice, vk::Image aImage, vk::Format aFormat)
-{
-	vk::ImageViewCreateInfo	viewInfo = vk::ImageViewCreateInfo()
-		.setImage(aImage)
-		.setViewType(ImageViewType::e2D)
-		.setFormat(aFormat)
-		.setSubresourceRange(
-			vk::ImageSubresourceRange(
-				ImageAspectFlagBits::eColor,
-				0, 1, 0, 1));
-
-	vk::ImageView imgView;
-	imgView = aDevice.createImageView(viewInfo, nullptr);
-
-	return imgView;
-}
 
 void CreateTextureSampler(vk::Device const aDevice)
 {
@@ -1196,8 +1159,7 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 	SetupShaders();
 
 	SetupDepthbuffer();
-	SetupRTTexture(deviceVulkan->device, screenWidth, screenHeight, postProcBuffer.image, postProcBuffer.allocation);
-	postProcBuffer.view = CreateImageView(deviceVulkan->device, postProcBuffer.image, Format::eR8G8B8A8Unorm);
+	SetupRTTexture(deviceVulkan->device, screenWidth, screenHeight, postProcBuffer.image, postProcBuffer.allocation, postProcBuffer.view);
 
 	SetupFramebuffers();
 	SetupCommandBuffer();
@@ -1261,10 +1223,9 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 
 		models.push_back(std::move(tModV));
 	}
+	
 	EndSingleTimeCommands(deviceVulkan->device, stageBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 
-
-	
 	for (auto& e : stagingBuffers)
 	{
 		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
@@ -1312,7 +1273,7 @@ void RendererVulkan::Destroy()
 	//vice.destroySwapchainKHR(swapchain.swapchain);
 
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
-
+	deviceVulkan->device.destroyImageView(depthBuffer.view);
 
 	for (auto& e : desc_layout)
 	{
@@ -1323,7 +1284,6 @@ void RendererVulkan::Destroy()
 	{
 		deviceVulkan->device.destroyFramebuffer(e);
 	}
-
 
 	deviceVulkan->device.destroyPipeline(pipeline);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);

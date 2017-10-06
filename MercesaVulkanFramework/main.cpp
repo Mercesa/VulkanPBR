@@ -78,21 +78,25 @@ int main()
 	renderer->Create(CurrentGame->modelsToBeLoaded);
 
 	newCam = std::make_unique<NewCamera>();
-	newCam->setPerspective(45, (float)(1280 / 720), 0.01f, 100.0f);
-	newCam->setPosition(glm::vec3(0.0f, 2.0f, 0.0));
+	newCam->setPerspective(45, (float)((float)1280.0f / (float)720.0f), 0.01f, 100.0f);
+	newCam->setPosition(glm::vec3(0.0f, 0.0f, -10.0));
+	
 
 	std::cout << "setup completed" << std::endl;
 
 	static float camX, camY, camZ;
 	static float camRotX, camRotY, camRotZ;
-
+	static float mouseMoveRelX, mouseMoveRelY;
 	camX = 0.0f;
 	camY = 0.0f;
 	camZ = 0.0f;
 
-
+	mouseMoveRelX = 0.0f;
+	mouseMoveRelY = 0.0f;
     // Poll for user input.
     bool stillRunning = true;
+
+	bool firstFrame = true;
     while(stillRunning) {
 
 		camRotX = 0.0f;
@@ -103,8 +107,12 @@ int main()
 		newCam->keys.left = false;
 		newCam->keys.right = false;
 
+		mouseMoveRelX = 0.0f;
+		mouseMoveRelY = 0.0f;
+
         SDL_Event event;
-        while(SDL_PollEvent(&event)) {
+        while(SDL_PollEvent(&event)) 
+		{
 
             switch(event.type) {
 
@@ -155,23 +163,30 @@ int main()
 
 				break;
 
+
+			case SDL_MOUSEMOTION:
+				mouseMoveRelX = event.motion.xrel;
+				mouseMoveRelY = event.motion.yrel;
+				break;
+
             default:
                 // Do nothing.
                 break;
             }	
+
         }
+		
+		if (!firstFrame)
+		{
+			newCam->rotate(glm::vec3(mouseMoveRelY, mouseMoveRelX, 0.0f));
+			newCam->update(1.0f);
 
-		//std::cout << "x: " << newCam->camFront.x << std::endl;
-		//std::cout << "y: " << newCam->camFront.y << std::endl;
-		//std::cout << "z: " << newCam->camFront.z << std::endl;
-
-		newCam->rotate(glm::vec3(camRotY, 0.0f, 0.0f));
-		newCam->update(1.0f);
-		CurrentGame->camera->SetPosition(glm::vec3(camX, camY, camZ));
-		CurrentGame->camera->SetRotation(glm::vec3(camRotX, camRotY, camRotZ));
-
-		renderer->BeginFrame((*newCam.get()), CurrentGame->lights);
-		renderer->Render();
+			renderer->BeginFrame((*newCam.get()), CurrentGame->lights);
+			renderer->Render();
+			
+		}
+		firstFrame = false;
+	
 		
        // SDL_Delay(10);
     }

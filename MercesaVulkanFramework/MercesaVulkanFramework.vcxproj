@@ -166,6 +166,7 @@
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="PipelineVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
+    <ClCompile Include="RenderPassVulkan.cpp" />
     <ClCompile Include="SDLLowLevelWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -186,6 +187,7 @@
     <ClInclude Include="PipelineVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
+    <ClInclude Include="RenderPassVulkan.h" />
     <ClInclude Include="SDLLowLevelWindow.h" />
     <ClInclude Include="vk_mem_alloc.h" />
     <ClInclude Include="VulkanDataObjects.h" />

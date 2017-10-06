@@ -3,12 +3,9 @@
 #include <cassert>
 
 #include "RenderingIncludes.h"
-#include "VulkanDataObjects.h"
-#include "vk_mem_alloc.h"
-#include "vulkan/vulkan.hpp"
 #include "stb_image.h"
 #include "Helper.h"
-
+#include "easylogging++.h"
 using namespace vk;
 
 
@@ -99,6 +96,25 @@ inline bool CreateSimpleImage(
 	return true;
 }
 
+
+inline vk::ImageView CreateImageView(vk::Device aDevice, vk::Image aImage, vk::Format aFormat)
+{
+	vk::ImageViewCreateInfo	viewInfo = vk::ImageViewCreateInfo()
+		.setImage(aImage)
+		.setViewType(ImageViewType::e2D)
+		.setFormat(aFormat)
+		.setSubresourceRange(
+			vk::ImageSubresourceRange(
+				ImageAspectFlagBits::eColor,
+				0, 1, 0, 1));
+
+	vk::ImageView imgView;
+	imgView = aDevice.createImageView(viewInfo, nullptr);
+
+	return imgView;
+}
+
+
 inline bool CopyDataToBuffer(VkDevice aDevice, VmaAllocation aAllocation, void* aData, size_t aDataSize)
 {
 	uint8_t* pData;
@@ -108,7 +124,6 @@ inline bool CopyDataToBuffer(VkDevice aDevice, VmaAllocation aAllocation, void* 
 
 	return true;
 }
-
 
 
 // Two functions for creating a command buffer for single time usage
@@ -169,6 +184,67 @@ ShaderVulkan CreateShader(
 
 	return tShader;
 }
+
+inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+
+	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
+		.setOldLayout(oldLayout)
+		.setNewLayout(newLayout)
+		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setImage(aImage)
+		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
+		.setSrcAccessMask(vk::AccessFlagBits(0))
+		.setDstAccessMask(vk::AccessFlagBits(0));
+
+	vk::PipelineStageFlagBits sourceStage;
+	vk::PipelineStageFlagBits destinationStage;
+
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else if (oldLayout == ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits(0);
+		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+
+
+	else
+	{
+		LOG(ERROR) << "Unsupported layout transition";
+	}
+
+	iBuffer.pipelineBarrier(
+		sourceStage,
+		destinationStage,
+		vk::DependencyFlagBits(0),
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
+}
+
+
 
 
 //inline void LoadTextureSimple(const vk::Device iDevice, const VmaAllocator& iAllocator, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)

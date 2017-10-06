@@ -7,6 +7,13 @@
 class Camera;
 class Light;
 
+struct Object
+{
+	glm::mat4 modelMatrix;
+	uint32_t vulkanModelID;
+	RawMeshData rawMeshData;
+};
+
 class Game
 {
 public:

@@ -34,7 +34,9 @@ void Game::Init()
 	light.position = glm::vec3(2.0f, 2.0f, 2.0f);
 	lights.push_back(light);
 
-	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sponza/Sponza.obj", false);
+	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
+	//modelsToBeLoaded[0].filepaths[0] = "Textures/rustediron2_basecolor.png";
+	modelsToBeLoaded[0].filepaths[0] = "rustediron2_metallic";
 
 }
 
