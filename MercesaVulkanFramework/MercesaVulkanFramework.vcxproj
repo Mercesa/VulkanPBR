@@ -161,13 +161,14 @@
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="DeviceVulkan.cpp" />
     <ClCompile Include="Game.cpp" />
-    <ClCompile Include="GraphicsResourceManagerVulkan.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
+    <ClCompile Include="PhysicalResourceManager.cpp" />
     <ClCompile Include="PipelineVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
     <ClCompile Include="RenderPassVulkan.cpp" />
     <ClCompile Include="SDLLowLevelWindow.cpp" />
+    <ClCompile Include="VulkanResourceManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -178,12 +179,13 @@
     <ClInclude Include="easylogging++.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
-    <ClInclude Include="GraphicsResourceManagerVulkan.h" />
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
+    <ClInclude Include="iResourceManager.h" />
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="NewCamera.h" />
+    <ClInclude Include="PhysicalResourceManager.h" />
     <ClInclude Include="PipelineVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
@@ -192,6 +194,7 @@
     <ClInclude Include="vk_mem_alloc.h" />
     <ClInclude Include="VulkanDataObjects.h" />
     <ClInclude Include="VulkanHelper.h" />
+    <ClInclude Include="VulkanResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\FragmentShaderStart.frag" />

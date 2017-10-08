@@ -62,14 +62,17 @@
     <ClCompile Include="SDLLowLevelWindow.cpp">
       <Filter>Vulkan Structures\Window</Filter>
     </ClCompile>
-    <ClCompile Include="GraphicsResourceManagerVulkan.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DescriptorLayoutHelper.h">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="RenderPassVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicalResourceManager.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanResourceManager.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -130,14 +133,20 @@
     <ClInclude Include="SDLLowLevelWindow.h">
       <Filter>Vulkan Structures\Window</Filter>
     </ClInclude>
-    <ClInclude Include="GraphicsResourceManagerVulkan.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="NewCamera.h">
       <Filter>Platform Independent</Filter>
     </ClInclude>
     <ClInclude Include="RenderPassVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iResourceManager.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicalResourceManager.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanResourceManager.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

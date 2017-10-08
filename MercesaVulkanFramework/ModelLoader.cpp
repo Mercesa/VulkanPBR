@@ -257,6 +257,7 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 
 	std::string filePathToBeLoaded = aFilePath;
 	
+
 	// If .assbin version of file exist, load that one
 	if (doesAssbinVersionExist)
 	{
@@ -267,9 +268,17 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 
 	else
 	{
+	
+		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace );
+		
+		if (!scene)
+		{
+			LOG(ERROR) << "Modelloader can not load scene";
+			return std::vector<RawMeshData>();
+		}
+		
 		LOG(INFO) << "ModelLoader Assbin version created of asset";
 		Exporter exporter;
-		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace );
 		exporter.Export(scene, "assbin", assbinString, 0);
 	}
 

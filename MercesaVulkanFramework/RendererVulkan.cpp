@@ -55,6 +55,7 @@
 #include "DescriptorLayoutHelper.h"
 #include "NewCamera.h"
 #include "Helper.h"
+#include "Game.h"
 
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
@@ -92,7 +93,8 @@ TextureVulkan postProcBuffer;
 std::vector<UniformBufferVulkan> uniformBufferMVP;
 std::vector<UniformBufferVulkan> uniformBufferLights;
 
-vk::RenderPass renderPass;
+vk::RenderPass renderPassPostProc;
+vk::RenderPass renderPassRenderScene;
 
 // Device and instance
 vk::Instance instance;
@@ -331,6 +333,8 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
 	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
+	matrixConstantBufferData.viewPos = iCam.position;
+
 	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
 	lightConstantBufferData.currAmountOfLights = std::min(static_cast<uint32_t>(iLights.size()), (uint32_t)16);
@@ -468,7 +472,7 @@ void SetupDescriptorSet()
 void SetupRenderPass()
 {
 
-	vk::AttachmentDescription attachments[2] = {};
+	vk::AttachmentDescription attachments[3] = {};
 	attachments[0].format = deviceVulkan->swapchain.format;
 	attachments[0].samples = NUM_SAMPLES;
 	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
@@ -489,9 +493,30 @@ void SetupRenderPass()
 	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	attachments[1].flags = AttachmentDescriptionFlagBits(0);
 
+	attachments[2].format = postProcBuffer.format;
+	attachments[2].samples = NUM_SAMPLES;
+	attachments[2].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[2].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[2].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[2].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[2].initialLayout = vk::ImageLayout::eUndefined;
+	attachments[2].finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	attachments[2].flags = AttachmentDescriptionFlagBits(0);
+
+	std::vector<AttachmentReference> references;
+
 	vk::AttachmentReference color_reference = vk::AttachmentReference()
 		.setAttachment(0)
 		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+
+	vk::AttachmentReference secondColorReference = vk::AttachmentReference()
+		.setAttachment(2)
+		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+
+
+	references.push_back(color_reference);
+	references.push_back(secondColorReference);
+
 
 	vk::AttachmentReference depth_reference = vk::AttachmentReference()
 		.setAttachment(1)
@@ -503,7 +528,7 @@ void SetupRenderPass()
 		.setInputAttachmentCount(0)
 		.setPInputAttachments(0)
 		.setColorAttachmentCount(1)
-		.setPColorAttachments(&color_reference)
+		.setPColorAttachments(references.data())
 		.setPResolveAttachments(NULL)
 		.setPDepthStencilAttachment(&depth_reference)
 		.setPreserveAttachmentCount(0)
@@ -520,7 +545,7 @@ void SetupRenderPass()
 
 	vk::RenderPassCreateInfo rp_info = RenderPassCreateInfo()
 		.setPNext(NULL)
-		.setAttachmentCount(2)
+		.setAttachmentCount(3)
 		.setPAttachments(attachments)
 		.setSubpassCount(1)
 		.setPSubpasses(&subpass)
@@ -528,7 +553,7 @@ void SetupRenderPass()
 		.setPDependencies(&dependency);
 
 	
-	renderPass = deviceVulkan->device.createRenderPass(rp_info);
+	renderPassPostProc = deviceVulkan->device.createRenderPass(rp_info);
 }
 
 void SetupShaders()
@@ -580,19 +605,19 @@ void SetupFramebuffers()
 	//attachments[2] = postProcBuffer.view;
 	attachments.push_back(vk::ImageView(nullptr));
 	attachments.push_back(depthBuffer.view);
-	
+	attachments.push_back(postProcBuffer.view);
 
 	for (int i = 0; i < deviceVulkan->swapchain.images.size(); ++i)
 	{
 		attachments[0] = deviceVulkan->swapchain.views[i];
-		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPass));
+		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPassPostProc));
 	}
 
-	std::vector<vk::ImageView> attachments2;;
-	
-	attachments2.push_back(postProcBuffer.view);
-	attachments2.push_back(depthBuffer.view);
-	CreateFrameBuffer(deviceVulkan->device, attachments2, screenWidth, screenHeight, renderPass);
+	//std::vector<vk::ImageView> attachments2;;
+	//
+	//attachments2.push_back(postProcBuffer.view);
+	//attachments2.push_back(depthBuffer.view);
+	//CreateFrameBuffer(deviceVulkan->device, attachments2, screenWidth, screenHeight, renderPassPostProc);
 }
 
 
@@ -762,6 +787,7 @@ void SetupPipeline()
 		.setPDynamicStates(dynamicStateEnables.data())
 		.setDynamicStateCount(1);
 
+	assert(models[0]->vertexBuffer.inputAttributes.size() != 0);
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
 		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
 		.setPVertexBindingDescriptions(&models[0]->vertexBuffer.inputDescription)
@@ -853,7 +879,7 @@ void SetupPipeline()
 		.setPDepthStencilState(&ds)
 		.setPStages(shaderStages.data())
 		.setStageCount(2)
-		.setRenderPass(renderPass)
+		.setRenderPass(renderPassPostProc)
 		.setSubpass(0);
 
 	pipeline = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
@@ -895,13 +921,13 @@ void SetupSemaphores()
 }
 
 
-void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
+void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects)
 {
 	vk::CommandBufferBeginInfo cmd_begin = vk::CommandBufferBeginInfo();
 
 	iBuffer.begin(cmd_begin);
 
-	vk::ClearValue clear_values[2] = {};
+	vk::ClearValue clear_values[3] = {};
 	clear_values[0].color.float32[0] = 0.2f;
 	clear_values[0].color.float32[1] = 0.2f;
 	clear_values[0].color.float32[2] = 0.2f;
@@ -909,13 +935,19 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 	clear_values[1].depthStencil.depth = 1.0f;
 	clear_values[1].depthStencil.stencil = 0;
 
+
+	clear_values[2].color.float32[0] = 0.2f;
+	clear_values[2].color.float32[1] = 0.8f;
+	clear_values[2].color.float32[2] = 0.2f;
+	clear_values[2].color.float32[3] = 0.2f;
+
 	const vk::DeviceSize offsets[1] = { 0 };
 
 	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
-		.setRenderPass(renderPass)
+		.setRenderPass(renderPassPostProc)
 		.setFramebuffer(framebuffers[index])
 		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-		.setClearValueCount(2)
+		.setClearValueCount(3)
 		.setPClearValues(clear_values);
 
 	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
@@ -926,13 +958,13 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index)
 	InitScissors(iBuffer);
 
 
-	for (int j = 0; j < models.size(); ++j)
+	for (int j = 0; j < iObjects.size(); ++j)
 	{
-		descriptor_set[index][2] = models[j]->textureSet;
+		descriptor_set[index][2] = models[iObjects[j].vulkanModelID]->textureSet;
 		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
-		iBuffer.bindVertexBuffers(0, 1, &models[j]->vertexBuffer.buffer, offsets);
-		iBuffer.bindIndexBuffer(models[j]->indexBuffer.buffer, 0, IndexType::eUint32);
-		iBuffer.drawIndexed(models[j]->indiceCount, 1, 0, 0, 0);
+		iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
+		iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
+		iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
 	}
 
 	iBuffer.endRenderPass();
@@ -1008,6 +1040,7 @@ stbi_uc* LoadTexture(const std::string& iFilePath, int& oWidth, int& oHeight, in
 
 	return pixels;
 }
+
 
 void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
 {
@@ -1087,18 +1120,18 @@ void CreateTextureSampler(vk::Device const aDevice)
 }
 
 bool firstFrame = true;
-void RendererVulkan::Render()
+void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
 	if (firstFrame)
 	{
-		SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer);
+		SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer, iObjects);
 		firstFrame = false;
 	}
 
 	else
 	{
 		//std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
-		SetupCommandBuffers(commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
+		SetupCommandBuffers(commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2, iObjects);
 
 		deviceVulkan->device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
 		//LOG(INFO) << "FENCE WAITING OVER";
@@ -1144,7 +1177,7 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 
 std::map<std::string, TextureVulkan> textureMap;
 
-void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
+void RendererVulkan::Create(std::vector<Object>& iMeshes)
 {
 
 	SetupApplication();
@@ -1155,11 +1188,13 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 
 	SetupUniformbuffer();
 	SetupPipelineLayout();
-	SetupRenderPass();
 	SetupShaders();
 
 	SetupDepthbuffer();
 	SetupRTTexture(deviceVulkan->device, screenWidth, screenHeight, postProcBuffer.image, postProcBuffer.allocation, postProcBuffer.view);
+	postProcBuffer.format = Format::eR8G8B8A8Unorm;
+
+	SetupRenderPass();
 
 	SetupFramebuffers();
 	SetupCommandBuffer();
@@ -1176,7 +1211,7 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 	// load in albedo textures in this loop
 	for (int i = 0; i < iMeshes.size(); ++i)
 	{
-		auto& e = iMeshes[i];
+		auto& e = iMeshes[i].rawMeshData;
 		std::unique_ptr<ModelVulkan> tModV = std::make_unique<ModelVulkan>();
 		SetupVertexBuffer(tModV->vertexBuffer, e);
 		SetupIndexBuffer(tModV->indexBuffer, e);
@@ -1196,32 +1231,35 @@ void RendererVulkan::Create(std::vector<RawMeshData>& iMeshes)
 			tModV->albedoTexture = textureMap.at(e.filepaths[0]);
 		}
 
-		
+
+
 		if (textureMap.find(e.filepaths[1]) == textureMap.end())
 		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);
-			tModV->normalTexture.view = CreateImageView(deviceVulkan->device, tModV->normalTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[1]] = tModV->normalTexture;
-
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->specularTexture.image, tModV->specularTexture.allocation, stagingBuffers);
+			tModV->specularTexture.view = CreateImageView(deviceVulkan->device, tModV->specularTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[1]] = tModV->specularTexture;
 		}
 		else
 		{
-			tModV->normalTexture = textureMap.at(e.filepaths[1]);
+			tModV->specularTexture = textureMap.at(e.filepaths[1]);
 		}
-
-
+		
 		if (textureMap.find(e.filepaths[2]) == textureMap.end())
 		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[2].c_str(), tModV->specularTexture.image, tModV->specularTexture.allocation, stagingBuffers);
-			tModV->specularTexture.view = CreateImageView(deviceVulkan->device, tModV->specularTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[2]] = tModV->specularTexture;
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[2].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);
+			tModV->normalTexture.view = CreateImageView(deviceVulkan->device, tModV->normalTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[2]] = tModV->normalTexture;
+
 		}
 		else
 		{
-			tModV->specularTexture = textureMap.at(e.filepaths[2]);
+			tModV->normalTexture = textureMap.at(e.filepaths[2]);
 		}
 
+
+
 		models.push_back(std::move(tModV));
+		iMeshes[i].vulkanModelID = models.size();
 	}
 	
 	EndSingleTimeCommands(deviceVulkan->device, stageBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
@@ -1287,7 +1325,7 @@ void RendererVulkan::Destroy()
 
 	deviceVulkan->device.destroyPipeline(pipeline);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
-	deviceVulkan->device.destroyRenderPass(renderPass);
+	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
 
 	for (auto& e : uniformBufferMVP)
 	{

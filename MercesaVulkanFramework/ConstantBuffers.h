@@ -11,6 +11,8 @@ struct CBMatrix
 
 	glm::mat4 viewProjectMatrix;
 	glm::mat4 mvpMatrix;
+
+	glm::vec3 viewPos;
 };
 
 struct CBLights

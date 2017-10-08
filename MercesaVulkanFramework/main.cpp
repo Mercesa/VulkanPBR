@@ -75,7 +75,7 @@ int main()
 	CurrentGame->Init();
 
 	renderer = std::make_unique<RendererVulkan>();
-	renderer->Create(CurrentGame->modelsToBeLoaded);
+	renderer->Create(CurrentGame->gameObjects);
 
 	newCam = std::make_unique<NewCamera>();
 	newCam->setPerspective(45, (float)((float)1280.0f / (float)720.0f), 0.01f, 100.0f);
@@ -182,7 +182,7 @@ int main()
 			newCam->update(1.0f);
 
 			renderer->BeginFrame((*newCam.get()), CurrentGame->lights);
-			renderer->Render();
+			renderer->Render(CurrentGame->gameObjects);
 			
 		}
 		firstFrame = false;
