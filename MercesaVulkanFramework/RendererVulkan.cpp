@@ -495,7 +495,7 @@ void SetupRenderPass()
 
 	attachments[2].format = postProcBuffer.format;
 	attachments[2].samples = NUM_SAMPLES;
-	attachments[2].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[2].loadOp = vk::AttachmentLoadOp::eLoad;
 	attachments[2].storeOp = vk::AttachmentStoreOp::eStore;
 	attachments[2].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 	attachments[2].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -527,7 +527,7 @@ void SetupRenderPass()
 		.setFlags(vk::SubpassDescriptionFlagBits(0))
 		.setInputAttachmentCount(0)
 		.setPInputAttachments(0)
-		.setColorAttachmentCount(1)
+		.setColorAttachmentCount(2)
 		.setPColorAttachments(references.data())
 		.setPResolveAttachments(NULL)
 		.setPDepthStencilAttachment(&depth_reference)
@@ -814,7 +814,7 @@ void SetupPipeline()
 
 	vk::PipelineColorBlendStateCreateInfo cb = {};
 
-	vk::PipelineColorBlendAttachmentState att_state[1] = {};
+	vk::PipelineColorBlendAttachmentState att_state[2] = {};
 	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
 	att_state[0].blendEnable = VK_FALSE;
 	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
@@ -824,7 +824,16 @@ void SetupPipeline()
 	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
 	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
 
-	cb.attachmentCount = 1;
+	att_state[1].colorWriteMask = vk::ColorComponentFlagBits(0xF);
+	att_state[1].blendEnable = VK_FALSE;
+	att_state[1].alphaBlendOp = vk::BlendOp::eAdd;
+	att_state[1].colorBlendOp = vk::BlendOp::eAdd;
+	att_state[1].srcColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[1].dstColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[1].srcAlphaBlendFactor = vk::BlendFactor::eZero;
+	att_state[1].dstAlphaBlendFactor = vk::BlendFactor::eZero;
+
+	cb.attachmentCount = 2;
 	cb.pAttachments = att_state;
 	cb.logicOpEnable = VK_FALSE;
 	cb.logicOp = vk::LogicOp::eNoOp;
@@ -939,7 +948,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	clear_values[2].color.float32[0] = 0.2f;
 	clear_values[2].color.float32[1] = 0.8f;
 	clear_values[2].color.float32[2] = 0.2f;
-	clear_values[2].color.float32[3] = 0.2f;
+	clear_values[2].color.float32[3] = 1.0f;
 
 	const vk::DeviceSize offsets[1] = { 0 };
 

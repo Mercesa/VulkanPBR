@@ -38,7 +38,7 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
 		.setPNext(nullptr)
 		.setMaxSets(iMaxSets)
-		.setPoolSizeCount(1)
+		.setPoolSizeCount(type_count.size())
 		.setPPoolSizes(type_count.data())
 		.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 	pool = aDevice.createDescriptorPool(createInfo);

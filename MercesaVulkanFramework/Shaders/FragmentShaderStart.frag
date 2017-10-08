@@ -84,5 +84,5 @@ void main() {
 	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
 	outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv) + vec4(col.rgb, 1.0f);
 
-	outSecond = texture(sampler2D(albedoTexture, realTextureSampler), uv);
+	outSecond = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }
