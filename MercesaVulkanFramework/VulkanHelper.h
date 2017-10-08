@@ -1,11 +1,11 @@
 #pragma once
 
+#include <cassert>
 
 #include "RenderingIncludes.h"
-#include "VulkanDataObjects.h"
-#include "vk_mem_alloc.h"
-#include "vulkan/vulkan.hpp"
-
+#include "stb_image.h"
+#include "Helper.h"
+#include "easylogging++.h"
 using namespace vk;
 
 
@@ -96,6 +96,25 @@ inline bool CreateSimpleImage(
 	return true;
 }
 
+
+inline vk::ImageView CreateImageView(vk::Device aDevice, vk::Image aImage, vk::Format aFormat)
+{
+	vk::ImageViewCreateInfo	viewInfo = vk::ImageViewCreateInfo()
+		.setImage(aImage)
+		.setViewType(ImageViewType::e2D)
+		.setFormat(aFormat)
+		.setSubresourceRange(
+			vk::ImageSubresourceRange(
+				ImageAspectFlagBits::eColor,
+				0, 1, 0, 1));
+
+	vk::ImageView imgView;
+	imgView = aDevice.createImageView(viewInfo, nullptr);
+
+	return imgView;
+}
+
+
 inline bool CopyDataToBuffer(VkDevice aDevice, VmaAllocation aAllocation, void* aData, size_t aDataSize)
 {
 	uint8_t* pData;
@@ -106,30 +125,6 @@ inline bool CopyDataToBuffer(VkDevice aDevice, VmaAllocation aAllocation, void* 
 	return true;
 }
 
-// Get available extensions for WSI
-inline std::vector<const char*> getAvailableWSIExtensions()
-{
-	std::vector<const char*> extensions;
-	extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
-	extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(VK_USE_PLATFORM_MIR_KHR)
-	extensions.push_back(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-	extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-	extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#endif
-#if defined(VK_USE_PLATFORM_XLIB_KHR)
-	extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-#endif
-
-	return extensions;
-}
 
 // Two functions for creating a command buffer for single time usage
 // After usage the buffer is deleted
@@ -161,10 +156,97 @@ inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer,
 	aQueue.waitIdle();
 
 	aDevice.freeCommandBuffers(aPool, aBuffer);
+	aDevice.waitIdle();
+}
+
+ShaderVulkan CreateShader(
+	const vk::Device& iDevice,
+	const std::string& iFilePath, 
+	const std::string& iEntryPoint,
+	vk::ShaderStageFlagBits iShaderStage)
+{
+	auto code = readFile(iFilePath);
+
+	// Ensure our code is not zero
+	assert(code.size() > 0);
+
+	ShaderVulkan tShader = ShaderVulkan();
+	
+	vk::ShaderModuleCreateInfo moduleInfo = vk::ShaderModuleCreateInfo()
+		.setCodeSize(code.size())
+		.setPCode(reinterpret_cast<const uint32_t*>(code.data()));
+
+	tShader.shaderModule = iDevice.createShaderModule(moduleInfo);
+
+	tShader.entryPointName = iEntryPoint;
+	tShader.shaderFile = iFilePath;
+	tShader.shaderStage = iShaderStage;
+
+	return tShader;
+}
+
+inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+
+	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
+		.setOldLayout(oldLayout)
+		.setNewLayout(newLayout)
+		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setImage(aImage)
+		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
+		.setSrcAccessMask(vk::AccessFlagBits(0))
+		.setDstAccessMask(vk::AccessFlagBits(0));
+
+	vk::PipelineStageFlagBits sourceStage;
+	vk::PipelineStageFlagBits destinationStage;
+
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else if (oldLayout == ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits(0);
+		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+
+
+	else
+	{
+		LOG(ERROR) << "Unsupported layout transition";
+	}
+
+	iBuffer.pipelineBarrier(
+		sourceStage,
+		destinationStage,
+		vk::DependencyFlagBits(0),
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+
 }
 
 
-#include "stb_image.h"
+
+
 //inline void LoadTextureSimple(const vk::Device iDevice, const VmaAllocator& iAllocator, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation)
 //{
 //	// Load texture with stbi

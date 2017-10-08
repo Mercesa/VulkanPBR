@@ -9,67 +9,144 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{3d427416-2d90-498f-833a-b8cf00b1c44c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Vulkan Structures">
       <UniqueIdentifier>{9387b496-4cd2-4707-a8eb-968bb2cf91a6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Libs">
+      <UniqueIdentifier>{efca6207-94ad-4ec3-8a3c-59ab1de575f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent">
+      <UniqueIdentifier>{2610fa9c-8761-40a0-8b5e-72469540d9ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utility">
+      <UniqueIdentifier>{27261af7-700d-4a7a-bd63-e339a85e3383}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game application">
+      <UniqueIdentifier>{12dc8bb7-3e27-4ce7-90f4-9201680ba230}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan Structures\Window">
+      <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModelLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DescriptorPoolVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="RendererVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandpoolVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="PipelineVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>Game application</Filter>
+    </ClCompile>
+    <ClCompile Include="DeviceVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="SDLLowLevelWindow.cpp">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorLayoutHelper.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPassVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicalResourceManager.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanResourceManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="RenderingIncludes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanDataObjects.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="vk_mem_alloc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GenericMathValueStructs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GraphicsStructures.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ModelLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="easylogging++.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanHelper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Helper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ConstantBuffers.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DescriptorPoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="RendererVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandpoolVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanHelper.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="easylogging++.h">
+      <Filter>Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_mem_alloc.h">
+      <Filter>Libs</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderingIncludes.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanDataObjects.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsStructures.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="ConstantBuffers.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="GenericMathValueStructs.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>Game application</Filter>
+    </ClInclude>
+    <ClInclude Include="DeviceVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iLowLevelWindow.h">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="SDLLowLevelWindow.h">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="NewCamera.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPassVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iResourceManager.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicalResourceManager.h">
+      <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanResourceManager.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -14,7 +14,7 @@ public:
 	Camera();
 	~Camera();
 
-	glm::mat4	GetViewMatrix();
+	glm::mat4	GetViewMatrix() const;
 
 	void		SetPerspective(float a_FovY, float a_AspectRatio, float a_Near, float a_Far);
 	glm::mat4	GetProjectionMatrix();

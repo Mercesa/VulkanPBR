@@ -23,10 +23,22 @@ struct ImageVulkan
 
 struct VertexBufferVulkan
 {
-	vk::Buffer buffer;
-	vk::VertexInputBindingDescription inputDescription;
 	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+	vk::VertexInputBindingDescription inputDescription;
+	vk::Buffer buffer;
 	VmaAllocation allocation;
+};
+
+struct ShaderVulkan
+{
+	std::string entryPointName = "";
+	std::string shaderFile = "";
+	vk::ShaderStageFlagBits shaderStage;
+	vk::ShaderModule shaderModule;
+
+	ShaderVulkan() = default;
+	~ShaderVulkan() = default;
+
 };
 
 // A texture in vulkan is made out of..
@@ -46,9 +58,19 @@ struct ModelVulkan
 {
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
-	TextureVulkan texture;
+	
+
+	TextureVulkan normalTexture;
+	TextureVulkan specularTexture;
+	TextureVulkan albedoTexture;
 	vk::DescriptorSet textureSet;
+
+
 	uint32_t indiceCount = 0;
+	uint32_t indiceOffset = 0;
+
+	ModelVulkan() = default;
+	~ModelVulkan() = default;
 	
 };
 

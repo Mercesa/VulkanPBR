@@ -3837,7 +3837,7 @@ typedef struct
 } stbi__zbuf;
 
 stbi_inline static stbi_uc stbi__zget8(stbi__zbuf *z)
-{
+	{
    if (z->zbuffer >= z->zbuffer_end) return 0;
    return *z->zbuffer++;
 }

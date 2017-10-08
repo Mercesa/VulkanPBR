@@ -39,7 +39,8 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 		.setPNext(nullptr)
 		.setMaxSets(iMaxSets)
 		.setPoolSizeCount(1)
-		.setPPoolSizes(type_count.data());
+		.setPPoolSizes(type_count.data())
+		.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 	pool = aDevice.createDescriptorPool(createInfo);
 
 	currentResources.combinedImgSamplerCount = iCombinedImgSamplerCount;
@@ -60,6 +61,9 @@ bool DescriptorPoolVulkan::Destroy(const vk::Device aDevice)
 	// Make sure pool exists
 	//assert(pool != VK_NULL_HANDLE);
 	assert(hasInitialized);
+
+
+	aDevice.freeDescriptorSets(pool, allocatedSets.size(), allocatedSets.data());
 
 	aDevice.destroyDescriptorPool(pool);
 	return true;
@@ -231,6 +235,9 @@ std::vector<vk::DescriptorSet> DescriptorPoolVulkan::AllocateDescriptorSet(
 
 	// Update our resources
 	UpdateResourceAmounts(tResourceCost);
+	
+	// Add it to the internal pool memory
+	allocatedSets.insert(allocatedSets.end(), tDescriptors.begin(), tDescriptors.end());
 
 	return tDescriptors;
 }
