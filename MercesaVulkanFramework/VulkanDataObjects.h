@@ -59,10 +59,11 @@ struct ModelVulkan
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
 	
-
-	TextureVulkan normalTexture;
-	TextureVulkan specularTexture;
 	TextureVulkan albedoTexture;
+	TextureVulkan specularTexture;
+	TextureVulkan normalTexture;
+	TextureVulkan roughnessTexture;
+
 	vk::DescriptorSet textureSet;
 
 

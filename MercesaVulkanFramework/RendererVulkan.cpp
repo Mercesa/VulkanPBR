@@ -56,6 +56,7 @@
 #include "NewCamera.h"
 #include "Helper.h"
 #include "Game.h"
+#include "FramebufferVulkan.h"
 
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
@@ -80,6 +81,7 @@ uint32_t currentBuffer = 0;
 std::vector<vk::Framebuffer> framebuffers;
 std::vector<vk::Framebuffer> framebufferScene;
 
+std::unique_ptr<FramebufferVulkan> fbVulkan;
 
 // Descriptor set layout
 std::vector<vk::DescriptorSetLayout> desc_layout;
@@ -94,7 +96,6 @@ std::vector<UniformBufferVulkan> uniformBufferMVP;
 std::vector<UniformBufferVulkan> uniformBufferLights;
 
 vk::RenderPass renderPassPostProc;
-vk::RenderPass renderPassRenderScene;
 
 // Device and instance
 vk::Instance instance;
@@ -115,6 +116,7 @@ std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 
 vk::Pipeline pipeline;
 
+vk::Pipeline pipelineRenderScene;
 
 vk::Viewport viewPort;
 vk::Rect2D scissor;
@@ -128,7 +130,7 @@ vk::Semaphore rendererFinishedSemaphore;
 
 std::vector<vk::DescriptorSetLayoutBinding> bindings;
 std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
-std::vector<vk::DescriptorSetLayoutBinding> normalTextureBinding;
+std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
 
 std::vector<ShaderVulkan> shaders;
 
@@ -163,7 +165,6 @@ void SetupApplication()
 
 	instance = deviceVulkan->instance;
 }
-
 
 
 void SetupDevice()
@@ -371,11 +372,11 @@ void SetupDescriptorSet()
 		descriptor_set.push_back(tDescSet);
 	}
 
-	std::array<vk::WriteDescriptorSet, 3> textureWrites = {};
+	std::array<vk::WriteDescriptorSet, 4> textureWrites = {};
 
 	for (auto& e : models)
 	{
-		e->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[2], normalTextureBinding)[0];
+		e->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[2], textureBinding)[0];
 
 		vk::DescriptorImageInfo albedoImageInfo = {};
 		albedoImageInfo.imageView = e->albedoTexture.view;
@@ -412,6 +413,17 @@ void SetupDescriptorSet()
 		textureWrites[2].pImageInfo = &normalmapImageInfo;
 		textureWrites[2].dstArrayElement = 0;
 		textureWrites[2].dstBinding = 2;
+
+		vk::DescriptorImageInfo roughnessInfo = {};
+
+		textureWrites[3] = {};
+		textureWrites[3].pNext = NULL;
+		textureWrites[3].dstSet = e->textureSet;
+		textureWrites[3].descriptorCount = 1;
+		textureWrites[3].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[3].pImageInfo = &roughnessInfo;
+		textureWrites[3].dstArrayElement = 0;
+		textureWrites[3].dstBinding = 3;
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
 	}
@@ -575,9 +587,6 @@ void SetupShaders()
 	}
 }
 
-
-
-
 vk::Framebuffer CreateFrameBuffer(
 	const vk::Device& iDevice,
 	const std::vector<vk::ImageView>& iAttachments,
@@ -600,6 +609,20 @@ vk::Framebuffer CreateFrameBuffer(
 
 void SetupFramebuffers()
 {
+
+	fbVulkan = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
+	AttachmentCreateInfo attchCinfo;
+	attchCinfo.format = Format::eR8G8B8A8Unorm;
+	attchCinfo.height = screenHeight;
+	attchCinfo.width = screenWidth;
+	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	attchCinfo.layerCount = 1;
+
+
+	fbVulkan->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
+	fbVulkan->CreateRenderpass(deviceVulkan->device);
+
+
 	std::vector<vk::ImageView> attachments;
 
 	//attachments[2] = postProcBuffer.view;
@@ -893,6 +916,49 @@ void SetupPipeline()
 
 	pipeline = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
+
+	vk::PipelineColorBlendAttachmentState att_state2[1] = {};
+	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
+	att_state[0].blendEnable = VK_FALSE;
+	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
+	att_state[0].colorBlendOp = vk::BlendOp::eAdd;
+	att_state[0].srcColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
+
+
+	vk::PipelineColorBlendStateCreateInfo cb2 = {};
+
+	cb2.attachmentCount = 1;
+	cb2.pAttachments = att_state;
+	cb2.logicOpEnable = VK_FALSE;
+	cb2.logicOp = vk::LogicOp::eNoOp;
+	cb2.blendConstants[0] = 1.0f;	
+	cb2.blendConstants[1] = 1.0f;
+	cb2.blendConstants[2] = 1.0f;
+	cb2.blendConstants[3] = 1.0f;
+
+	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayout)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb2)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(shaderStages.data())
+		.setStageCount(2)
+		.setRenderPass(fbVulkan->renderpass)
+		.setSubpass(0);
+
+	pipelineRenderScene = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+
 	//vk::PipelineDynamicStateCreateInfo dynamicState = vk
 }
 
@@ -977,6 +1043,38 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	}
 
 	iBuffer.endRenderPass();
+
+
+	//vk::ClearValue clear_values2[3] = {};
+	//clear_values[0].color.float32[0] = 1.0f;
+	//clear_values[0].color.float32[1] = 0.2f;
+	//clear_values[0].color.float32[2] = 0.2f;
+	//clear_values[0].color.float32[3] = 0.2f;
+	//
+	//vk::RenderPassBeginInfo rp_begin2 = vk::RenderPassBeginInfo()
+	//	.setRenderPass(fbVulkan->renderpass)
+	//	.setFramebuffer(fbVulkan->framebuffer)
+	//	.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
+	//	.setClearValueCount(1)
+	//	.setPClearValues(clear_values);
+	//
+	//iBuffer.beginRenderPass(&rp_begin2, SubpassContents::eInline);
+	//iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRenderScene);
+	//
+	//InitViewports(iBuffer);
+	//InitScissors(iBuffer);
+	//
+	//for (int j = 0; j < iObjects.size(); ++j)
+	//{
+	//	descriptor_set[index][2] = models[iObjects[j].vulkanModelID]->textureSet;
+	//	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
+	//	iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
+	//	iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
+	//	iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
+	//}
+	//
+	//iBuffer.endRenderPass();
+
 	// End the pipeline
 	iBuffer.end();
 
@@ -1228,6 +1326,7 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 		tModV->indiceCount = e.indices.size();
 
 		// Check if the texture already exists in the map
+		// Albedo texture
 		if (textureMap.find(e.filepaths[0]) == textureMap.end())
 		{
 			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0], tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
@@ -1236,12 +1335,10 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 		}
 		else
 		{
-			//LOG(INFO) << "Found matching";
 			tModV->albedoTexture = textureMap.at(e.filepaths[0]);
 		}
 
-
-
+		// Specular texture
 		if (textureMap.find(e.filepaths[1]) == textureMap.end())
 		{
 			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->specularTexture.image, tModV->specularTexture.allocation, stagingBuffers);
@@ -1253,17 +1350,30 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 			tModV->specularTexture = textureMap.at(e.filepaths[1]);
 		}
 		
+		// normal texture
 		if (textureMap.find(e.filepaths[2]) == textureMap.end())
 		{
 			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[2].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);
 			tModV->normalTexture.view = CreateImageView(deviceVulkan->device, tModV->normalTexture.image, Format::eR8G8B8A8Unorm);
 			textureMap[e.filepaths[2]] = tModV->normalTexture;
-
 		}
 		else
 		{
 			tModV->normalTexture = textureMap.at(e.filepaths[2]);
 		}
+
+		if (textureMap.find(e.filepaths[3]) == textureMap.end())
+		{
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[3].c_str(), tModV->roughnessTexture.image, tModV->roughnessTexture.allocation, stagingBuffers);
+			tModV->roughnessTexture.view = CreateImageView(deviceVulkan->device, tModV->roughnessTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[3]] = tModV->roughnessTexture;
+		}
+
+		else
+		{
+			tModV->roughnessTexture = textureMap.at(e.filepaths[3]);
+		}
+
 
 
 
@@ -1294,6 +1404,9 @@ void RendererVulkan::Destroy()
 {
 
 	deviceVulkan->presentQueue.waitIdle();
+	
+	fbVulkan->Destroy(allocator, deviceVulkan->device);
+
 	for (auto& e : commandBuffers)
 	{
 		e.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
@@ -1333,6 +1446,7 @@ void RendererVulkan::Destroy()
 	}
 
 	deviceVulkan->device.destroyPipeline(pipeline);
+	deviceVulkan->device.destroyPipeline(pipelineRenderScene);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
 	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
 

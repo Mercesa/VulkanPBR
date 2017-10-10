@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+//#define WIN32_MEAN_AND_LEAN
 
 
 #define GLM_FORCE_RADIANS

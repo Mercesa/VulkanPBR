@@ -17,7 +17,6 @@ Game::~Game()
 {
 }
 
-
 void Game::Init()
 {
 
@@ -50,7 +49,8 @@ void Game::Init()
 	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
 	modelsToBeLoaded[0].filepaths[0] = "Textures/rustediron2_basecolor.png";
 	modelsToBeLoaded[0].filepaths[1] = "Textures/rustediron2_metallic.psd";
-	modelsToBeLoaded[0].filepaths[2] = "Textures/normal_4.png";
+	modelsToBeLoaded[0].filepaths[2] = "Textures/rustediron2_normal.png";
+	modelsToBeLoaded[0].filepaths[3] = "Textures/rustediron2_roughness.png";
 
 
 	for (auto& e : modelsToBeLoaded)
@@ -65,7 +65,9 @@ void Game::Init()
 
 void Game::Update()
 {
-
+	static float derp = 0.0f;
+	derp += 0.1f;
+	lights[0].position.y = sinf(derp);
 }
 
 void Game::Destroy()

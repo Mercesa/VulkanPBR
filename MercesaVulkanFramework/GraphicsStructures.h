@@ -48,8 +48,8 @@ struct RawMeshData
 	std::vector<VertexData> vertices;
 	std::vector<uint32_t> indices;
 
-	std::string filepaths[3] = {""};
-	bool isValids[3] = { false };
+	std::string filepaths[4] = {""};
+	bool isValids[4] = { false };
 
 
 	VEC4f sphericalCollider;

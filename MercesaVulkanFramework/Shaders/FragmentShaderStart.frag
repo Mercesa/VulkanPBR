@@ -30,9 +30,11 @@ layout(std140, set = 1, binding = 1) uniform lightVals{
 
 
 layout(set = 0, binding = 0) uniform sampler realTextureSampler;
+
 layout(set = 2, binding = 0) uniform texture2D albedoTexture;
-layout(set = 2, binding = 1) uniform texture2D specularTexture;
+layout(set = 2, binding = 1) uniform texture2D metalTexture;
 layout(set = 2, binding = 2) uniform texture2D normalTexture;
+layout(set = 2, binding = 3) uniform texture2D roughnessTexture;
 
 
 
@@ -73,7 +75,7 @@ void main() {
 
 		vec3 reflectDir = reflect(-lightDir, newNormal);
 		float spec = pow(max(dot(normal, H), 0.0f), 16);
-		vec3 specColor = vec3(1.0f) * spec * (1.0f/(1.0f+4.0f*lengthL)) * texture(sampler2D(specularTexture, realTextureSampler), uv).rgb;
+		vec3 specColor = vec3(1.0f) * spec * (1.0f/(1.0f+4.0f*lengthL)) * texture(sampler2D(metalTexture, realTextureSampler), uv).rgb;
 		col += d * vec3(myLightVals.lights[i].color) * (1.0f/(1.0f+4.0f*lengthL));
 		col += specColor;
 	}

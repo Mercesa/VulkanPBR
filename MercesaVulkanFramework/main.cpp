@@ -178,6 +178,7 @@ int main()
 		
 		if (!firstFrame)
 		{
+			CurrentGame->Update();
 			newCam->rotate(glm::vec3(mouseMoveRelY, mouseMoveRelX, 0.0f));
 			newCam->update(1.0f);
 

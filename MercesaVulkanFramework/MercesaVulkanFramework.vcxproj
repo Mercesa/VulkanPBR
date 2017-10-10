@@ -160,6 +160,7 @@
     <ClCompile Include="DescriptorLayoutHelper.h" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="DeviceVulkan.cpp" />
+    <ClCompile Include="FramebufferVulkan.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
@@ -177,6 +178,7 @@
     <ClInclude Include="DescriptorPoolVulkan.h" />
     <ClInclude Include="DeviceVulkan.h" />
     <ClInclude Include="easylogging++.h" />
+    <ClInclude Include="FramebufferVulkan.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
     <ClInclude Include="GraphicsStructures.h" />

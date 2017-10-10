@@ -74,6 +74,9 @@
     <ClCompile Include="VulkanResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FramebufferVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -147,6 +150,9 @@
     </ClInclude>
     <ClInclude Include="VulkanResourceManager.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FramebufferVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
