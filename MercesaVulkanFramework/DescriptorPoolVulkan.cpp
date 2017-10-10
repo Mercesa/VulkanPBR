@@ -7,11 +7,7 @@ DescriptorPoolVulkan::DescriptorPoolVulkan() : hasInitialized(false)
 }
 
 bool DescriptorPoolVulkan::Create(const vk::Device aDevice, 
-	uint32_t iMaxSets,
-	uint32_t iCombinedImgSamplerCount,
-	uint32_t iSamplerCount,
-	uint32_t iUniformBufferCount,
-	uint32_t iSampledImgCount)
+	const PoolData& iPoolData)
 {
 	if (hasInitialized)
 	{
@@ -19,37 +15,34 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 		return false;
 	}
 
-	std::array<vk::DescriptorPoolSize, 4> type_count;
+	std::array<vk::DescriptorPoolSize, 5> type_count;
 	
 
 	// Initialize our pool with these values
 	type_count[0].type = vk::DescriptorType::eCombinedImageSampler;
-	type_count[0].descriptorCount = iCombinedImgSamplerCount;
+	type_count[0].descriptorCount = iPoolData.combinedImgSamplerCount;
 
 	type_count[1].type = vk::DescriptorType::eSampler;
-	type_count[1].descriptorCount = iSamplerCount;
+	type_count[1].descriptorCount = iPoolData.samplerCount;
 	
 	type_count[2].type = vk::DescriptorType::eUniformBuffer;
-	type_count[2].descriptorCount = iUniformBufferCount;
+	type_count[2].descriptorCount = iPoolData.uniformBufferCount;
 
 	type_count[3].type = vk::DescriptorType::eSampledImage;
-	type_count[3].descriptorCount = iSampledImgCount;
+	type_count[3].descriptorCount = iPoolData.sampledImgCount;
+
+	type_count[4].type = vk::DescriptorType::eUniformBufferDynamic;
+	type_count[4].descriptorCount = iPoolData.uniformDynamicCount;
 
 	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
 		.setPNext(nullptr)
-		.setMaxSets(iMaxSets)
+		.setMaxSets(iPoolData.setCount)
 		.setPoolSizeCount(type_count.size())
 		.setPPoolSizes(type_count.data())
 		.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet);
 	pool = aDevice.createDescriptorPool(createInfo);
 
-	currentResources.combinedImgSamplerCount = iCombinedImgSamplerCount;
-	currentResources.samplerCount = iSamplerCount;
-	currentResources.uniformBufferCount = iUniformBufferCount;
-	currentResources.setCount = iMaxSets;
-
-
-
+	currentResources = iPoolData;
 
 	// Create the descriptor pool
 	hasInitialized = true;

@@ -4,6 +4,7 @@
 class NewCamera;
 class Light;
 struct RawMeshData;
+
 struct Object;
 
 class RendererVulkan

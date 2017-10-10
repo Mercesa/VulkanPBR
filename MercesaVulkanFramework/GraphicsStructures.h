@@ -48,7 +48,7 @@ struct RawMeshData
 	std::vector<VertexData> vertices;
 	std::vector<uint32_t> indices;
 
-	std::string filepaths[4] = {""};
+	std::string filepaths[5] = {""};
 	bool isValids[4] = { false };
 
 

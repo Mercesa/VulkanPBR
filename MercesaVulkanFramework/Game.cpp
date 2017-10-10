@@ -42,8 +42,8 @@ void Game::Init()
 	//}
 
 	Light light;
-	light.diffuseColor = glm::vec3(1.0f, 1.0f, 1.0f);
-	light.position = glm::vec3(0.0f, 0.0f, 0.0f);
+	light.diffuseColor = glm::vec3(10.0f, 10.0f, 10.0f);
+	light.position = glm::vec3(0.0f, 0.0f, -1.0f);
 	lights.push_back(light);
 
 	this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
@@ -51,7 +51,23 @@ void Game::Init()
 	modelsToBeLoaded[0].filepaths[1] = "Textures/rustediron2_metallic.psd";
 	modelsToBeLoaded[0].filepaths[2] = "Textures/rustediron2_normal.png";
 	modelsToBeLoaded[0].filepaths[3] = "Textures/rustediron2_roughness.png";
+	modelsToBeLoaded[0].filepaths[4] = "";
 
+	//this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
+	//modelsToBeLoaded[0].filepaths[0] = "Textures/CopperRock/copper-rock1-alb.png";
+	//modelsToBeLoaded[0].filepaths[1] = "Textures/CopperRock/copper-rock1-metal.png";
+	//modelsToBeLoaded[0].filepaths[2] = "Textures/CopperRock/copper-rock1-normal.png";
+	//modelsToBeLoaded[0].filepaths[3] = "Textures/CopperRock/copper-rock1-rough.png";
+	//modelsToBeLoaded[0].filepaths[4] = "Textures/CopperRock/copper-rock1-ao.png";
+
+
+	// Oakfloor
+	//this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
+	//modelsToBeLoaded[0].filepaths[0] = "Textures/Floor/oakfloor_basecolor.png";
+	//modelsToBeLoaded[0].filepaths[1] = "";
+	//modelsToBeLoaded[0].filepaths[2] = "Textures/Floor/oakfloor_normal.png";
+	//modelsToBeLoaded[0].filepaths[3] = "Textures/Floor/oakfloor_roughness.png";
+	//modelsToBeLoaded[0].filepaths[4] = "Textures/Floor/oakfloor_AO.png";
 
 	for (auto& e : modelsToBeLoaded)
 	{

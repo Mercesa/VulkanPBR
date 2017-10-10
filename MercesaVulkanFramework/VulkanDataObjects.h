@@ -63,6 +63,7 @@ struct ModelVulkan
 	TextureVulkan specularTexture;
 	TextureVulkan normalTexture;
 	TextureVulkan roughnessTexture;
+	TextureVulkan AOTexture;
 
 	vk::DescriptorSet textureSet;
 

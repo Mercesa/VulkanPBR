@@ -92,6 +92,7 @@ vk::PipelineLayout pipelineLayout;
 TextureVulkan depthBuffer;
 TextureVulkan postProcBuffer;
 
+std::vector<UboDataDynamic> univormBuffersModelMatrix;
 std::vector<UniformBufferVulkan> uniformBufferMVP;
 std::vector<UniformBufferVulkan> uniformBufferLights;
 
@@ -285,6 +286,8 @@ void SetupUniformbuffer()
 		uniformBufferMVP.push_back(tUniformBuff);
 	}
 
+
+
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
 		UniformBufferVulkan tUniformBuff;
@@ -317,9 +320,7 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 	glm::mat4 projectionMatrix = iCam.matrices.perspective;
 	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 modelMatrix = glm::scale(glm::vec3(1.0f, 1.0f, 1.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f));
-	
-	//viewMatrix[1][3] *= -1;
-	//projectionMatrix[0][0] *= -1;
+
 	
 	glm::mat4 clipMatrix = glm::mat4(
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -359,7 +360,8 @@ void SetupDescriptorSet()
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 
-	descriptorPool->Create(deviceVulkan->device, 400, 10, 10, 10, 400);
+	descriptorPool->Create(deviceVulkan->device, PoolData(10, 10, 10, 400, 2, 100));
+
 
 	for (int i = 0; i < 2; ++i)
 	{
@@ -372,7 +374,7 @@ void SetupDescriptorSet()
 		descriptor_set.push_back(tDescSet);
 	}
 
-	std::array<vk::WriteDescriptorSet, 4> textureWrites = {};
+	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
 
 	for (auto& e : models)
 	{
@@ -415,6 +417,7 @@ void SetupDescriptorSet()
 		textureWrites[2].dstBinding = 2;
 
 		vk::DescriptorImageInfo roughnessInfo = {};
+		roughnessInfo.imageView = e->roughnessTexture.view;
 
 		textureWrites[3] = {};
 		textureWrites[3].pNext = NULL;
@@ -424,6 +427,18 @@ void SetupDescriptorSet()
 		textureWrites[3].pImageInfo = &roughnessInfo;
 		textureWrites[3].dstArrayElement = 0;
 		textureWrites[3].dstBinding = 3;
+
+		vk::DescriptorImageInfo AOInfo = {};
+		AOInfo.imageView = e->AOTexture.view;
+
+		textureWrites[4] = {};
+		textureWrites[4].pNext = NULL;
+		textureWrites[4].dstSet = e->textureSet;
+		textureWrites[4].descriptorCount = 1;
+		textureWrites[4].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[4].pImageInfo = &AOInfo;
+		textureWrites[4].dstArrayElement = 0;
+		textureWrites[4].dstBinding = 4;
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
 	}
@@ -1374,8 +1389,17 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 			tModV->roughnessTexture = textureMap.at(e.filepaths[3]);
 		}
 
+		if (textureMap.find(e.filepaths[4]) == textureMap.end())
+		{
+			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[4].c_str(), tModV->AOTexture.image, tModV->AOTexture.allocation, stagingBuffers);
+			tModV->AOTexture	.view = CreateImageView(deviceVulkan->device, tModV->AOTexture.image, Format::eR8G8B8A8Unorm);
+			textureMap[e.filepaths[4]] = tModV->AOTexture;
+		}
 
-
+		else
+		{
+			tModV->AOTexture = textureMap.at(e.filepaths[4]);
+		}
 
 		models.push_back(std::move(tModV));
 		iMeshes[i].vulkanModelID = models.size();

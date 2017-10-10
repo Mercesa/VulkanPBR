@@ -5,10 +5,26 @@
 
 struct PoolData
 {
+	PoolData(
+		int32_t iCombinedImgSamplerCount,
+		int32_t iSamplerCount,
+		int32_t iUniformBuffercount,
+		int32_t iSampledImgCount,
+		int32_t iUniformDynamicCount,
+		int32_t iSetCount) : 	combinedImgSamplerCount(iCombinedImgSamplerCount), 
+		samplerCount(iSamplerCount), 
+		uniformBufferCount(iUniformBuffercount), 
+		sampledImgCount(iSampledImgCount), 
+		uniformDynamicCount(iUniformDynamicCount),
+		setCount(iSetCount) {}
+
+	PoolData() : combinedImgSamplerCount(0), samplerCount(0), uniformBufferCount(0), sampledImgCount(0), uniformDynamicCount(0), setCount(0) {}
+
 	int32_t combinedImgSamplerCount = 0;
 	int32_t samplerCount = 0;
 	int32_t uniformBufferCount = 0;
 	int32_t sampledImgCount = 0;
+	int32_t uniformDynamicCount = 0;
 	int32_t setCount = 0;
 };
 
@@ -24,12 +40,8 @@ class DescriptorPoolVulkan
 public:
 	DescriptorPoolVulkan();
 
-	bool Create(const vk::Device aDevice,
-		uint32_t iMaxSets,
-		uint32_t iCombinedImgSamplerCount,
-		uint32_t iSamplerCount,
-		uint32_t iUniformBufferCount,
-		uint32_t iSampledImgCount);
+	bool Create(const vk::Device aDevice, 
+		const PoolData& iPoolData );
 
 	bool Destroy(const vk::Device aDevice);
 

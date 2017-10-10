@@ -10,6 +10,10 @@ struct Light
 	vec4 specularColor;
 };
 
+layout(std140, set = 0, binding = 0) uniform modelBuffer{
+	mat4 modelMatrix;
+} myBufferVals;
+
 layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 modelMatrix;
 	mat4 viewMatrix;
