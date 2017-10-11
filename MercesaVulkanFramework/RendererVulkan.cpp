@@ -57,16 +57,21 @@
 #include "Helper.h"
 #include "Game.h"
 #include "FramebufferVulkan.h"
+#include <stdio.h>
+#include <stdlib.h>
 
+
+CBModelMatrix multipleModelMatrixData;
+CBModelMatrixSingle singleModelmatrixData;
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
 
 
-
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
-#define NUM_DESCRIPTOR_SETS 3
+#define NUM_DESCRIPTOR_SETS 4
 #define FENCE_TIMEOUT 100000000
 #define NUM_FRAMES 2
+static const int32_t objectCount = 3;
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* window);
 
@@ -74,6 +79,19 @@ static const int screenWidth = 1280;
 static const int screenHeight = 720;
 
 using namespace vk;
+
+
+struct RenderingContextResources
+{
+	std::vector<DescriptorSet> shaderDescriptorResources;
+
+	UniformBufferVulkan uniformBufferMVP;
+	UniformBufferVulkan uniformBufferModelMatrix;
+	UniformBufferVulkan uniformBufferLights;
+
+
+	vk::CommandBuffer commandBuffer;
+};
 
 
 uint32_t currentBuffer = 0;
@@ -84,17 +102,15 @@ std::vector<vk::Framebuffer> framebufferScene;
 std::unique_ptr<FramebufferVulkan> fbVulkan;
 
 // Descriptor set layout
-std::vector<vk::DescriptorSetLayout> desc_layout;
-std::vector<std::vector<vk::DescriptorSet>> descriptor_set;
+std::vector<vk::DescriptorSetLayout> ShaderDescriptorLayouts;
 
 vk::PipelineLayout pipelineLayout;
 
 TextureVulkan depthBuffer;
 TextureVulkan postProcBuffer;
 
-std::vector<UboDataDynamic> univormBuffersModelMatrix;
-std::vector<UniformBufferVulkan> uniformBufferMVP;
-std::vector<UniformBufferVulkan> uniformBufferLights;
+
+std::vector<std::unique_ptr<RenderingContextResources>> renderingContextResources;
 
 vk::RenderPass renderPassPostProc;
 
@@ -102,7 +118,6 @@ vk::RenderPass renderPassPostProc;
 vk::Instance instance;
 
 std::unique_ptr<CommandpoolVulkan> cmdPool;
-std::vector<vk::CommandBuffer> commandBuffers;
 
 std::shared_ptr<iLowLevelWindow> window;
 // Information about our device its memory and family properties
@@ -205,7 +220,11 @@ void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
 	cmdPool->Create(deviceVulkan->device, deviceVulkan->familyIndexGraphics, CommandPoolCreateFlagBits::eResetCommandBuffer);
-	commandBuffers = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, NUM_FRAMES);
+
+	for (int i = 0; i < renderingContextResources.size(); ++i)
+	{
+		renderingContextResources[i]->commandBuffer = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, 1)[0];
+	}
 }
 
 
@@ -261,10 +280,33 @@ void SetupDepthbuffer()
 	depthBuffer.view = deviceVulkan->device.createImageView(view_info);
 }
 
-
 void SetupUniformbuffer()
 {
-	// Create our uniform buffers
+	//size_t uboAlignment = deviceVulkan->physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
+	//size_t dynamicAlignment = (sizeof(glm::mat4) / uboAlignment) * uboAlignment + ((sizeof(glm::mat4) % uboAlignment) > 0 ? uboAlignment : 0);
+	//
+	//size_t bufferSize = objectCount * dynamicAlignment;
+	//multipleModelMatrixData.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
+	//
+	//// Create our uniform buffers
+	//for (int i = 0; i < NUM_FRAMES; ++i)
+	//{
+	//	UniformBufferVulkan tUniformBuff;
+	//
+	//	CreateSimpleBuffer(allocator,
+	//		tUniformBuff.allocation,
+	//		VMA_MEMORY_USAGE_CPU_TO_GPU,
+	//		tUniformBuff.buffer,
+	//		vk::BufferUsageFlagBits::eUniformBuffer,
+	//		bufferSize);
+	//
+	//	tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+	//	tUniformBuff.descriptorInfo.offset = 0;
+	//	tUniformBuff.descriptorInfo.range = bufferSize;
+	//
+	//	renderingContextResources[i]->uniformBufferModelMatrix = tUniformBuff;
+	//}
+
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
 		UniformBufferVulkan tUniformBuff;
@@ -283,10 +325,8 @@ void SetupUniformbuffer()
 		tUniformBuff.descriptorInfo.offset = 0;
 		tUniformBuff.descriptorInfo.range = sizeof(matrixConstantBufferData);
 
-		uniformBufferMVP.push_back(tUniformBuff);
+		renderingContextResources[i]->uniformBufferMVP = tUniformBuff;
 	}
-
-
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
@@ -306,12 +346,11 @@ void SetupUniformbuffer()
 		tUniformBuff.descriptorInfo.offset = 0;
 		tUniformBuff.descriptorInfo.range = sizeof(CBLights);
 
-		uniformBufferLights.push_back(tUniformBuff);
+		renderingContextResources[i]->uniformBufferLights = tUniformBuff;
 	}
 }
 
-
-void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const std::vector<Light>& iLights)
+void UpdateUniformbufferFrame(int32_t iCurrentBuff, const NewCamera& iCam, const std::vector<Light>& iLights)
 {
 	static float derp = 1.0f;
 	derp += 0.01f;
@@ -332,12 +371,12 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 	matrixConstantBufferData.modelMatrix = modelMatrix;
 	matrixConstantBufferData.viewMatrix = viewMatrix;
 	matrixConstantBufferData.projectionMatrix = projectionMatrix;
-	matrixConstantBufferData.viewProjectMatrix = projectionMatrix * viewMatrix;
+	matrixConstantBufferData.viewProjectMatrix = clipMatrix * projectionMatrix * viewMatrix;
 	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
 
 	matrixConstantBufferData.viewPos = iCam.position;
 
-	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferMVP[iCurrentBuff].allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 
 	lightConstantBufferData.currAmountOfLights = std::min(static_cast<uint32_t>(iLights.size()), (uint32_t)16);
 
@@ -346,13 +385,17 @@ void UpdateUniformBufferTest(int32_t iCurrentBuff, const NewCamera& iCam, const 
 		lightConstantBufferData.lights[i] = iLights[i];
 	}
 
-	CopyDataToBuffer(VkDevice(deviceVulkan->device), uniformBufferLights[iCurrentBuff].allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
+	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferLights.allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
 }
 
+void UpdateUniformbufferObjects(int32_t iCurrentBuff, const std::vector<Object>& iObject)
+{
+	
+}
 
 void SetupPipelineLayout()
 {
-	desc_layout = std::move(ShaderLayoutparser::CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv", deviceVulkan->device));
+	ShaderDescriptorLayouts = std::move(ShaderLayoutparser::CompileShadersIntoLayouts("shaders/vertex.spv", "shaders/frag.spv", deviceVulkan->device));
 }
 
 
@@ -368,17 +411,19 @@ void SetupDescriptorSet()
 		std::vector<DescriptorSet> tDescSet;
 		tDescSet.resize(NUM_DESCRIPTOR_SETS);
 
-		tDescSet[0] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[0], bindings)[0];
-		tDescSet[1] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[1], uniformBinding)[0];
+		tDescSet[0] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[0], bindings)[0];
+		tDescSet[1] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[1], uniformBinding)[0];
 
-		descriptor_set.push_back(tDescSet);
+		renderingContextResources[i]->shaderDescriptorResources = tDescSet;
 	}
 
 	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
+	std::array<vk::WriteDescriptorSet, 1> uniformModelWrite = {};
 
 	for (auto& e : models)
 	{
-		e->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, desc_layout[2], textureBinding)[0];
+		e->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[2], textureBinding)[0];
+		e->positionBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[3], uniformBinding)[0];
 
 		vk::DescriptorImageInfo albedoImageInfo = {};
 		albedoImageInfo.imageView = e->albedoTexture.view;
@@ -441,12 +486,22 @@ void SetupDescriptorSet()
 		textureWrites[4].dstBinding = 4;
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
+
+
+		uniformModelWrite[0] = {};
+		uniformModelWrite[0].pNext = NULL;
+		uniformModelWrite[0].dstSet = e->positionBufferSet;
+		uniformModelWrite[0].descriptorCount = 1;
+		uniformModelWrite[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniformModelWrite[0].pBufferInfo = &e->positionUniformBuffer.descriptorInfo;
+		uniformModelWrite[0].dstArrayElement = 0;
+		uniformModelWrite[0].dstBinding = 0;
+
+		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniformModelWrite.size()), uniformModelWrite.data(), 0, NULL);
+
 	}
 
-	//descriptor_set[1] = descriptorPool->AllocateDescriptorSet(device, 1, desc_layout[2], uniformBinding)[0];
-
-
-	for (int i = 0; i < descriptor_set.size(); ++i)
+	for (int i = 0; i < renderingContextResources.size(); ++i)
 	{
 		std::array<vk::WriteDescriptorSet, 1> writes = {};
 
@@ -459,7 +514,7 @@ void SetupDescriptorSet()
 
 		writes[0] = {};
 		writes[0].pNext = NULL;
-		writes[0].dstSet = descriptor_set[i][0];
+		writes[0].dstSet = renderingContextResources[i]->shaderDescriptorResources[0];
 		writes[0].descriptorCount = 1;
 		writes[0].descriptorType = vk::DescriptorType::eSampler;
 		writes[0].pImageInfo = &pureSamplerInfo;
@@ -473,26 +528,25 @@ void SetupDescriptorSet()
 
 		uniform_writes[0] = {};
 		uniform_writes[0].pNext = NULL;
-		uniform_writes[0].dstSet = descriptor_set[i][1];
+		uniform_writes[0].dstSet = renderingContextResources[i]->shaderDescriptorResources[1];
 		uniform_writes[0].descriptorCount = 1;
 		uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-		uniform_writes[0].pBufferInfo = &uniformBufferMVP[i].descriptorInfo;
+		uniform_writes[0].pBufferInfo = &renderingContextResources[i]->uniformBufferMVP.descriptorInfo;
 		uniform_writes[0].dstArrayElement = 0;
 		uniform_writes[0].dstBinding = 0;
 
 		uniform_writes[1] = {};
 		uniform_writes[1].pNext = NULL;
-		uniform_writes[1].dstSet = descriptor_set[i][1];
+		uniform_writes[1].dstSet = renderingContextResources[i]->shaderDescriptorResources[1];
 		uniform_writes[1].descriptorCount = 1;
 		uniform_writes[1].descriptorType = vk::DescriptorType::eUniformBuffer;
-		uniform_writes[1].pBufferInfo = &uniformBufferLights[i].descriptorInfo;
+		uniform_writes[1].pBufferInfo = &renderingContextResources[i]->uniformBufferLights.descriptorInfo;
 		uniform_writes[1].dstArrayElement = 0;
 		uniform_writes[1].dstBinding = 1;
 
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
 	}
-
 }
 
 
@@ -621,7 +675,6 @@ vk::Framebuffer CreateFrameBuffer(
 	return tFBuffer;
 }
 
-
 void SetupFramebuffers()
 {
 
@@ -673,7 +726,6 @@ void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize
 	EndSingleTimeCommands(deviceVulkan->device, tCmdBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 }
 
-
 void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
 {
 	vk::BufferImageCopy region = vk::BufferImageCopy()
@@ -695,7 +747,6 @@ void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Imag
 		1,
 		&region);
 }
-
 
 void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
 {
@@ -803,9 +854,6 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 	
 }
 
-
-
-
 void SetupPipeline()
 {
 
@@ -814,7 +862,7 @@ void SetupPipeline()
 		.setPushConstantRangeCount(0)
 		.setPPushConstantRanges(NULL)
 		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
-		.setPSetLayouts(desc_layout.data());
+		.setPSetLayouts(ShaderDescriptorLayouts.data());
 
 	pipelineLayout = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
 
@@ -1050,8 +1098,10 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 
 	for (int j = 0; j < iObjects.size(); ++j)
 	{
-		descriptor_set[index][2] = models[iObjects[j].vulkanModelID]->textureSet;
-		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
+		renderingContextResources[index]->shaderDescriptorResources[2] = models[iObjects[j].vulkanModelID]->textureSet;
+		renderingContextResources[index]->shaderDescriptorResources[3] = models[iObjects[j].vulkanModelID]->positionBufferSet;
+
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, renderingContextResources[index]->shaderDescriptorResources.data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
 		iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
@@ -1246,18 +1296,17 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
 	if (firstFrame)
 	{
-		SetupCommandBuffers(commandBuffers[currentBuffer], currentBuffer, iObjects);
+		SetupCommandBuffers(renderingContextResources[currentBuffer]->commandBuffer, currentBuffer, iObjects);
 		firstFrame = false;
 	}
 
 	else
 	{
 		//std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
-		SetupCommandBuffers(commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2, iObjects);
+		int32_t nextBuffer = (currentBuffer + 1) % 2;
+		SetupCommandBuffers(renderingContextResources[nextBuffer]->commandBuffer, nextBuffer, iObjects);
 
 		deviceVulkan->device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-		//LOG(INFO) << "FENCE WAITING OVER";
-		//LOG(INFO) << "Current buffer " << currentBuffer;
 		deviceVulkan->device.resetFences(graphicsQueueFinishedFence);
 		//CommandSetup.join();
 	}
@@ -1273,7 +1322,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	submit_info[0].pWaitSemaphores = &imageAcquiredSemaphore;
 	submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
 	submit_info[0].commandBufferCount = 1;
-	submit_info[0].pCommandBuffers = &commandBuffers[currentBuffer];
+	submit_info[0].pCommandBuffers = &renderingContextResources[currentBuffer]->commandBuffer;
 	submit_info[0].signalSemaphoreCount = 1;
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 
@@ -1294,17 +1343,28 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& lights)
 {
-	UpdateUniformBufferTest((currentBuffer + 1) % 2, iCamera, lights);
+	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
 }
 
 std::map<std::string, TextureVulkan> textureMap;
 
-void RendererVulkan::Create(std::vector<Object>& iMeshes)
+
+void SetupTexturesForObject(
+	const RawMeshData& iMeshData, ModelVulkan* const iModel, 
+	std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
+
+void RendererVulkan::Create(std::vector<Object>& iObjects)
 {
 
 	SetupApplication();
 	SetupSDL();
 	SetupDevice();
+
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		auto contextResources = std::make_unique<RenderingContextResources>();
+		renderingContextResources.push_back(std::move(contextResources));
+	}
 
 	SetupSwapchain();
 
@@ -1324,88 +1384,48 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 	deviceVulkan->SetupDeviceQueue();
 	
 	
-	vk::CommandBuffer stageBuffer = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
-	TransitionImageLayout(stageBuffer, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
+	TransitionImageLayout(cmdBufferTextures, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
 	// Staging buffers we will need to delete
 	std::vector<BufferVulkan> stagingBuffers;
 
 	// load in albedo textures in this loop
-	for (int i = 0; i < iMeshes.size(); ++i)
+	for (int i = 0; i < iObjects.size(); ++i)
 	{
-		auto& e = iMeshes[i].rawMeshData;
+		auto& e = iObjects[i].rawMeshData;
 		std::unique_ptr<ModelVulkan> tModV = std::make_unique<ModelVulkan>();
 		SetupVertexBuffer(tModV->vertexBuffer, e);
 		SetupIndexBuffer(tModV->indexBuffer, e);
 
 		tModV->indiceCount = e.indices.size();
 
-		// Check if the texture already exists in the map
-		// Albedo texture
-		if (textureMap.find(e.filepaths[0]) == textureMap.end())
-		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[0], tModV->albedoTexture.image, tModV->albedoTexture.allocation, stagingBuffers);
-			tModV->albedoTexture.view = CreateImageView(deviceVulkan->device, tModV->albedoTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[0]] = tModV->albedoTexture;
-		}
-		else
-		{
-			tModV->albedoTexture = textureMap.at(e.filepaths[0]);
-		}
-
-		// Specular texture
-		if (textureMap.find(e.filepaths[1]) == textureMap.end())
-		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[1].c_str(), tModV->specularTexture.image, tModV->specularTexture.allocation, stagingBuffers);
-			tModV->specularTexture.view = CreateImageView(deviceVulkan->device, tModV->specularTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[1]] = tModV->specularTexture;
-		}
-		else
-		{
-			tModV->specularTexture = textureMap.at(e.filepaths[1]);
-		}
+		SetupTexturesForObject(e, tModV.get(), stagingBuffers, cmdBufferTextures);
 		
-		// normal texture
-		if (textureMap.find(e.filepaths[2]) == textureMap.end())
-		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[2].c_str(), tModV->normalTexture.image, tModV->normalTexture.allocation, stagingBuffers);
-			tModV->normalTexture.view = CreateImageView(deviceVulkan->device, tModV->normalTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[2]] = tModV->normalTexture;
-		}
-		else
-		{
-			tModV->normalTexture = textureMap.at(e.filepaths[2]);
-		}
+		UniformBufferVulkan tUniformBuff;
 
-		if (textureMap.find(e.filepaths[3]) == textureMap.end())
-		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[3].c_str(), tModV->roughnessTexture.image, tModV->roughnessTexture.allocation, stagingBuffers);
-			tModV->roughnessTexture.view = CreateImageView(deviceVulkan->device, tModV->roughnessTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[3]] = tModV->roughnessTexture;
-		}
+		CreateSimpleBuffer(allocator,
+			tUniformBuff.allocation,
+			VMA_MEMORY_USAGE_CPU_TO_GPU,
+			tUniformBuff.buffer,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			sizeof(CBMatrix));
 
-		else
-		{
-			tModV->roughnessTexture = textureMap.at(e.filepaths[3]);
-		}
+		singleModelmatrixData.model = iObjects[i].modelMatrix;
+		CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&singleModelmatrixData, sizeof(singleModelmatrixData));
 
-		if (textureMap.find(e.filepaths[4]) == textureMap.end())
-		{
-			SetupTextureImage(stageBuffer, deviceVulkan->device, e.filepaths[4].c_str(), tModV->AOTexture.image, tModV->AOTexture.allocation, stagingBuffers);
-			tModV->AOTexture	.view = CreateImageView(deviceVulkan->device, tModV->AOTexture.image, Format::eR8G8B8A8Unorm);
-			textureMap[e.filepaths[4]] = tModV->AOTexture;
-		}
 
-		else
-		{
-			tModV->AOTexture = textureMap.at(e.filepaths[4]);
-		}
+		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		tUniformBuff.descriptorInfo.offset = 0;
+		tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
 
+		tModV->positionUniformBuffer = tUniformBuff;
+
+		iObjects[i].vulkanModelID = models.size();
 		models.push_back(std::move(tModV));
-		iMeshes[i].vulkanModelID = models.size();
 	}
 	
-	EndSingleTimeCommands(deviceVulkan->device, stageBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
+	EndSingleTimeCommands(deviceVulkan->device, cmdBufferTextures, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 
 	for (auto& e : stagingBuffers)
 	{
@@ -1420,8 +1440,8 @@ void RendererVulkan::Create(std::vector<Object>& iMeshes)
 	CreateTextureSampler(deviceVulkan->device);
 
 	SetupDescriptorSet();
-	iMeshes.clear();
-	iMeshes.resize(1);
+	//iObjects.clear();
+	//iObjects.resize(1);
 }
 
 void RendererVulkan::Destroy()
@@ -1429,11 +1449,14 @@ void RendererVulkan::Destroy()
 
 	deviceVulkan->presentQueue.waitIdle();
 	
+	// free our dynamic uniform buffer thing
+	alignedFree(multipleModelMatrixData.model);
+
 	fbVulkan->Destroy(allocator, deviceVulkan->device);
 
-	for (auto& e : commandBuffers)
+	for (auto& e : renderingContextResources)
 	{
-		e.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
+		e->commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 	}
 
 	descriptorPool->Destroy(deviceVulkan->device);
@@ -1459,7 +1482,7 @@ void RendererVulkan::Destroy()
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
 	deviceVulkan->device.destroyImageView(depthBuffer.view);
 
-	for (auto& e : desc_layout)
+	for (auto& e : ShaderDescriptorLayouts)
 	{
 		deviceVulkan->device.destroyDescriptorSetLayout(e);
 	}
@@ -1474,15 +1497,14 @@ void RendererVulkan::Destroy()
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
 	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
 
-	for (auto& e : uniformBufferMVP)
+
+	for (auto& e : renderingContextResources)
 	{
-		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
+		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferLights.buffer, (*e).uniformBufferLights.allocation);
+		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferModelMatrix.buffer, (*e).uniformBufferModelMatrix.allocation);
+		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferMVP.buffer, (*e).uniformBufferMVP.allocation);
 	}
 
-	for (auto& e : uniformBufferLights)
-	{
-		vmaDestroyBuffer(allocator, (VkBuffer)e.buffer, e.allocation);
-	}
 
 	for (auto& e : models)
 	{
@@ -1513,4 +1535,69 @@ void RendererVulkan::Destroy()
 	deviceVulkan->device.destroy();
 	instance.destroySurfaceKHR(deviceVulkan->swapchain.surface);
 	instance.destroy();
+}
+
+
+void SetupTexturesForObject(const RawMeshData& iMeshData, ModelVulkan* const iModel, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer)
+{
+	// Check if the texture already exists in the map
+	// Albedo texture
+	if (textureMap.find(iMeshData.filepaths[0]) == textureMap.end())
+	{
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[0], iModel->albedoTexture.image, iModel->albedoTexture.allocation, iStagingBuffers);
+		iModel->albedoTexture.view = CreateImageView(deviceVulkan->device, iModel->albedoTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[0]] = iModel->albedoTexture;
+	}
+	else
+	{
+		iModel->albedoTexture = textureMap.at(iMeshData.filepaths[0]);
+	}
+
+	// Specular texture
+	if (textureMap.find(iMeshData.filepaths[1]) == textureMap.end())
+	{
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[1].c_str(), iModel->specularTexture.image, iModel->specularTexture.allocation, iStagingBuffers);
+		iModel->specularTexture.view = CreateImageView(deviceVulkan->device, iModel->specularTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[1]] = iModel->specularTexture;
+	}
+	else
+	{
+		iModel->specularTexture = textureMap.at(iMeshData.filepaths[1]);
+	}
+
+	// normal texture
+	if (textureMap.find(iMeshData.filepaths[2]) == textureMap.end())
+	{
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[2].c_str(), iModel->normalTexture.image, iModel->normalTexture.allocation, iStagingBuffers);
+		iModel->normalTexture.view = CreateImageView(deviceVulkan->device, iModel->normalTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[2]] = iModel->normalTexture;
+	}
+	else
+	{
+		iModel->normalTexture = textureMap.at(iMeshData.filepaths[2]);
+	}
+
+	if (textureMap.find(iMeshData.filepaths[3]) == textureMap.end())
+	{
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[3].c_str(), iModel->roughnessTexture.image, iModel->roughnessTexture.allocation, iStagingBuffers);
+		iModel->roughnessTexture.view = CreateImageView(deviceVulkan->device, iModel->roughnessTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[3]] = iModel->roughnessTexture;
+	}
+
+	else
+	{
+		iModel->roughnessTexture = textureMap.at(iMeshData.filepaths[3]);
+	}
+
+	if (textureMap.find(iMeshData.filepaths[4]) == textureMap.end())
+	{
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[4].c_str(), iModel->AOTexture.image, iModel->AOTexture.allocation, iStagingBuffers);
+		iModel->AOTexture.view = CreateImageView(deviceVulkan->device, iModel->AOTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[4]] = iModel->AOTexture;
+	}
+
+	else
+	{
+		iModel->AOTexture = textureMap.at(iMeshData.filepaths[4]);
+	}
 }

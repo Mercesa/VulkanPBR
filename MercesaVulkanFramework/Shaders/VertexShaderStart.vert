@@ -10,9 +10,9 @@ struct Light
 	vec4 specularColor;
 };
 
-layout(std140, set = 0, binding = 0) uniform modelBuffer{
+layout(std140, set = 3, binding = 0) uniform modelBuffer{
 	mat4 modelMatrix;
-} myBufferVals;
+} mySingleUniform;
 
 layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 modelMatrix;
@@ -48,15 +48,15 @@ layout(location = 4) out mat3 outTBN;
 void main() {
 	outColor = vec4(uv.xy, 0.0, 1.0);
 	outUV = uv;
-	outNormal = normalize(mat3x3(myBufferVals.modelMatrix) * normal);
-	outFragPos = vec3(myBufferVals.modelMatrix * vec4(pos, 1.0));
+	outNormal = normalize(mat3x3(mySingleUniform.modelMatrix) * normal);
+	outFragPos = vec3(mySingleUniform.modelMatrix * vec4(pos, 1.0));
 
-	vec3 T = normalize(vec3(myBufferVals.modelMatrix * vec4(tangent, 0.0f)));
-	vec3 B = normalize(vec3(myBufferVals.modelMatrix * vec4(bitangent, 0.0f)));
-	vec3 N = normalize(vec3(myBufferVals.modelMatrix * vec4(normal, 0.0f)));
+	vec3 T = normalize(vec3(mySingleUniform.modelMatrix * vec4(tangent, 0.0f)));
+	vec3 B = normalize(vec3(mySingleUniform.modelMatrix * vec4(bitangent, 0.0f)));
+	vec3 N = normalize(vec3(mySingleUniform.modelMatrix * vec4(normal, 0.0f)));
 
 	outTBN = mat3(T,B,N);
 
-	gl_Position = myBufferVals.mvp * vec4(pos, 1.0);
+	gl_Position = myBufferVals.viewProjectionMatrix * mySingleUniform.modelMatrix * vec4(pos, 1.0);
 
 }

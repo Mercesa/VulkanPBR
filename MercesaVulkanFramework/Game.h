@@ -11,7 +11,7 @@ class Light;
 struct Object
 {
 	glm::mat4 modelMatrix;
-	uint32_t vulkanModelID;
+	uint32_t vulkanModelID = 0;
 	RawMeshData rawMeshData;
 };
 
@@ -27,7 +27,6 @@ public:
 
 	std::vector<Light> lights;
 	std::unique_ptr<Camera> camera;
-	std::vector<RawMeshData> modelsToBeLoaded;
 	std::vector<Object> gameObjects;
 };
 

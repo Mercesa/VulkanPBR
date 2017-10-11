@@ -29,6 +29,8 @@ layout(std140, set = 1, binding = 1) uniform lightVals{
 
 
 
+
+
 layout(set = 0, binding = 0) uniform sampler realTextureSampler;
 
 layout(set = 2, binding = 0) uniform texture2D albedoTexture;
@@ -91,7 +93,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 }
 
 void main() {
-
+	
 	vec3 col = vec3(0.0f);
 	vec3 N = texture(sampler2D(normalTexture, realTextureSampler), uv).rgb * 2.0f - 1.0f;
 	N = normalize(TBN * N);
@@ -144,10 +146,9 @@ void main() {
 	outColor = vec4(color.rgb, 1.0f);
 	
 	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv);
-		
+	
 	//vec3 lightCol = vec3(myLightVals.lights[0].color);
 	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
 	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv) + vec4(col.rgb, 1.0f);
-
 	//outSecond = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }

@@ -77,6 +77,12 @@
     <ClCompile Include="FramebufferVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="RenderContextVulkan.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderSignatureVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -152,6 +158,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FramebufferVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderSignatureVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderContextVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>

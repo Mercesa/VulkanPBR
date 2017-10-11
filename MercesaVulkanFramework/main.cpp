@@ -186,6 +186,8 @@ int main()
 			renderer->Render(CurrentGame->gameObjects);
 			
 		}
+
+		std::cout << newCam->position.z << std::endl;
 		firstFrame = false;
 	
 		

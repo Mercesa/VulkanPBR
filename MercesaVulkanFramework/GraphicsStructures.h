@@ -49,7 +49,7 @@ struct RawMeshData
 	std::vector<uint32_t> indices;
 
 	std::string filepaths[5] = {""};
-	bool isValids[4] = { false };
+	bool isValids[5] = { false };
 
 
 	VEC4f sphericalCollider;

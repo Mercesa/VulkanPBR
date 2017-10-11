@@ -166,9 +166,11 @@
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="PhysicalResourceManager.cpp" />
     <ClCompile Include="PipelineVulkan.cpp" />
+    <ClCompile Include="RenderContextVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
     <ClCompile Include="RenderPassVulkan.cpp" />
     <ClCompile Include="SDLLowLevelWindow.cpp" />
+    <ClCompile Include="ShaderSignatureVulkan.cpp" />
     <ClCompile Include="VulkanResourceManager.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -189,10 +191,12 @@
     <ClInclude Include="NewCamera.h" />
     <ClInclude Include="PhysicalResourceManager.h" />
     <ClInclude Include="PipelineVulkan.h" />
+    <ClInclude Include="RenderContextVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
     <ClInclude Include="RenderPassVulkan.h" />
     <ClInclude Include="SDLLowLevelWindow.h" />
+    <ClInclude Include="ShaderSignatureVulkan.h" />
     <ClInclude Include="vk_mem_alloc.h" />
     <ClInclude Include="VulkanDataObjects.h" />
     <ClInclude Include="VulkanHelper.h" />

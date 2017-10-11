@@ -54,27 +54,7 @@ struct TextureVulkan
 	vk::Format format;
 };
 
-struct ModelVulkan
-{
-	BufferVulkan indexBuffer;
-	VertexBufferVulkan vertexBuffer;
-	
-	TextureVulkan albedoTexture;
-	TextureVulkan specularTexture;
-	TextureVulkan normalTexture;
-	TextureVulkan roughnessTexture;
-	TextureVulkan AOTexture;
 
-	vk::DescriptorSet textureSet;
-
-
-	uint32_t indiceCount = 0;
-	uint32_t indiceOffset = 0;
-
-	ModelVulkan() = default;
-	~ModelVulkan() = default;
-	
-};
 
 // A uniform buffer is..
 // - A buffer object
@@ -85,10 +65,33 @@ struct UniformBufferVulkan
 {
 	vk::Buffer buffer;
 	vk::DescriptorBufferInfo descriptorInfo;
+
 	VmaAllocation allocation;
 };
 
+struct ModelVulkan
+{
+	BufferVulkan indexBuffer;
+	VertexBufferVulkan vertexBuffer;
 
+	TextureVulkan albedoTexture;
+	TextureVulkan specularTexture;
+	TextureVulkan normalTexture;
+	TextureVulkan roughnessTexture;
+	TextureVulkan AOTexture;
+
+	vk::DescriptorSet textureSet;
+	vk::DescriptorSet positionBufferSet;
+	UniformBufferVulkan positionUniformBuffer;
+
+
+	uint32_t indiceCount = 0;
+	uint32_t indiceOffset = 0;
+
+	ModelVulkan() = default;
+	~ModelVulkan() = default;
+
+};
 
 struct SwapchainVulkan
 {
