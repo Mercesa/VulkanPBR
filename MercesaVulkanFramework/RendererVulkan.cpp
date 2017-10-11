@@ -81,6 +81,14 @@ static const int screenHeight = 720;
 using namespace vk;
 
 
+struct ShaderResourcesPBR
+{
+	vk::DescriptorSet samplerSet;
+	vk::DescriptorSet perFrameUniformBufferSet;
+	vk::DescriptorSet perObjectUniformBufferSet;
+	vk::DescriptorSet textureSet;
+};
+
 struct RenderingContextResources
 {
 	std::vector<DescriptorSet> shaderDescriptorResources;
@@ -89,6 +97,7 @@ struct RenderingContextResources
 	UniformBufferVulkan uniformBufferModelMatrix;
 	UniformBufferVulkan uniformBufferLights;
 
+	ShaderResourcesPBR descriptorSetPBRShader;
 
 	vk::CommandBuffer commandBuffer;
 };
@@ -215,7 +224,6 @@ void SetupSDL()
 	}
 }
 
-
 void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
@@ -227,12 +235,10 @@ void SetupCommandBuffer()
 	}
 }
 
-
 void SetupSwapchain()
 {
 	deviceVulkan->CreateSwapchain(screenWidth, screenHeight);
 }
-
 
 void SetupDepthbuffer()
 {
@@ -548,7 +554,6 @@ void SetupDescriptorSet()
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
 	}
 }
-
 
 void SetupRenderPass()
 {
@@ -888,7 +893,7 @@ void SetupPipeline()
 	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eCounterClockwise)
+		.setFrontFace(vk::FrontFace::eClockwise)
 		.setDepthClampEnable(VK_FALSE)
 		.setRasterizerDiscardEnable(VK_FALSE)
 		.setDepthBiasEnable(VK_FALSE)

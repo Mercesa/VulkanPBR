@@ -5,10 +5,10 @@
 class ShaderSignatureVulkan
 {
 public:
-	ShaderSignatureVulkan();
-	~ShaderSignatureVulkan();
+	ShaderSignatureVulkan() = default;
+	~ShaderSignatureVulkan() = default;
 
-	void Setup();
+	void Setup(std::vector<vk::DescriptorSetLayout> iLayouts);
 
 	std::vector<vk::DescriptorSet> shaderDescriptorResources;
 	std::vector<vk::DescriptorSetLayout> shaderDescriptorLayouts;
