@@ -1,28 +1,3 @@
-/*
- * Vulkan Windowed Program
- *
- * Copyright (C) 2016 Valve Corporation
- * Copyright (C) 2016 LunarG, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/*
-Vulkan C++ Windowed Project Template
-Create and destroy a Vulkan surface on an SDL window.
-*/
-
-
 
 // Tell SDL not to mess with main()
 #define SDL_MAIN_HANDLED
@@ -34,7 +9,7 @@ Create and destroy a Vulkan surface on an SDL window.
 #include <iostream>
 #include <vector>
 #include <set>
-
+#include <memory>
 #include <fstream>
 
 
@@ -47,16 +22,14 @@ INITIALIZE_EASYLOGGINGPP
 #include "RendererVulkan.h"
 #include "Game.h"
 #include "NewCamera.h"
+#include "EngineTimer.h"
 using namespace vk;
 
 
 
-#include "camera.h"
-#include <memory>
-std::unique_ptr<Camera> cam;
-std::unique_ptr<NewCamera> newCam;
 std::unique_ptr<RendererVulkan> renderer;
 std::unique_ptr<Game> CurrentGame;
+std::unique_ptr<EngineTimer> engineTimer;
 
 int main()
 {
@@ -77,10 +50,7 @@ int main()
 	renderer = std::make_unique<RendererVulkan>();
 	renderer->Create(CurrentGame->gameObjects);
 
-	newCam = std::make_unique<NewCamera>();
-	newCam->setPerspective(45, (float)((float)1280.0f / (float)720.0f), 0.01f, 100.0f);
-	newCam->setPosition(glm::vec3(0.0f, 0.0f, -10.0));
-	
+	engineTimer = std::make_unique<EngineTimer>();
 
 	LOG(INFO) << "setup completed" << std::endl;
 
@@ -97,15 +67,18 @@ int main()
     bool stillRunning = true;
 
 	bool firstFrame = true;
+
+	engineTimer->Start();
     while(stillRunning) {
+		engineTimer->Update();
 
 		camRotX = 0.0f;
 		camRotY = 0.0f;
 		camRotZ = 0.0f;
-		newCam->keys.up = false;
-		newCam->keys.down = false;
-		newCam->keys.left = false;
-		newCam->keys.right = false;
+		CurrentGame->camera->keys.up = false;
+		CurrentGame->camera->keys.down = false;
+		CurrentGame->camera->keys.left = false;
+		CurrentGame->camera->keys.right = false;
 
 		mouseMoveRelX = 0.0f;
 		mouseMoveRelY = 0.0f;
@@ -129,25 +102,25 @@ int main()
 				if (event.key.keysym.sym == SDLK_w)
 				{
 					camY += 1.0f;
-					newCam->keys.up = true;
+					CurrentGame->camera->keys.up = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_a)
 				{
 					camX -= 1.0f;
-					newCam->keys.left = true;
+					CurrentGame->camera->keys.left = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_s)
 				{
 					camY -= 1.0f;
-					newCam->keys.down = true;
+					CurrentGame->camera->keys.down = true;
 				}
 
 				if (event.key.keysym.sym == SDLK_d)
 				{
 					camX += 1.0f;
-					newCam->keys.right = true;
+					CurrentGame->camera->keys.right = true;
 
 				}
 
@@ -178,13 +151,12 @@ int main()
 		
 		if (!firstFrame)
 		{
-			CurrentGame->Update();
-			newCam->rotate(glm::vec3(mouseMoveRelY, mouseMoveRelX, 0.0f));
-			newCam->update(1.0f);
+			CurrentGame->Update(engineTimer->GetDeltaTime());
+			CurrentGame->camera->rotate(glm::vec3(mouseMoveRelY, mouseMoveRelX, 0.0f));
+			CurrentGame->camera->update(1.0f);
 
-			renderer->BeginFrame((*newCam.get()), CurrentGame->lights);
-			renderer->Render(CurrentGame->gameObjects);
-			
+			renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
+			renderer->Render(CurrentGame->gameObjects);	
 		}
 
 		firstFrame = false;

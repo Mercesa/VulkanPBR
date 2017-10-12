@@ -5,7 +5,9 @@
 #include "GraphicsStructures.h"
 
 #include "glm/gtx/common.hpp"
-class Camera;
+
+#include "NewCamera.h"
+
 struct Light;
 
 struct Object
@@ -22,11 +24,11 @@ public:
 	~Game();
 	
 	void Init();
-	void Update();
+	void Update(float iDT);
 	void Destroy();
 
 	std::vector<Light> lights;
-	std::unique_ptr<Camera> camera;
+	std::unique_ptr<NewCamera> camera;
 	std::vector<Object> gameObjects;
 };
 

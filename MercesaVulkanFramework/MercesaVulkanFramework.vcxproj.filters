@@ -83,6 +83,9 @@
     <ClCompile Include="ShaderProgramVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="EngineTimer.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -165,6 +168,9 @@
     </ClInclude>
     <ClInclude Include="ShaderProgramVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineTimer.h">
+      <Filter>Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

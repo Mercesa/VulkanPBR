@@ -160,6 +160,7 @@
     <ClCompile Include="DescriptorLayoutHelper.h" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="DeviceVulkan.cpp" />
+    <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="FramebufferVulkan.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="DescriptorPoolVulkan.h" />
     <ClInclude Include="DeviceVulkan.h" />
     <ClInclude Include="easylogging++.h" />
+    <ClInclude Include="EngineTimer.h" />
     <ClInclude Include="FramebufferVulkan.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />

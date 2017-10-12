@@ -28,8 +28,10 @@ void Game::Init()
 	//	std::cout << resourceManager->LoadModel(std::to_string(i).append(".")) << std::endl;
 	//	resourceManager->ProcessWork();
 	//}
-	camera = std::make_unique<Camera>();
-	
+	camera = std::make_unique<NewCamera>();
+	camera->setPerspective(45, (float)((float)1280.0f / (float)720.0f), 0.01f, 100.0f);
+	camera->setPosition(glm::vec3(0.0f, 0.0f, -10.0));
+
 	//for (int i = 0; i < 4; ++i)
 	//{
 	//	for (int j = 0; j < 4; ++j)
@@ -109,10 +111,10 @@ void Game::Init()
 
 }
 
-void Game::Update()
+void Game::Update(float iDT)
 {
 	static float derp = 0.0f;
-	derp += 0.01f;
+	derp += 1.0f * iDT;
 	lights[0].position.x = sinf(derp) * 3.0f;
 
 	//std::cout << "Light pos: " << lights[0].position.x << std::endl;
