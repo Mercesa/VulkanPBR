@@ -174,5 +174,11 @@
     <None Include="Shaders\FragmentShaderStart.frag">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\FragmentShaderRed.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\VertexShaderRed.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

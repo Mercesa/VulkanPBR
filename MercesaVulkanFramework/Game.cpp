@@ -61,16 +61,19 @@ void Game::Init()
 	obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
 	gameObjects.push_back(obj);
 
+	auto GunModel = ModelLoader::LoadModel("Models/Gun/Cerberus_LP.fbx", false);
+
 	// Second Sphere
-	SphereModel[0].filepaths[0] = "Textures/rustediron2_basecolor.png";
-	SphereModel[0].filepaths[1] = "Textures/rustediron2_metallic.psd";
-	SphereModel[0].filepaths[2] = "Textures/rustediron2_normal.png";
-	SphereModel[0].filepaths[3] = "Textures/rustediron2_roughness.png";
-	SphereModel[0].filepaths[4] = "";
+	GunModel[0].filepaths[0] = "Textures/Cerberus_A.tga";
+	GunModel[0].filepaths[1] = "Textures/Cerberus_M.tga";
+	GunModel[0].filepaths[2] = "Textures/Cerberus_N.tga";
+	GunModel[0].filepaths[3] = "Textures/Cerberus_R.tga";
+	GunModel[0].filepaths[4] = "Textures/Cerberus_AO.tga";
 
 
-	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f));
-	obj.rawMeshData = SphereModel[0];
+	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
+
+	obj.rawMeshData = GunModel[0];
 	gameObjects.push_back(obj);
 
 
