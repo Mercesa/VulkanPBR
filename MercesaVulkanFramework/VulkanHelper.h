@@ -6,6 +6,8 @@
 #include "stb_image.h"
 #include "Helper.h"
 #include "easylogging++.h"
+#include "VulkanDataObjects.h"
+
 using namespace vk;
 
 
@@ -159,7 +161,7 @@ inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer,
 	aDevice.waitIdle();
 }
 
-ShaderVulkan CreateShader(
+inline ShaderDataVulkan CreateShader(
 	const vk::Device& iDevice,
 	const std::string& iFilePath, 
 	const std::string& iEntryPoint,
@@ -170,7 +172,7 @@ ShaderVulkan CreateShader(
 	// Ensure our code is not zero
 	assert(code.size() > 0);
 
-	ShaderVulkan tShader = ShaderVulkan();
+	ShaderDataVulkan tShader = ShaderDataVulkan();
 	
 	vk::ShaderModuleCreateInfo moduleInfo = vk::ShaderModuleCreateInfo()
 		.setCodeSize(code.size())

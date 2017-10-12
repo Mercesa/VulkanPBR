@@ -29,15 +29,15 @@ struct VertexBufferVulkan
 	VmaAllocation allocation;
 };
 
-struct ShaderVulkan
+struct ShaderDataVulkan
 {
 	std::string entryPointName = "";
 	std::string shaderFile = "";
 	vk::ShaderStageFlagBits shaderStage;
 	vk::ShaderModule shaderModule;
 
-	ShaderVulkan() = default;
-	~ShaderVulkan() = default;
+	ShaderDataVulkan() = default;
+	~ShaderDataVulkan() = default;
 
 };
 

@@ -11,7 +11,7 @@ PipelineVulkan::~PipelineVulkan()
 {
 }
 
-void PipelineVulkan::Create(const std::vector<ShaderVulkan>& iShaders)
+void PipelineVulkan::Create(const std::vector<ShaderDataVulkan>& iShaders)
 {
 
 }

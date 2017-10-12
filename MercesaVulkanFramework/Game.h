@@ -6,7 +6,7 @@
 
 #include "glm/gtx/common.hpp"
 class Camera;
-class Light;
+struct Light;
 
 struct Object
 {

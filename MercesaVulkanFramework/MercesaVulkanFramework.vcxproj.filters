@@ -77,10 +77,10 @@
     <ClCompile Include="FramebufferVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="ShaderSignatureVulkan.cpp">
+    <ClCompile Include="RenderContextVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="RenderContextVulkan.cpp">
+    <ClCompile Include="ShaderProgramVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>
@@ -160,10 +160,10 @@
     <ClInclude Include="FramebufferVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="ShaderSignatureVulkan.h">
+    <ClInclude Include="RenderContextVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="RenderContextVulkan.h">
+    <ClInclude Include="ShaderProgramVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>

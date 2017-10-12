@@ -76,13 +76,13 @@ void Game::Init()
 
 	// New model
 	auto DragonModel = ModelLoader::LoadModel("Models/Lucy/Lucy.obj", false)[0];
-	DragonModel.filepaths[0] = "Textures/rustediron2_basecolor.png";
-	DragonModel.filepaths[1] = "Textures/rustediron2_metallic.psd";
-	DragonModel.filepaths[2] = "Textures/rustediron2_normal.png";
-	DragonModel.filepaths[3] = "Textures/rustediron2_roughness.png";
-	DragonModel.filepaths[4] = "";
+	DragonModel.filepaths[0] = "Textures/CopperRock/copper-rock1-alb.png";
+	DragonModel.filepaths[1] = "Textures/CopperRock/copper-rock1-metal.png";
+	DragonModel.filepaths[2] = "Textures/CopperRock/copper-rock1-normal.png";
+	DragonModel.filepaths[3] = "Textures/CopperRock/copper-rock1-rough.png";
+	DragonModel.filepaths[4] = "Textures/CopperRock/copper-rock1-ao.png";
 
-	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f));
+	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 	obj.rawMeshData = DragonModel;
 	gameObjects.push_back(obj);
 
@@ -112,7 +112,7 @@ void Game::Update()
 	derp += 0.01f;
 	lights[0].position.x = sinf(derp) * 3.0f;
 
-	std::cout << "Light pos: " << lights[0].position.x << std::endl;
+	//std::cout << "Light pos: " << lights[0].position.x << std::endl;
 }
 
 void Game::Destroy()

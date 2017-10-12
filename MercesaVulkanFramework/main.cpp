@@ -82,7 +82,7 @@ int main()
 	newCam->setPosition(glm::vec3(0.0f, 0.0f, -10.0));
 	
 
-	std::cout << "setup completed" << std::endl;
+	LOG(INFO) << "setup completed" << std::endl;
 
 	static float camX, camY, camZ;
 	static float camRotX, camRotY, camRotZ;
@@ -187,7 +187,6 @@ int main()
 			
 		}
 
-		std::cout << newCam->position.z << std::endl;
 		firstFrame = false;
 	
 		

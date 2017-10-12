@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-class ShaderVulkan;
+class ShaderDataVulkan;
 
 class PipelineVulkan
 {
@@ -9,6 +9,6 @@ public:
 	PipelineVulkan();
 	~PipelineVulkan();
 
-	void Create(const std::vector<ShaderVulkan>& iShaders);
+	void Create(const std::vector<ShaderDataVulkan>& iShaders);
 };
 
