@@ -77,10 +77,10 @@
     <ClCompile Include="FramebufferVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="RenderContextVulkan.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ShaderSignatureVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderContextVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>

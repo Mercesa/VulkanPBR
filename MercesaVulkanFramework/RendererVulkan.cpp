@@ -91,13 +91,12 @@ struct ShaderResourcesPBR
 
 struct RenderingContextResources
 {
-	std::vector<DescriptorSet> shaderDescriptorResources;
+	ShaderResourcesPBR descriptorSetPBRShader;
 
 	UniformBufferVulkan uniformBufferMVP;
 	UniformBufferVulkan uniformBufferModelMatrix;
 	UniformBufferVulkan uniformBufferLights;
 
-	ShaderResourcesPBR descriptorSetPBRShader;
 
 	vk::CommandBuffer commandBuffer;
 };
@@ -414,13 +413,8 @@ void SetupDescriptorSet()
 
 	for (int i = 0; i < 2; ++i)
 	{
-		std::vector<DescriptorSet> tDescSet;
-		tDescSet.resize(NUM_DESCRIPTOR_SETS);
-
-		tDescSet[0] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[0], bindings)[0];
-		tDescSet[1] = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[1], uniformBinding)[0];
-
-		renderingContextResources[i]->shaderDescriptorResources = tDescSet;
+		renderingContextResources[i]->descriptorSetPBRShader.samplerSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[0], bindings)[0];
+		renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, ShaderDescriptorLayouts[1], uniformBinding)[0];
 	}
 
 	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
@@ -520,7 +514,7 @@ void SetupDescriptorSet()
 
 		writes[0] = {};
 		writes[0].pNext = NULL;
-		writes[0].dstSet = renderingContextResources[i]->shaderDescriptorResources[0];
+		writes[0].dstSet = renderingContextResources[i]->descriptorSetPBRShader.samplerSet;
 		writes[0].descriptorCount = 1;
 		writes[0].descriptorType = vk::DescriptorType::eSampler;
 		writes[0].pImageInfo = &pureSamplerInfo;
@@ -534,7 +528,7 @@ void SetupDescriptorSet()
 
 		uniform_writes[0] = {};
 		uniform_writes[0].pNext = NULL;
-		uniform_writes[0].dstSet = renderingContextResources[i]->shaderDescriptorResources[1];
+		uniform_writes[0].dstSet = renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
 		uniform_writes[0].descriptorCount = 1;
 		uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
 		uniform_writes[0].pBufferInfo = &renderingContextResources[i]->uniformBufferMVP.descriptorInfo;
@@ -543,7 +537,7 @@ void SetupDescriptorSet()
 
 		uniform_writes[1] = {};
 		uniform_writes[1].pNext = NULL;
-		uniform_writes[1].dstSet = renderingContextResources[i]->shaderDescriptorResources[1];
+		uniform_writes[1].dstSet = renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
 		uniform_writes[1].descriptorCount = 1;
 		uniform_writes[1].descriptorType = vk::DescriptorType::eUniformBuffer;
 		uniform_writes[1].pBufferInfo = &renderingContextResources[i]->uniformBufferLights.descriptorInfo;
@@ -861,7 +855,6 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 
 void SetupPipeline()
 {
-
 	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
 		.setPNext(NULL)
 		.setPushConstantRangeCount(0)
@@ -893,7 +886,7 @@ void SetupPipeline()
 	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
 		.setPolygonMode(vk::PolygonMode::eFill)
 		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eClockwise)
+		.setFrontFace(vk::FrontFace::eCounterClockwise)
 		.setDepthClampEnable(VK_FALSE)
 		.setRasterizerDiscardEnable(VK_FALSE)
 		.setDepthBiasEnable(VK_FALSE)
@@ -1101,12 +1094,21 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	InitScissors(iBuffer);
 
 
+	std::vector<DescriptorSet> totalSet;
+	// Add our descriptor data to this set, and use this set
+	totalSet.resize(4);
 	for (int j = 0; j < iObjects.size(); ++j)
 	{
-		renderingContextResources[index]->shaderDescriptorResources[2] = models[iObjects[j].vulkanModelID]->textureSet;
-		renderingContextResources[index]->shaderDescriptorResources[3] = models[iObjects[j].vulkanModelID]->positionBufferSet;
+		renderingContextResources[index]->descriptorSetPBRShader.textureSet = models[iObjects[j].vulkanModelID]->textureSet;
+		renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = models[iObjects[j].vulkanModelID]->positionBufferSet;
 
-		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, renderingContextResources[index]->shaderDescriptorResources.data(), 0, NULL);
+
+		totalSet[0] = (renderingContextResources[index]->descriptorSetPBRShader.samplerSet);
+		totalSet[1] = (renderingContextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
+		totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
+		totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
+
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, totalSet.data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
 		iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
@@ -1451,7 +1453,6 @@ void RendererVulkan::Create(std::vector<Object>& iObjects)
 
 void RendererVulkan::Destroy()
 {
-
 	deviceVulkan->presentQueue.waitIdle();
 	
 	// free our dynamic uniform buffer thing
