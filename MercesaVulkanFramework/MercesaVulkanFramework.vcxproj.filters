@@ -30,6 +30,9 @@
     <Filter Include="Vulkan Structures\Window">
       <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Platform Independent\Rendering">
+      <UniqueIdentifier>{cc7e9991-d866-4f62-b7f8-14428903acbe}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -68,16 +71,7 @@
     <ClCompile Include="RenderPassVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicalResourceManager.cpp">
-      <Filter>Utility</Filter>
-    </ClCompile>
-    <ClCompile Include="VulkanResourceManager.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="FramebufferVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderContextVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="ShaderProgramVulkan.cpp">
@@ -85,6 +79,18 @@
     </ClCompile>
     <ClCompile Include="EngineTimer.cpp">
       <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Game application</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -151,19 +157,7 @@
     <ClInclude Include="RenderPassVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="iResourceManager.h">
-      <Filter>Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="PhysicalResourceManager.h">
-      <Filter>Utility</Filter>
-    </ClInclude>
-    <ClInclude Include="VulkanResourceManager.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="FramebufferVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderContextVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="ShaderProgramVulkan.h">
@@ -171,6 +165,27 @@
     </ClInclude>
     <ClInclude Include="EngineTimer.h">
       <Filter>Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Game application</Filter>
+    </ClInclude>
+    <ClInclude Include="MaterialComponent.h">
+      <Filter>Game application</Filter>
+    </ClInclude>
+    <ClInclude Include="iModel.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iTexture.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

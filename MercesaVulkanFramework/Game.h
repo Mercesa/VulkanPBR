@@ -7,15 +7,10 @@
 #include "glm/gtx/common.hpp"
 
 #include "NewCamera.h"
+#include "Object.h"
 
 struct Light;
 
-struct Object
-{
-	glm::mat4 modelMatrix;
-	uint32_t vulkanModelID = 0;
-	RawMeshData rawMeshData;
-};
 
 class Game
 {

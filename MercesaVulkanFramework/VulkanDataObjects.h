@@ -2,6 +2,8 @@
 
 #include "RenderingIncludes.h"
 #include "vk_mem_alloc.h"
+#include "TextureVulkan.h"
+
 // A vertex buffer is 
 // - A buffer
 // - Memory associated with the buffer
@@ -46,13 +48,13 @@ struct ShaderDataVulkan
 // - A view ( GPU based )
 // - A chunk of memory allocated from the device
 // - Format denoting what kind of texture it is
-struct TextureVulkan
-{
-	vk::Image image;
-	vk::ImageView view;
-	VmaAllocation allocation;
-	vk::Format format;
-};
+//struct TextureVulkan
+//{
+//	vk::Image image;
+//	vk::ImageView view;
+//	VmaAllocation allocation;
+//	vk::Format format;
+//};
 
 
 
@@ -70,34 +72,35 @@ struct UniformBufferVulkan
 };
 
 
-struct MeshVulkan
+struct MaterialVulkan
 {
-
+	TextureData albedoTexture;
+	TextureData specularTexture;
+	TextureData normalTexture;
+	TextureData roughnessTexture;
+	TextureData AOTexture;
 };
 
-struct ModelVulkan
-{
-	BufferVulkan indexBuffer;
-	VertexBufferVulkan vertexBuffer;
-
-	TextureVulkan albedoTexture;
-	TextureVulkan specularTexture;
-	TextureVulkan normalTexture;
-	TextureVulkan roughnessTexture;
-	TextureVulkan AOTexture;
-
-	vk::DescriptorSet textureSet;
-	vk::DescriptorSet positionBufferSet;
-	UniformBufferVulkan positionUniformBuffer;
 
 
-	uint32_t indiceCount = 0;
-	uint32_t indiceOffset = 0;
-
-	ModelVulkan() = default;
-	~ModelVulkan() = default;
-
-};
+//struct ModelVulkan
+//{
+//	BufferVulkan indexBuffer;
+//	VertexBufferVulkan vertexBuffer;
+//
+//	MaterialVulkan material;
+//
+//	vk::DescriptorSet textureSet;
+//	vk::DescriptorSet positionBufferSet;
+//	UniformBufferVulkan positionUniformBuffer;
+//
+//
+//	uint32_t indiceCount = 0;
+//	uint32_t indiceOffset = 0;
+//
+//	ModelVulkan() = default;
+//	~ModelVulkan() = default;
+//};
 
 struct SwapchainVulkan
 {

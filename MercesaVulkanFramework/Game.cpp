@@ -6,7 +6,6 @@
 #include "GraphicsStructures.h"
 #include "camera.h"
 #include "ModelLoader.h"
-#include "PhysicalResourceManager.h"
 
 Game::Game()
 {
@@ -32,16 +31,7 @@ void Game::Init()
 	camera->setPerspective(45, (float)((float)1280.0f / (float)720.0f), 0.01f, 100.0f);
 	camera->setPosition(glm::vec3(0.0f, 0.0f, -10.0));
 
-	//for (int i = 0; i < 4; ++i)
-	//{
-	//	for (int j = 0; j < 4; ++j)
-	//	{
-	////		Light light;
-	////		light.diffuseColor = glm::vec3(i%2, (i+j)%2, j%2);
-	////		light.position = glm::vec3(i*8.0f-4, 2.0f, j*3.0f);
-	////		lights.push_back(light);
-	//	}
-	//}
+
 
 	Light light;
 	light.diffuseColor = glm::vec3(10.0f, 10.0f, 10.0f);

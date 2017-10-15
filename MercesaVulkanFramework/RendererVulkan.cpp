@@ -1,7 +1,8 @@
 #include "RendererVulkan.h"
 
 
-
+#include <stdio.h>
+#include <stdlib.h>
 // Enable the WSI extensions
 #if defined(__ANDROID__)
 #define VK_USE_PLATFORM_ANDROID_KHR
@@ -58,8 +59,7 @@
 #include "Game.h"
 #include "FramebufferVulkan.h"
 #include "ShaderProgramVulkan.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "ModelVulkan.h"
 
 
 CBModelMatrix multipleModelMatrixData;
@@ -112,8 +112,8 @@ std::unique_ptr<FramebufferVulkan> fbVulkan;
 
 vk::PipelineLayout pipelineLayout;
 
-TextureVulkan depthBuffer;
-TextureVulkan postProcBuffer;
+TextureData depthBuffer;
+TextureData postProcBuffer;
 
 
 std::vector<std::unique_ptr<RenderingContextResources>> renderingContextResources;
@@ -418,7 +418,7 @@ void SetupDescriptorSet()
 		e->positionBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[3], uniformBinding)[0];
 
 		vk::DescriptorImageInfo albedoImageInfo = {};
-		albedoImageInfo.imageView = e->albedoTexture.view;
+		albedoImageInfo.imageView = e->material.albedoTexture.view;
 
 		textureWrites[0] = {};
 		textureWrites[0].pNext = NULL;
@@ -430,7 +430,7 @@ void SetupDescriptorSet()
 		textureWrites[0].dstBinding = 0;
 
 		vk::DescriptorImageInfo specularImageInfo = {};
-		specularImageInfo.imageView = e->specularTexture.view;
+		specularImageInfo.imageView = e->material.specularTexture.view;
 
 		textureWrites[1] = {};
 		textureWrites[1].pNext = NULL;
@@ -442,7 +442,7 @@ void SetupDescriptorSet()
 		textureWrites[1].dstBinding = 1;
 
 		vk::DescriptorImageInfo normalmapImageInfo = {};
-		normalmapImageInfo.imageView = e->normalTexture.view;
+		normalmapImageInfo.imageView = e->material.normalTexture.view;
 
 		textureWrites[2] = {};
 		textureWrites[2].pNext = NULL;
@@ -454,7 +454,7 @@ void SetupDescriptorSet()
 		textureWrites[2].dstBinding = 2;
 
 		vk::DescriptorImageInfo roughnessInfo = {};
-		roughnessInfo.imageView = e->roughnessTexture.view;
+		roughnessInfo.imageView = e->material.roughnessTexture.view;
 
 		textureWrites[3] = {};
 		textureWrites[3].pNext = NULL;
@@ -466,7 +466,7 @@ void SetupDescriptorSet()
 		textureWrites[3].dstBinding = 3;
 
 		vk::DescriptorImageInfo AOInfo = {};
-		AOInfo.imageView = e->AOTexture.view;
+		AOInfo.imageView = e->material.AOTexture.view;
 
 		textureWrites[4] = {};
 		textureWrites[4].pNext = NULL;
@@ -1153,7 +1153,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, totalSet.size(), totalSet.data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
-		iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
+		iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->GetIndiceCount(), 1, 0, 0, 0);
 	}
 
 	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRed);
@@ -1172,42 +1172,10 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, totalSet.size(), totalSet.data(), 0, NULL);
 	iBuffer.bindVertexBuffers(0, 1, &models[iObjects[iObjects.size() - 1].vulkanModelID]->vertexBuffer.buffer, offsets);
 	iBuffer.bindIndexBuffer(models[iObjects[iObjects.size() - 1].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
-	iBuffer.drawIndexed(models[iObjects[iObjects.size() - 1].vulkanModelID]->indiceCount, 1, 0, 0, 0);
+	iBuffer.drawIndexed(models[iObjects[iObjects.size() - 1].vulkanModelID]->GetIndiceCount(), 1, 0, 0, 0);
 
 	iBuffer.endRenderPass();
 
-
-	//vk::ClearValue clear_values2[3] = {};
-	//clear_values[0].color.float32[0] = 1.0f;
-	//clear_values[0].color.float32[1] = 0.2f;
-	//clear_values[0].color.float32[2] = 0.2f;
-	//clear_values[0].color.float32[3] = 0.2f;
-	//
-	//vk::RenderPassBeginInfo rp_begin2 = vk::RenderPassBeginInfo()
-	//	.setRenderPass(fbVulkan->renderpass)
-	//	.setFramebuffer(fbVulkan->framebuffer)
-	//	.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-	//	.setClearValueCount(1)
-	//	.setPClearValues(clear_values);
-	//
-	//iBuffer.beginRenderPass(&rp_begin2, SubpassContents::eInline);
-	//iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRenderScene);
-	//
-	//InitViewports(iBuffer);
-	//InitScissors(iBuffer);
-	//
-	//for (int j = 0; j < iObjects.size(); ++j)
-	//{
-	//	descriptor_set[index][2] = models[iObjects[j].vulkanModelID]->textureSet;
-	//	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, NUM_DESCRIPTOR_SETS, descriptor_set[index].data(), 0, NULL);
-	//	iBuffer.bindVertexBuffers(0, 1, &models[iObjects[j].vulkanModelID]->vertexBuffer.buffer, offsets);
-	//	iBuffer.bindIndexBuffer(models[iObjects[j].vulkanModelID]->indexBuffer.buffer, 0, IndexType::eUint32);
-	//	iBuffer.drawIndexed(models[iObjects[j].vulkanModelID]->indiceCount, 1, 0, 0, 0);
-	//}
-	//
-	//iBuffer.endRenderPass();
-
-	// End the pipeline
 	iBuffer.end();
 
 }
@@ -1413,7 +1381,7 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
 }
 
-std::map<std::string, TextureVulkan> textureMap;
+std::map<std::string, TextureData> textureMap;
 
 
 void SetupTexturesForObject(
@@ -1461,8 +1429,10 @@ void RendererVulkan::Create(std::vector<Object>& iObjects)
 	{
 		auto& e = iObjects[i].rawMeshData;
 		std::unique_ptr<ModelVulkan> tModV = std::make_unique<ModelVulkan>();
+
 		SetupVertexBuffer(tModV->vertexBuffer, e);
 		SetupIndexBuffer(tModV->indexBuffer, e);
+
 
 		tModV->indiceCount = e.indices.size();
 
@@ -1599,60 +1569,60 @@ void SetupTexturesForObject(const RawMeshData& iMeshData, ModelVulkan* const iMo
 	// Albedo texture
 	if (textureMap.find(iMeshData.filepaths[0]) == textureMap.end())
 	{
-		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[0], iModel->albedoTexture.image, iModel->albedoTexture.allocation, iStagingBuffers);
-		iModel->albedoTexture.view = CreateImageView(deviceVulkan->device, iModel->albedoTexture.image, Format::eR8G8B8A8Unorm);
-		textureMap[iMeshData.filepaths[0]] = iModel->albedoTexture;
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[0], iModel->material.albedoTexture.image, iModel->material.albedoTexture.allocation, iStagingBuffers);
+		iModel->material.albedoTexture.view = CreateImageView(deviceVulkan->device, iModel->material.albedoTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[0]] = iModel->material.albedoTexture;
 	}
 	else
 	{
-		iModel->albedoTexture = textureMap.at(iMeshData.filepaths[0]);
+		iModel->material.albedoTexture = textureMap.at(iMeshData.filepaths[0]);
 	}
 
 	// Specular texture
 	if (textureMap.find(iMeshData.filepaths[1]) == textureMap.end())
 	{
-		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[1].c_str(), iModel->specularTexture.image, iModel->specularTexture.allocation, iStagingBuffers);
-		iModel->specularTexture.view = CreateImageView(deviceVulkan->device, iModel->specularTexture.image, Format::eR8G8B8A8Unorm);
-		textureMap[iMeshData.filepaths[1]] = iModel->specularTexture;
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[1].c_str(), iModel->material.specularTexture.image, iModel->material.specularTexture.allocation, iStagingBuffers);
+		iModel->material.specularTexture.view = CreateImageView(deviceVulkan->device, iModel->material.specularTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[1]] = iModel->material.specularTexture;
 	}
 	else
 	{
-		iModel->specularTexture = textureMap.at(iMeshData.filepaths[1]);
+		iModel->material.specularTexture = textureMap.at(iMeshData.filepaths[1]);
 	}
 
 	// normal texture
 	if (textureMap.find(iMeshData.filepaths[2]) == textureMap.end())
 	{
-		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[2].c_str(), iModel->normalTexture.image, iModel->normalTexture.allocation, iStagingBuffers);
-		iModel->normalTexture.view = CreateImageView(deviceVulkan->device, iModel->normalTexture.image, Format::eR8G8B8A8Unorm);
-		textureMap[iMeshData.filepaths[2]] = iModel->normalTexture;
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[2].c_str(), iModel->material.normalTexture.image, iModel->material.normalTexture.allocation, iStagingBuffers);
+		iModel->material.normalTexture.view = CreateImageView(deviceVulkan->device, iModel->material.normalTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[2]] = iModel->material.normalTexture;
 	}
 	else
 	{
-		iModel->normalTexture = textureMap.at(iMeshData.filepaths[2]);
+		iModel->material.normalTexture = textureMap.at(iMeshData.filepaths[2]);
 	}
 
 	if (textureMap.find(iMeshData.filepaths[3]) == textureMap.end())
 	{
-		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[3].c_str(), iModel->roughnessTexture.image, iModel->roughnessTexture.allocation, iStagingBuffers);
-		iModel->roughnessTexture.view = CreateImageView(deviceVulkan->device, iModel->roughnessTexture.image, Format::eR8G8B8A8Unorm);
-		textureMap[iMeshData.filepaths[3]] = iModel->roughnessTexture;
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[3].c_str(), iModel->material.roughnessTexture.image, iModel->material.roughnessTexture.allocation, iStagingBuffers);
+		iModel->material.roughnessTexture.view = CreateImageView(deviceVulkan->device, iModel->material.roughnessTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[3]] = iModel->material.roughnessTexture;
 	}
 
 	else
 	{
-		iModel->roughnessTexture = textureMap.at(iMeshData.filepaths[3]);
+		iModel->material.roughnessTexture = textureMap.at(iMeshData.filepaths[3]);
 	}
 
 	if (textureMap.find(iMeshData.filepaths[4]) == textureMap.end())
 	{
-		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[4].c_str(), iModel->AOTexture.image, iModel->AOTexture.allocation, iStagingBuffers);
-		iModel->AOTexture.view = CreateImageView(deviceVulkan->device, iModel->AOTexture.image, Format::eR8G8B8A8Unorm);
-		textureMap[iMeshData.filepaths[4]] = iModel->AOTexture;
+		SetupTextureImage(iBuffer, deviceVulkan->device, iMeshData.filepaths[4].c_str(), iModel->material.AOTexture.image, iModel->material.AOTexture.allocation, iStagingBuffers);
+		iModel->material.AOTexture.view = CreateImageView(deviceVulkan->device, iModel->material.AOTexture.image, Format::eR8G8B8A8Unorm);
+		textureMap[iMeshData.filepaths[4]] = iModel->material.AOTexture;
 	}
 
 	else
 	{
-		iModel->AOTexture = textureMap.at(iMeshData.filepaths[4]);
+		iModel->material.AOTexture = textureMap.at(iMeshData.filepaths[4]);
 	}
 }

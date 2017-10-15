@@ -165,14 +165,15 @@
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
-    <ClCompile Include="PhysicalResourceManager.cpp" />
+    <ClCompile Include="ModelVulkan.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="PipelineVulkan.cpp" />
-    <ClCompile Include="RenderContextVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
     <ClCompile Include="RenderPassVulkan.cpp" />
+    <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SDLLowLevelWindow.cpp" />
     <ClCompile Include="ShaderProgramVulkan.cpp" />
-    <ClCompile Include="VulkanResourceManager.cpp" />
+    <ClCompile Include="TextureVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
@@ -188,21 +189,24 @@
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
-    <ClInclude Include="iResourceManager.h" />
+    <ClInclude Include="iModel.h" />
+    <ClInclude Include="iTexture.h" />
+    <ClInclude Include="MaterialComponent.h" />
     <ClInclude Include="ModelLoader.h" />
+    <ClInclude Include="ModelVulkan.h" />
     <ClInclude Include="NewCamera.h" />
-    <ClInclude Include="PhysicalResourceManager.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="PipelineVulkan.h" />
-    <ClInclude Include="RenderContextVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
     <ClInclude Include="RenderPassVulkan.h" />
+    <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="SDLLowLevelWindow.h" />
     <ClInclude Include="ShaderProgramVulkan.h" />
+    <ClInclude Include="TextureVulkan.h" />
     <ClInclude Include="vk_mem_alloc.h" />
     <ClInclude Include="VulkanDataObjects.h" />
     <ClInclude Include="VulkanHelper.h" />
-    <ClInclude Include="VulkanResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\FragmentShaderRed.frag" />
