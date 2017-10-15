@@ -47,6 +47,8 @@ struct RawMeshData
 	std::vector<VertexData> vertices;
 	std::vector<uint32_t> indices;
 
+
+	enum FilepathIndices { eAlbedo = 0, eSpecularMetal = 1, eNormal = 2, eRough = 3, eAO = 4 };
 	std::string filepaths[5] = {""};
 	bool isValids[5] = { false };
 

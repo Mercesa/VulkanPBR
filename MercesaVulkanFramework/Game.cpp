@@ -51,11 +51,11 @@ void Game::Init()
 
 	// Load first sphere
 	auto SphereModel = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
-	SphereModel[0].filepaths[0] = "Textures/rustediron2_basecolor.png";
-	SphereModel[0].filepaths[1] = "Textures/rustediron2_metallic.psd";
-	SphereModel[0].filepaths[2] = "Textures/rustediron2_normal.png";
-	SphereModel[0].filepaths[3] = "Textures/rustediron2_roughness.png";
-	SphereModel[0].filepaths[4] = "";
+	SphereModel[0].filepaths[RawMeshData::eAlbedo] = "Textures/rustediron2_basecolor.png";
+	SphereModel[0].filepaths[RawMeshData::eSpecularMetal] = "Textures/rustediron2_metallic.png";
+	SphereModel[0].filepaths[RawMeshData::eNormal] = "Textures/rustediron2_normal.png";
+	SphereModel[0].filepaths[RawMeshData::eRough] = "Textures/rustediron2_roughness.png";
+	SphereModel[0].filepaths[RawMeshData::eAO] = "";
 
 
 	Object obj;
@@ -66,11 +66,11 @@ void Game::Init()
 	auto GunModel = ModelLoader::LoadModel("Models/Gun/Cerberus_LP.fbx", false);
 
 	// Second Sphere
-	GunModel[0].filepaths[0] = "Textures/Cerberus_A.tga";
-	GunModel[0].filepaths[1] = "Textures/Cerberus_M.tga";
-	GunModel[0].filepaths[2] = "Textures/Cerberus_N.tga";
-	GunModel[0].filepaths[3] = "Textures/Cerberus_R.tga";
-	GunModel[0].filepaths[4] = "Textures/Cerberus_AO.tga";
+	GunModel[0].filepaths[RawMeshData::eAlbedo]	= "Textures/Cerberus_A.tga";
+	GunModel[0].filepaths[RawMeshData::eSpecularMetal] = "Textures/Cerberus_M.tga";
+	GunModel[0].filepaths[RawMeshData::eNormal]	= "Textures/Cerberus_N.tga";
+	GunModel[0].filepaths[RawMeshData::eRough] = "Textures/Cerberus_R.tga";
+	GunModel[0].filepaths[RawMeshData::eAO]	= "Textures/Cerberus_AO.tga";
 
 
 	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
@@ -81,11 +81,11 @@ void Game::Init()
 
 	// New model
 	auto DragonModel = ModelLoader::LoadModel("Models/Lucy/Lucy.obj", false)[0];
-	DragonModel.filepaths[0] = "Textures/CopperRock/copper-rock1-alb.png";
-	DragonModel.filepaths[1] = "Textures/CopperRock/copper-rock1-metal.png";
-	DragonModel.filepaths[2] = "Textures/CopperRock/copper-rock1-normal.png";
-	DragonModel.filepaths[3] = "Textures/CopperRock/copper-rock1-rough.png";
-	DragonModel.filepaths[4] = "Textures/CopperRock/copper-rock1-ao.png";
+	DragonModel.filepaths[RawMeshData::eAlbedo] = "Textures/CopperRock/copper-rock1-alb.png";
+	DragonModel.filepaths[RawMeshData::eSpecularMetal] = "Textures/CopperRock/copper-rock1-metal.png";
+	DragonModel.filepaths[RawMeshData::eNormal] = "Textures/CopperRock/copper-rock1-normal.png";
+	DragonModel.filepaths[RawMeshData::eRough] = "Textures/CopperRock/copper-rock1-rough.png";
+	DragonModel.filepaths[RawMeshData::eAO] = "Textures/CopperRock/copper-rock1-ao.png";
 
 	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
 	obj.rawMeshData = DragonModel;

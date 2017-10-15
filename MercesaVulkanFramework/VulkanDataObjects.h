@@ -69,6 +69,12 @@ struct UniformBufferVulkan
 	VmaAllocation allocation;
 };
 
+
+struct MeshVulkan
+{
+
+};
+
 struct ModelVulkan
 {
 	BufferVulkan indexBuffer;

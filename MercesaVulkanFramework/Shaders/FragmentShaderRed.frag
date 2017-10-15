@@ -94,5 +94,5 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 
 void main() {
 	
-	outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	outColor = vec4(sin(gl_FragCoord.x), cos(gl_FragCoord.y), 0.0f, 1.0f);
 }
