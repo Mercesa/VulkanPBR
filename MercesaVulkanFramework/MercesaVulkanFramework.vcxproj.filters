@@ -92,6 +92,9 @@
     <ClCompile Include="TextureVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="ObjectRenderingDataVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -186,6 +189,15 @@
     </ClInclude>
     <ClInclude Include="TextureVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectRenderingDataVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="iObjectRenderingData.h">
+      <Filter>Platform Independent\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

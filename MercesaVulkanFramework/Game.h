@@ -8,6 +8,7 @@
 
 #include "NewCamera.h"
 #include "Object.h"
+#include "ResourceManager.h"
 
 struct Light;
 
@@ -25,5 +26,6 @@ public:
 	std::vector<Light> lights;
 	std::unique_ptr<NewCamera> camera;
 	std::vector<Object> gameObjects;
+	ResourceManager* resourceManager;
 };
 

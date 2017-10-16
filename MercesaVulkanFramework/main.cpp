@@ -23,6 +23,7 @@ INITIALIZE_EASYLOGGINGPP
 #include "Game.h"
 #include "NewCamera.h"
 #include "EngineTimer.h"
+#include "ResourceManager.h"
 using namespace vk;
 
 
@@ -30,6 +31,7 @@ using namespace vk;
 std::unique_ptr<RendererVulkan> renderer;
 std::unique_ptr<Game> CurrentGame;
 std::unique_ptr<EngineTimer> engineTimer;
+std::unique_ptr<ResourceManager> resourceManager;
 
 int main()
 {
@@ -45,12 +47,16 @@ int main()
 
 
 	CurrentGame = std::make_unique<Game>();
+	resourceManager = std::make_unique<ResourceManager>();
+	renderer = std::make_unique<RendererVulkan>();
+
+	CurrentGame->resourceManager = resourceManager.get();
 	CurrentGame->Init();
 
-	renderer = std::make_unique<RendererVulkan>();
-	renderer->Create(CurrentGame->gameObjects);
+	renderer->Create(CurrentGame->gameObjects, resourceManager.get());
 
 	engineTimer = std::make_unique<EngineTimer>();
+
 
 	LOG(INFO) << "setup completed" << std::endl;
 

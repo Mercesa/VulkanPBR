@@ -13,7 +13,6 @@ public:
 
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
-	MaterialVulkan material;
 	vk::DescriptorSet textureSet;
 	vk::DescriptorSet positionBufferSet;
 	UniformBufferVulkan positionUniformBuffer;

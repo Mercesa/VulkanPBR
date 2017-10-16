@@ -40,46 +40,51 @@ void Game::Init()
 
 
 	// Load first sphere
-	auto SphereModel = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);
-	SphereModel[0].filepaths[RawMeshData::eAlbedo] = "Textures/rustediron2_basecolor.png";
-	SphereModel[0].filepaths[RawMeshData::eSpecularMetal] = "Textures/rustediron2_metallic.png";
-	SphereModel[0].filepaths[RawMeshData::eNormal] = "Textures/rustediron2_normal.png";
-	SphereModel[0].filepaths[RawMeshData::eRough] = "Textures/rustediron2_roughness.png";
-	SphereModel[0].filepaths[RawMeshData::eAO] = "";
+	auto SphereModel = resourceManager->LoadModel("Models/Sphere/Sphere.obj");
+	Material material;
+
+	material.diffuseTexture = resourceManager->LoadTexture("Textures/Cerberus_A.tga");
+	material.specularTexture = resourceManager->LoadTexture("Textures/rustediron2_metallic.png");
+	material.normalTexture = resourceManager->LoadTexture("Textures/rustediron2_normal.png");
+	material.roughnessTexture = resourceManager->LoadTexture("Textures/rustediron2_roughness.png");
+	material.aoTexture = resourceManager->LoadTexture("");
 
 
 	Object obj;
-	obj.rawMeshData = SphereModel[0];
+	obj.model = SphereModel[0];
 	obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+	obj.material = material;
+
 	gameObjects.push_back(obj);
 
-	auto GunModel = ModelLoader::LoadModel("Models/Gun/Cerberus_LP.fbx", false);
+	auto GunModel = resourceManager->LoadModel("Models/Gun/Cerberus_LP.fbx");
 
-	// Second Sphere
-	GunModel[0].filepaths[RawMeshData::eAlbedo]	= "Textures/Cerberus_A.tga";
-	GunModel[0].filepaths[RawMeshData::eSpecularMetal] = "Textures/Cerberus_M.tga";
-	GunModel[0].filepaths[RawMeshData::eNormal]	= "Textures/Cerberus_N.tga";
-	GunModel[0].filepaths[RawMeshData::eRough] = "Textures/Cerberus_R.tga";
-	GunModel[0].filepaths[RawMeshData::eAO]	= "Textures/Cerberus_AO.tga";
+	material.diffuseTexture = resourceManager->LoadTexture("Textures/Cerberus_A.tga");
+	material.specularTexture = resourceManager->LoadTexture("Textures/Cerberus_M.tga");
+	material.normalTexture = resourceManager->LoadTexture("Textures/Cerberus_N.tga");
+	material.roughnessTexture = resourceManager->LoadTexture("Textures/Cerberus_R.tga");
+	material.aoTexture = resourceManager->LoadTexture("Textures/Cerberus_AO.tga");
 
 
 	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
 
-	obj.rawMeshData = GunModel[0];
+
+	obj.model = GunModel[0];
+	obj.material = material;
 	gameObjects.push_back(obj);
 
 
 	// New model
-	auto DragonModel = ModelLoader::LoadModel("Models/Lucy/Lucy.obj", false)[0];
-	DragonModel.filepaths[RawMeshData::eAlbedo] = "Textures/CopperRock/copper-rock1-alb.png";
-	DragonModel.filepaths[RawMeshData::eSpecularMetal] = "Textures/CopperRock/copper-rock1-metal.png";
-	DragonModel.filepaths[RawMeshData::eNormal] = "Textures/CopperRock/copper-rock1-normal.png";
-	DragonModel.filepaths[RawMeshData::eRough] = "Textures/CopperRock/copper-rock1-rough.png";
-	DragonModel.filepaths[RawMeshData::eAO] = "Textures/CopperRock/copper-rock1-ao.png";
-
-	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-	obj.rawMeshData = DragonModel;
-	gameObjects.push_back(obj);
+	//auto DragonModel = ModelLoader::LoadModel("Models/Lucy/Lucy.obj", false)[0];
+	//DragonModel.filepaths[RawMeshData::eAlbedo] = "Textures/CopperRock/copper-rock1-alb.png";
+	//DragonModel.filepaths[RawMeshData::eSpecularMetal] = "Textures/CopperRock/copper-rock1-metal.png";
+	//DragonModel.filepaths[RawMeshData::eNormal] = "Textures/CopperRock/copper-rock1-normal.png";
+	//DragonModel.filepaths[RawMeshData::eRough] = "Textures/CopperRock/copper-rock1-rough.png";
+	//DragonModel.filepaths[RawMeshData::eAO] = "Textures/CopperRock/copper-rock1-ao.png";
+	//
+	//obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+	//obj.rawMeshData = DragonModel;
+	//gameObjects.push_back(obj);
 
 
 	//this->modelsToBeLoaded = ModelLoader::LoadModel("Models/Sphere/Sphere.obj", false);

@@ -17,8 +17,9 @@ public:
 	uint32_t indiceOffset = 0;
 
 
-protected:
+	RawMeshData data;
 	bool isPrepared = false;
 
-	RawMeshData data;
+protected:
+
 };

@@ -167,6 +167,7 @@
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="ModelVulkan.cpp" />
     <ClCompile Include="Object.cpp" />
+    <ClCompile Include="ObjectRenderingDataVulkan.cpp" />
     <ClCompile Include="PipelineVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
     <ClCompile Include="RenderPassVulkan.cpp" />
@@ -190,12 +191,15 @@
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
     <ClInclude Include="iModel.h" />
+    <ClInclude Include="iObjectRenderingData.h" />
     <ClInclude Include="iTexture.h" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="MaterialComponent.h" />
     <ClInclude Include="ModelLoader.h" />
     <ClInclude Include="ModelVulkan.h" />
     <ClInclude Include="NewCamera.h" />
     <ClInclude Include="Object.h" />
+    <ClInclude Include="ObjectRenderingDataVulkan.h" />
     <ClInclude Include="PipelineVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />

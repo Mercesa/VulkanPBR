@@ -4,6 +4,8 @@
 #include "GraphicsStructures.h"
 
 #include "IModel.h"
+#include "material.h"
+#include "iObjectRenderingData.h"
 
 class Object
 {
@@ -12,11 +14,10 @@ public:
 	~Object();
 
 	glm::mat4 modelMatrix;
-	uint32_t vulkanModelID = 0;
-	RawMeshData rawMeshData;
-	bool hasBeenPrepared = false;
 	
 	iModel* model;
+	iObjectRenderingData* renderingData;
+	Material material;
 };
 
 

@@ -2,7 +2,6 @@
 
 #include "RenderingIncludes.h"
 #include "vk_mem_alloc.h"
-#include "TextureVulkan.h"
 
 // A vertex buffer is 
 // - A buffer
@@ -70,18 +69,6 @@ struct UniformBufferVulkan
 
 	VmaAllocation allocation;
 };
-
-
-struct MaterialVulkan
-{
-	TextureData albedoTexture;
-	TextureData specularTexture;
-	TextureData normalTexture;
-	TextureData roughnessTexture;
-	TextureData AOTexture;
-};
-
-
 
 //struct ModelVulkan
 //{
