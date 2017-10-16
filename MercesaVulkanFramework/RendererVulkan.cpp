@@ -61,6 +61,7 @@
 #include "ShaderProgramVulkan.h"
 #include "ModelVulkan.h"
 #include "TextureVulkan.h"
+#include "ObjectRenderingDataVulkan.h"
 
 CBModelMatrix multipleModelMatrixData;
 CBModelMatrixSingle singleModelmatrixData;
@@ -132,6 +133,7 @@ std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
 std::vector<ModelVulkan*> models;
 std::vector<TextureVulkan*> textures;
+std::vector<ObjectRenderingDataVulkan*> objRenderingData;
 
 VmaAllocator allocator;
 
@@ -161,6 +163,8 @@ std::unique_ptr<DeviceVulkan> deviceVulkan;
 
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
+
+vk::QueryPool queryPool;
 
 RendererVulkan::RendererVulkan()
 {
@@ -417,6 +421,8 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 	{
 		
 		ModelVulkan* tModel = dynamic_cast<ModelVulkan*>(e.model);
+		ObjectRenderingDataVulkan* tRenderingData = dynamic_cast<ObjectRenderingDataVulkan*>(e.renderingData);
+
 		TextureVulkan* albedoTexture = dynamic_cast<TextureVulkan*>(e.material.diffuseTexture);
 		TextureVulkan* specularTexture = dynamic_cast<TextureVulkan*>(e.material.specularTexture);
 		TextureVulkan* normalTexture = dynamic_cast<TextureVulkan*>(e.material.normalTexture);
@@ -424,7 +430,7 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 		TextureVulkan* aoTexture = dynamic_cast<TextureVulkan*>(e.material.aoTexture);
 
 		tModel->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[2], textureBinding)[0];
-		tModel->positionBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[3], uniformBinding)[0];
+		tRenderingData->positionBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[3], uniformBinding)[0];
 
 
 		vk::DescriptorImageInfo albedoImageInfo = {};
@@ -492,10 +498,10 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 		uniformModelWrite[0] = {};
 		uniformModelWrite[0].pNext = NULL;
-		uniformModelWrite[0].dstSet = tModel->positionBufferSet;
+		uniformModelWrite[0].dstSet = tRenderingData->positionBufferSet;
 		uniformModelWrite[0].descriptorCount = 1;
 		uniformModelWrite[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-		uniformModelWrite[0].pBufferInfo = &tModel->positionUniformBuffer.descriptorInfo;
+		uniformModelWrite[0].pBufferInfo = &tRenderingData->positionUniformBuffer.descriptorInfo;
 		uniformModelWrite[0].dstArrayElement = 0;
 		uniformModelWrite[0].dstBinding = 0;
 
@@ -1152,9 +1158,10 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	for (int j = 0; j < (iObjects.size() - 1); ++j)
 	{
 		ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[j].model);
+		ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[j].renderingData);
 
 		renderingContextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
-		renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = model->positionBufferSet;
+		renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
 
 
 		totalSet[0] = (renderingContextResources[index]->descriptorSetPBRShader.samplerSet);
@@ -1171,13 +1178,14 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	}
 
 	ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[iObjects.size() - 1].model);
+	ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[iObjects.size() - 1].renderingData);
 
 	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRed);
 	InitViewports(iBuffer);
 	InitScissors(iBuffer);
 
 	renderingContextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
-	renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = model->positionBufferSet;
+	renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
 
 
 	totalSet[0] = (renderingContextResources[index]->descriptorSetPBRShader.samplerSet);
@@ -1452,7 +1460,17 @@ void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* cons
 
 			e->indiceCount = e->data.indices.size();
 
-			SetupTexturesForObject(iObjects[i].material, stagingBuffers, cmdBufferTextures);
+
+			e->isPrepared = true;
+			models.push_back(e);
+		}
+
+		SetupTexturesForObject(iObjects[i].material, stagingBuffers, cmdBufferTextures);
+
+		
+		if (!iObjects[i].renderingData->isPrepared)
+		{
+			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[i].renderingData);
 
 			UniformBufferVulkan tUniformBuff;
 
@@ -1472,9 +1490,8 @@ void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* cons
 			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
 
 			e->positionUniformBuffer = tUniformBuff;
+			objRenderingData.push_back(e);
 
-			e->isPrepared = true;
-			models.push_back(e);
 		}
 	}
 	
@@ -1555,8 +1572,11 @@ void RendererVulkan::Destroy()
 	{
 		vmaDestroyBuffer(allocator, e->vertexBuffer.buffer, e->vertexBuffer.allocation);
 		vmaDestroyBuffer(allocator, e->indexBuffer.buffer, e->indexBuffer.allocation);
-		vmaDestroyBuffer(allocator, e->positionUniformBuffer.buffer, e->positionUniformBuffer.allocation);
+	}
 
+	for (auto& e : objRenderingData)
+	{
+		vmaDestroyBuffer(allocator, e->positionUniformBuffer.buffer, e->positionUniformBuffer.allocation);
 	}
 
 	for (auto& e : textures)

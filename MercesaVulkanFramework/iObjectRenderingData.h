@@ -8,5 +8,7 @@ public:
 
 	bool shouldCastShadow = true;
 	bool shouldRender = true;
+	bool isPrepared = false;
+
 };
 

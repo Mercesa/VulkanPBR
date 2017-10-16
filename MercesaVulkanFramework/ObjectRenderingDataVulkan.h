@@ -2,6 +2,9 @@
 
 #include "iObjectRenderingData.h"
 
+#include "RenderingIncludes.h"
+#include "VulkanDataObjects.h"
+
 class ObjectRenderingDataVulkan : public iObjectRenderingData
 {
 public:
@@ -9,5 +12,7 @@ public:
 	virtual ~ObjectRenderingDataVulkan();
 
 
+	vk::DescriptorSet positionBufferSet;
+	UniformBufferVulkan positionUniformBuffer;
 };
 

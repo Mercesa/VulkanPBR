@@ -4,12 +4,9 @@
 
 #include "TextureVulkan.h"
 #include "ModelVulkan.h"
-#include "ModelLoader.h"
-
-#include "iModel.h"
+#include "ObjectRenderingDataVulkan.h"
 
 #include "ModelLoader.h"
-
 ResourceManager::ResourceManager()
 {
 }
@@ -84,4 +81,15 @@ std::vector<iModel*> const ResourceManager::LoadModel(const std::string& iFilepa
 
 	// return these models
 	return tModelsToReturn;
+}
+
+iObjectRenderingData* const ResourceManager::RegisterRenderObject()
+{
+	std::unique_ptr<iObjectRenderingData> renderData = std::make_unique<ObjectRenderingDataVulkan>();
+	
+	iObjectRenderingData* tDataToReturn = renderData.get();
+
+	renderingData.push_back(std::move(renderData));
+
+	return tDataToReturn;
 }

@@ -33,6 +33,9 @@
     <Filter Include="Platform Independent\Rendering">
       <UniqueIdentifier>{cc7e9991-d866-4f62-b7f8-14428903acbe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan Structures\GameData">
+      <UniqueIdentifier>{69b38e2d-3371-467e-bfa3-25c759d60d44}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -83,17 +86,17 @@
     <ClCompile Include="Object.cpp">
       <Filter>Game application</Filter>
     </ClCompile>
-    <ClCompile Include="ModelVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
     <ClCompile Include="ResourceManager.cpp">
       <Filter>Platform Independent</Filter>
     </ClCompile>
-    <ClCompile Include="TextureVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
+    <ClCompile Include="ModelVulkan.cpp">
+      <Filter>Vulkan Structures\GameData</Filter>
     </ClCompile>
     <ClCompile Include="ObjectRenderingDataVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureVulkan.cpp">
+      <Filter>Vulkan Structures\GameData</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -178,26 +181,26 @@
     <ClInclude Include="iModel.h">
       <Filter>Platform Independent\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="ModelVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="iTexture.h">
       <Filter>Platform Independent\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="ResourceManager.h">
       <Filter>Platform Independent</Filter>
     </ClInclude>
-    <ClInclude Include="TextureVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="Material.h">
       <Filter>Platform Independent\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="ObjectRenderingDataVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="iObjectRenderingData.h">
       <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectRenderingDataVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -54,6 +54,7 @@ void Game::Init()
 	obj.model = SphereModel[0];
 	obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
 	obj.material = material;
+	obj.renderingData = resourceManager->RegisterRenderObject();
 
 	gameObjects.push_back(obj);
 
@@ -71,6 +72,7 @@ void Game::Init()
 
 	obj.model = GunModel[0];
 	obj.material = material;
+	obj.renderingData = resourceManager->RegisterRenderObject();
 	gameObjects.push_back(obj);
 
 
