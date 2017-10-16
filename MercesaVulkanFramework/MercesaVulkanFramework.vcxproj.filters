@@ -98,6 +98,9 @@
     <ClCompile Include="QueryPoolVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
+    <ClCompile Include="GLFWLowLevelWindow.cpp">
+      <Filter>Vulkan Structures\Window</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
@@ -198,6 +201,9 @@
     </ClInclude>
     <ClInclude Include="QueryPoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="GLFWLowLevelWindow.h">
+      <Filter>Vulkan Structures\Window</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

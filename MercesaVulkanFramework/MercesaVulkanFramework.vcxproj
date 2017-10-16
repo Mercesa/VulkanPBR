@@ -102,12 +102,12 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjDir)\libs\Assimp\x64-Debug;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjDir)\libs\Assimp\x64-Debug;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;spirv-cross-core.lib;spirv-cross-cpp.lib;spirv-cross-glsl.lib;spirv-cross-hlsl.lib;spirv-cross-msl.lib;SPIRVd.lib;SPVRemapperd.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;SDL2.lib;glfw3.lib;spirv-cross-core.lib;spirv-cross-cpp.lib;spirv-cross-glsl.lib;spirv-cross-hlsl.lib;spirv-cross-msl.lib;SPIRVd.lib;SPVRemapperd.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
@@ -142,7 +142,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -151,7 +151,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(VULKAN_SDK)\Lib;$(VULKAN_SDK)\Third-Party\Bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
-      <AdditionalDependencies>vulkan-1.lib;SDL2R.lib;spirv-cross-core.lib;spirv-cross-cpp.lib;spirv-cross-glsl.lib;spirv-cross-hlsl.lib;spirv-cross-msl.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;SDL2R.lib;glfw3.lib;spirv-cross-core.lib;spirv-cross-cpp.lib;spirv-cross-glsl.lib;spirv-cross-hlsl.lib;spirv-cross-msl.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -163,6 +163,7 @@
     <ClCompile Include="EngineTimer.cpp" />
     <ClCompile Include="FramebufferVulkan.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="GLFWLowLevelWindow.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="ModelVulkan.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="FramebufferVulkan.h" />
     <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
+    <ClInclude Include="GLFWLowLevelWindow.h" />
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
@@ -223,13 +225,13 @@
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\DebugX64;$(ProjectDir)\Libs\Assimp\x64-Debug;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Debug;$(ProjectDir)\Libs\SDL\Lib\DebugX64\</LibraryPath>
+    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\DebugX64;$(ProjectDir)\Libs\Assimp\x64-Debug;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Debug;$(ProjectDir)\Libs\SDL\Lib\DebugX64\;$(ProjectDir)\Libs\glfw-3.2.1\Libs\DebugX64</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin
 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\ReleaseX64;$(ProjectDir)\Libs\Assimp\x64-Release;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Release</LibraryPath>
+    <LibraryPath>$(ProjectDir)\Libs\SPIRV\lib\ReleaseX64;$(ProjectDir)\Libs\Assimp\x64-Release;$(LibraryPath);$(ProjectDir)\Libs\Spir-v cross\Lib\x64Release;$(ProjectDir)\Libs\glfw-3.2.1\Libs\ReleaseX64</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerEnvironment>PATH=$(VULKAN_SDK)\Third-Party\Bin32

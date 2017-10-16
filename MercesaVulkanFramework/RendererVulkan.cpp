@@ -52,6 +52,7 @@
 
 #include "easylogging++.h"
 #include "SDLLowLevelWindow.h"
+
 #include "libs/Spir-v cross/spirv_glsl.hpp"
 #include "DescriptorLayoutHelper.h"
 #include "NewCamera.h"

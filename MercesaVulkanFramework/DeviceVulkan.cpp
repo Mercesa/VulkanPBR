@@ -417,7 +417,6 @@ VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCa
 	}
 }
 
-
 VkDebugReportCallbackEXT callBack;
 VkDebugReportCallbackEXT callBack2;
 
