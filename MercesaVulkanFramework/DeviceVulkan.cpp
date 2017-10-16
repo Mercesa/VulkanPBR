@@ -297,7 +297,7 @@ void DeviceVulkan::CreateDevice()
 	device = physicalDevice.createDevice(deviceInfo);
 }
 
-void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uint32_t& iApplicationVersion, const std::string& iEngineName, const uint32_t& iEngineVersion, uint32_t iApiVersion)
+void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uint32_t& iApplicationVersion, const std::string& iEngineName, const uint32_t& iEngineVersion, uint32_t iApiVersion, std::vector<const char*> iInstanceExtensions)
 {
 	vk::ApplicationInfo appInfo = vk::ApplicationInfo()
 		.setPApplicationName(iApplicationName.c_str())
@@ -345,9 +345,9 @@ void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uin
 		}
 	}
 
-	for (auto &e : extensions)
+	for (auto &e : iInstanceExtensions)
 	{
-		std::cout << "Extension name: " << e << std::endl;
+		extensions.push_back(e);
 	}
 
 	// vk::InstanceCreateInfo is where the programmer specifies the layers and/or extensions that

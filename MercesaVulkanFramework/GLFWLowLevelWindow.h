@@ -15,7 +15,8 @@ public:
 	virtual HWND GetWindowHandle() final;
 	virtual std::vector<const char*> GetRequiredExtensions() final;
 
-private:
 	GLFWwindow* window;
+
+
 };
 

@@ -63,7 +63,7 @@
 #include "ModelVulkan.h"
 #include "TextureVulkan.h"
 #include "ObjectRenderingDataVulkan.h"
-
+#include "GLFWLowLevelWindow.h"
 CBModelMatrixSingle singleModelmatrixData;
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
@@ -125,7 +125,6 @@ vk::Instance instance;
 
 std::unique_ptr<CommandpoolVulkan> cmdPool;
 
-std::shared_ptr<iLowLevelWindow> window;
 // Information about our device its memory and family properties
 
 std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
@@ -182,15 +181,34 @@ vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow
 }
 
 
-void SetupApplication()
+void SetupApplication(iLowLevelWindow* const iLowLevelWindow)
 {
+
+	deviceVulkan = std::make_unique<DeviceVulkan>();
+	deviceVulkan->CreateInstance("PBR Vulkan", 1, "Engine", 1, VK_API_VERSION_1_0, iLowLevelWindow->GetRequiredExtensions());
+	deviceVulkan->CreateDebugCallbacks();
+	instance = deviceVulkan->instance;
+
+	GLFWLowLevelWindow* tempWindow = dynamic_cast<GLFWLowLevelWindow*>(iLowLevelWindow);
+
+	// Create a Vulkan surface for rendering
+	try {
+		VkSurfaceKHR surface;
+
+		glfwCreateWindowSurface(
+			deviceVulkan->instance, 
+			tempWindow->window, nullptr, &surface);
+
+		deviceVulkan->swapchain.surface = surface;
+	}
+	catch (const std::exception& e) {
+		std::cout << "Failed to create Vulkan surface: " << e.what() << std::endl;
+		instance.destroy();
+		return;
+	}
 	// vk::ApplicationInfo allows the programmer to specifiy some basic information about the
 	// program, which can be useful for layers and tools to provide more debug information.
-	deviceVulkan = std::make_unique<DeviceVulkan>();
-	deviceVulkan->CreateInstance("PBR Vulkan", 1, "Engine", 1, VK_API_VERSION_1_0);
-	deviceVulkan->CreateDebugCallbacks();
-
-	instance = deviceVulkan->instance;
+	
 }
 
 
@@ -209,21 +227,9 @@ void SetupDevice()
 }
 
 
-void SetupSDL()
+void SetupWindowSystem()
 {
-	window = std::make_shared<SDLLowLevelWindow>();
 
-	window->Create(screenWidth, screenHeight);
-	
-	// Create a Vulkan surface for rendering
-	try {
-		deviceVulkan->swapchain.surface = createVulkanSurface(instance, window.get());
-	}
-	catch (const std::exception& e) {
-		std::cout << "Failed to create Vulkan surface: " << e.what() << std::endl;
-		instance.destroy();
-		return;
-	}
 }
 
 void SetupCommandBuffer()
@@ -1390,11 +1396,13 @@ void SetupQuerypool(const vk::Device& iDevice)
 	}
 }
 
-void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* const iResourceManager)
+void RendererVulkan::Create(std::vector<Object>& iObjects, 
+	ResourceManager* const iResourceManager,
+	iLowLevelWindow* const iIlowLevelWindow)
 {
 
-	SetupApplication();
-	SetupSDL();
+	SetupApplication(iIlowLevelWindow);
+	SetupWindowSystem();
 	SetupDevice();
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
@@ -1589,7 +1597,6 @@ void RendererVulkan::Destroy()
 
 	// Clean up.
 	vmaDestroyAllocator(allocator);
-	window->Destroy();
 	deviceVulkan->device.waitIdle();
 	deviceVulkan->device.destroy();
 	instance.destroy();

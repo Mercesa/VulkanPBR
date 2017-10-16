@@ -21,7 +21,8 @@ public:
 	void CreateInstance(
 		const std::string& iApplicationName, const uint32_t& iApplicationVersion, 
 		const std::string& iEngineName, const uint32_t& iEngineVersion, 
-		uint32_t iApiVersion);
+		uint32_t iApiVersion,
+		std::vector<const char*> iInstanceExtensions);
 
 	void CreateDebugCallbacks();
 	//void SelectOptimalPhysicalDevice();

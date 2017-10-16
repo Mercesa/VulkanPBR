@@ -24,6 +24,7 @@ INITIALIZE_EASYLOGGINGPP
 #include "NewCamera.h"
 #include "EngineTimer.h"
 #include "ResourceManager.h"
+#include "GLFWLowLevelWindow.h"
 using namespace vk;
 
 
@@ -32,6 +33,40 @@ std::unique_ptr<RendererVulkan> renderer;
 std::unique_ptr<Game> CurrentGame;
 std::unique_ptr<EngineTimer> engineTimer;
 std::unique_ptr<ResourceManager> resourceManager;
+std::unique_ptr<GLFWLowLevelWindow> window;
+
+
+bool mouseFirstFrame = true;
+
+double lastX = 0;
+double lastY = 0;
+double relX = 0;
+double relY = 0;
+
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if (mouseFirstFrame)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		mouseFirstFrame = false;
+	}
+
+	relX = xpos - lastX;
+	relY = lastY - ypos;
+
+	lastX = xpos;
+	lastY = ypos;
+}
+
+void processInput(GLFWwindow *window)
+{
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
+
+
+}
 
 int main()
 {
@@ -48,15 +83,22 @@ int main()
 
 	CurrentGame = std::make_unique<Game>();
 	resourceManager = std::make_unique<ResourceManager>();
+	window = std::make_unique<GLFWLowLevelWindow>();
+	window->Create(1280, 720);
 	renderer = std::make_unique<RendererVulkan>();
 
 	CurrentGame->resourceManager = resourceManager.get();
 	CurrentGame->Init();
 
-	renderer->Create(CurrentGame->gameObjects, resourceManager.get());
+	renderer->Create(CurrentGame->gameObjects, resourceManager.get(), window.get());
 
 	engineTimer = std::make_unique<EngineTimer>();
 
+	GLFWLowLevelWindow* glfwWindow = dynamic_cast<GLFWLowLevelWindow*>(window.get());
+
+	glfwSetInputMode(glfwWindow->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	glfwMakeContextCurrent(glfwWindow->window);
+	glfwSetCursorPosCallback(glfwWindow->window, mouse_callback);
 
 	LOG(INFO) << "setup completed" << std::endl;
 
@@ -75,7 +117,9 @@ int main()
 	bool firstFrame = true;
 
 	engineTimer->Start();
-    while(stillRunning) {
+    while(!glfwWindowShouldClose(glfwWindow->window)) {
+		glfwPollEvents();
+		processInput(glfwWindow->window);
 		engineTimer->Update();
 
 		camRotX = 0.0f;
@@ -90,8 +134,8 @@ int main()
 		mouseMoveRelY = 0.0f;
 
         SDL_Event event;
-        while(SDL_PollEvent(&event)) 
-		{
+       // while(SDL_PollEvent(&event)) 
+		/*{
 
             switch(event.type) {
 
@@ -154,11 +198,13 @@ int main()
             }	
 
         }
-		
+		*/
+
+
 		if (!firstFrame)
 		{
 			CurrentGame->Update(engineTimer->GetDeltaTime());
-			CurrentGame->camera->rotate(glm::vec3(mouseMoveRelY, mouseMoveRelX, 0.0f));
+			CurrentGame->camera->rotate(glm::vec3(-relY, -relX, 0.0f));
 			CurrentGame->camera->update(1.0f);
 
 			renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
@@ -168,10 +214,12 @@ int main()
 		firstFrame = false;
 	
 		
+		relX = 0;
+		relY = 0;
        // SDL_Delay(10);
     }
 	
-
+	window->Destroy();
 	renderer->Destroy();
 	std::cin.get();
 
