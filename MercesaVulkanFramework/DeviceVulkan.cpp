@@ -3,9 +3,9 @@
 
 #include <iostream>
 #include <algorithm>
-//#include <ostream>
-//#include <strstream>
 #include <iosfwd>
+#include <ostream>
+#include <sstream>
 
 DeviceVulkan::DeviceVulkan()
 {
@@ -371,28 +371,8 @@ void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uin
 
 
 
-//VkDebugReportCallbackEXT callback;
-//
-//PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback = VK_NULL_HANDLE;
-//PFN_vkDebugReportMessageEXT DebugReportMessageCallback = VK_NULL_HANDLE;
-//PFN_vkDestroyDebugReportCallbackEXT dbgReportCallBack = VK_NULL_HANDLE;
-//
-//
-//VKAPI_ATTR VkBool32 VKAPI_CALL MyDebugReportCallback(
-//	VkDebugReportFlagsEXT       flags,
-//	VkDebugReportObjectTypeEXT  objectType,
-//	uint64_t                    object,
-//	size_t                      location,
-//	int32_t                     messageCode,
-//	const char*                 pLayerPrefix,
-//	const char*                 pMessage,
-//	void*                       pUserData)
-//{
-//	std::cerr << pMessage << std::endl;
-//	return VK_FALSE;
-//}
-#include <ostream>
-#include <sstream>
+
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
 	size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
 	void *pUserData) {
@@ -451,33 +431,6 @@ void DeviceVulkan::CreateDebugCallbacks()
 	if (CreateDebugReportCallbackEXT(instance, &createInfo, nullptr, &callBack) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug callback!");
 	}
-
-
-	//VkDebugReportCallbackCreateInfoEXT callbackCreateInfo;
-	//callbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-	//callbackCreateInfo.pNext = nullptr;
-	//callbackCreateInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT |
-	//	VK_DEBUG_REPORT_WARNING_BIT_EXT |
-	//	VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-	//callbackCreateInfo.pfnCallback = &MyDebugReportCallback;
-	//callbackCreateInfo.pUserData = nullptr;
-	//
-	///* Register the callback */
-	//
-	//VkInstance tempInst = VkInstance(instance);
-	//callback = instance.createDebugReportCallbackEXT(callbackCreateInfo);
-	//PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT =
-	//	reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>
-	//	(vkGetInstanceProcAddr(tempInst, "vkCreateDebugReportCallbackEXT"));
-	//
-	//PFN_vkDebugReportMessageEXT vkDebugReportMessageEXT =
-	//	reinterpret_cast<PFN_vkDebugReportMessageEXT>
-	//	(vkGetInstanceProcAddr(tempInst, "vkDebugReportMessageEXT"));
-	//PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT =
-	//	reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>
-	//	(vkGetInstanceProcAddr(tempInst, "vkDestroyDebugReportCallbackEXT"));
-	//
-	//VkResult result = vkCreateDebugReportCallbackEXT(tempInst, &callbackCreateInfo, nullptr, &callback);
 }
 
 void DeviceVulkan::SetupDeviceQueue()

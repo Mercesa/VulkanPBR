@@ -63,7 +63,6 @@
 #include "TextureVulkan.h"
 #include "ObjectRenderingDataVulkan.h"
 
-CBModelMatrix multipleModelMatrixData;
 CBModelMatrixSingle singleModelmatrixData;
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
@@ -73,7 +72,6 @@ CBLights lightConstantBufferData;
 #define NUM_DESCRIPTOR_SETS 4
 #define FENCE_TIMEOUT 100000000
 #define NUM_FRAMES 2
-static const int32_t objectCount = 3;
 
 vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* window);
 
@@ -99,7 +97,7 @@ struct RenderingContextResources
 	UniformBufferVulkan uniformBufferModelMatrix;
 	UniformBufferVulkan uniformBufferLights;
 
-
+	vk::QueryPool queryPool;
 	vk::CommandBuffer commandBuffer;
 };
 
@@ -157,14 +155,12 @@ std::vector<vk::DescriptorSetLayoutBinding> bindings;
 std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
 std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
 
- std::vector<ShaderDataVulkan> shadersRed;
+vk::Fence graphicsQueueFinishedFence;
 
 std::unique_ptr<DeviceVulkan> deviceVulkan;
 
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
-
-vk::QueryPool queryPool;
 
 RendererVulkan::RendererVulkan()
 {
@@ -293,31 +289,6 @@ void SetupDepthbuffer()
 
 void SetupUniformbuffer()
 {
-	//size_t uboAlignment = deviceVulkan->physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
-	//size_t dynamicAlignment = (sizeof(glm::mat4) / uboAlignment) * uboAlignment + ((sizeof(glm::mat4) % uboAlignment) > 0 ? uboAlignment : 0);
-	//
-	//size_t bufferSize = objectCount * dynamicAlignment;
-	//multipleModelMatrixData.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
-	//
-	//// Create our uniform buffers
-	//for (int i = 0; i < NUM_FRAMES; ++i)
-	//{
-	//	UniformBufferVulkan tUniformBuff;
-	//
-	//	CreateSimpleBuffer(allocator,
-	//		tUniformBuff.allocation,
-	//		VMA_MEMORY_USAGE_CPU_TO_GPU,
-	//		tUniformBuff.buffer,
-	//		vk::BufferUsageFlagBits::eUniformBuffer,
-	//		bufferSize);
-	//
-	//	tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-	//	tUniformBuff.descriptorInfo.offset = 0;
-	//	tUniformBuff.descriptorInfo.range = bufferSize;
-	//
-	//	renderingContextResources[i]->uniformBufferModelMatrix = tUniformBuff;
-	//}
-
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
 		UniformBufferVulkan tUniformBuff;
@@ -1101,9 +1072,6 @@ void InitScissors(vk::CommandBuffer aBuffer)
 	aBuffer.setScissor(0, 1, &scissor);
 }
 
-
-
-vk::Fence graphicsQueueFinishedFence;
 void SetupSemaphores()
 {
 	vk::SemaphoreCreateInfo semaphoreInfo = vk::SemaphoreCreateInfo();
@@ -1409,6 +1377,18 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
 
 
+void SetupQuerypool(const vk::Device& iDevice)
+{
+	for (auto& e : renderingContextResources)
+	{
+		vk::QueryPoolCreateInfo poolCI = vk::QueryPoolCreateInfo()
+			.setQueryType(QueryType::eTimestamp)
+			.setQueryCount(2);
+
+		e->queryPool = iDevice.createQueryPool(poolCI);
+	}
+}
+
 void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* const iResourceManager)
 {
 
@@ -1435,7 +1415,7 @@ void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* cons
 
 	SetupFramebuffers();
 	SetupCommandBuffer();
-
+	SetupQuerypool(deviceVulkan->device);
 	deviceVulkan->SetupDeviceQueue();
 	
 	
@@ -1490,6 +1470,7 @@ void RendererVulkan::Create(std::vector<Object>& iObjects, ResourceManager* cons
 			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
 
 			e->positionUniformBuffer = tUniformBuff;
+			e->isPrepared = true;
 			objRenderingData.push_back(e);
 
 		}
@@ -1519,8 +1500,6 @@ void RendererVulkan::Destroy()
 	deviceVulkan->presentQueue.waitIdle();
 	
 	// free our dynamic uniform buffer thing
-	alignedFree(multipleModelMatrixData.model);
-
 	fbVulkan->Destroy(allocator, deviceVulkan->device);
 
 	for (auto& e : renderingContextResources)
@@ -1540,10 +1519,9 @@ void RendererVulkan::Destroy()
 	deviceVulkan->device.destroyFence(graphicsQueueFinishedFence);
 
 	shaderProgramPBR->Destroy(deviceVulkan->device);
+	shaderProgramRed->Destroy(deviceVulkan->device);
 
 	cmdPool->Destroy(deviceVulkan->device);
-	//device.destroyCommandPool(commandPool);
-	//vice.destroySwapchainKHR(swapchain.swapchain);
 
 	vmaDestroyImage(allocator, (VkImage)depthBuffer.image, depthBuffer.allocation);
 	deviceVulkan->device.destroyImageView(depthBuffer.view);
@@ -1555,6 +1533,7 @@ void RendererVulkan::Destroy()
 	}
 
 	deviceVulkan->device.destroyPipeline(pipelinePBR);
+	deviceVulkan->device.destroyPipeline(pipelineRed);
 	deviceVulkan->device.destroyPipeline(pipelineRenderScene);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
 	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
@@ -1565,8 +1544,9 @@ void RendererVulkan::Destroy()
 		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferLights.buffer, (*e).uniformBufferLights.allocation);
 		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferModelMatrix.buffer, (*e).uniformBufferModelMatrix.allocation);
 		vmaDestroyBuffer(allocator, (VkBuffer)(*e).uniformBufferMVP.buffer, (*e).uniformBufferMVP.allocation);
-	}
 
+		deviceVulkan->device.destroyQueryPool(e->queryPool);
+	}
 
 	for (auto& e : models)
 	{
@@ -1585,8 +1565,24 @@ void RendererVulkan::Destroy()
 		deviceVulkan->device.destroyImageView(e->data.view);
 	}
 
+	for (auto& e : deviceVulkan->swapchain.views)
+	{
+		deviceVulkan->device.destroyImageView(e);
+	}
+
+	for (auto& e : deviceVulkan->swapchain.images)
+	{
+		//deviceVulkan->device.destroyImage(e);
+	}
+
+
 	vmaDestroyImage(allocator, postProcBuffer.image, postProcBuffer.allocation);
 	deviceVulkan->device.destroyImageView(postProcBuffer.view);
+	instance.destroySurfaceKHR(deviceVulkan->swapchain.surface);
+	
+	deviceVulkan->device.destroySwapchainKHR(deviceVulkan->swapchain.swapchain);
+
+
 	//device.destroyImage(depthImage);
 	//device.destroyImage(testTexture.image);
 
@@ -1595,7 +1591,6 @@ void RendererVulkan::Destroy()
 	window->Destroy();
 	deviceVulkan->device.waitIdle();
 	deviceVulkan->device.destroy();
-	instance.destroySurfaceKHR(deviceVulkan->swapchain.surface);
 	instance.destroy();
 }
 
@@ -1612,11 +1607,6 @@ void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStag
 		diffuseTexture->data.view = CreateImageView(deviceVulkan->device, diffuseTexture->data.image, Format::eR8G8B8A8Unorm);
 		diffuseTexture->isPrepared = true;
 		textures.push_back(diffuseTexture);
-	}
-
-	else
-	{
-		LOG(INFO) << "Resource is already loaded";
 	}
 
 	if (!material.specularTexture->isPrepared)

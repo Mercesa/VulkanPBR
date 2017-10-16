@@ -14,6 +14,5 @@ public:
 	BufferVulkan indexBuffer;
 	VertexBufferVulkan vertexBuffer;
 	vk::DescriptorSet textureSet;
-	
 };
 

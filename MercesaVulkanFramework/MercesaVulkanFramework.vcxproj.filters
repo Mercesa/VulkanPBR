@@ -36,6 +36,9 @@
     <Filter Include="Vulkan Structures\GameData">
       <UniqueIdentifier>{69b38e2d-3371-467e-bfa3-25c759d60d44}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Imgui">
+      <UniqueIdentifier>{91f3793d-71f0-4d1c-a913-f56198bc6be7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -56,9 +59,6 @@
     <ClCompile Include="ModelLoader.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
-    <ClCompile Include="PipelineVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>Game application</Filter>
     </ClCompile>
@@ -69,9 +69,6 @@
       <Filter>Vulkan Structures\Window</Filter>
     </ClCompile>
     <ClCompile Include="DescriptorLayoutHelper.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderPassVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="FramebufferVulkan.cpp">
@@ -97,6 +94,9 @@
     </ClCompile>
     <ClCompile Include="TextureVulkan.cpp">
       <Filter>Vulkan Structures\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="QueryPoolVulkan.cpp">
+      <Filter>Vulkan Structures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -142,9 +142,6 @@
     <ClInclude Include="GenericMathValueStructs.h">
       <Filter>Platform Independent</Filter>
     </ClInclude>
-    <ClInclude Include="PipelineVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Game application</Filter>
     </ClInclude>
@@ -159,9 +156,6 @@
     </ClInclude>
     <ClInclude Include="NewCamera.h">
       <Filter>Platform Independent</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderPassVulkan.h">
-      <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="FramebufferVulkan.h">
       <Filter>Vulkan Structures</Filter>
@@ -201,6 +195,9 @@
     </ClInclude>
     <ClInclude Include="TextureVulkan.h">
       <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="QueryPoolVulkan.h">
+      <Filter>Vulkan Structures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
