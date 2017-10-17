@@ -1221,7 +1221,7 @@ void RendererVulkan::PrepareResources(
 		iModel* modelToWorkOn = iModelsToPrepare.front();
 		iModelsToPrepare.pop();
 
-		if (modelToWorkOn->isPrepared)
+		if (!modelToWorkOn->isPrepared)
 		{
 			auto e = dynamic_cast<ModelVulkan*>(modelToWorkOn);
 
