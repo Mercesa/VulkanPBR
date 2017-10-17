@@ -109,14 +109,14 @@ struct RenderingContextResources
 };
 
 
-
 std::vector<vk::Framebuffer> framebuffers;
-std::vector<vk::Framebuffer> framebufferScene;
 std::vector<vk::Framebuffer> framebuffersImgui;
 
-std::unique_ptr<FramebufferVulkan> fbVulkan;
+std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
 
 vk::PipelineLayout pipelineLayout;
+vk::PipelineLayout pipelineLayoutRenderScene
+;
 
 TextureData depthBuffer;
 TextureData postProcBuffer;
@@ -143,9 +143,6 @@ VmaAllocator allocator;
 
 vk::Pipeline pipelinePBR;
 vk::Pipeline pipelineRed;
-
-vk::Pipeline pipelineRenderScene;
-
 
 vk::Viewport viewPort;
 vk::Rect2D scissor;
@@ -405,7 +402,7 @@ void SetupDepthbuffer()
 	depthBuffer.view = deviceVulkan->device.createImageView(view_info);
 }
 
-void SetupUniformbuffer()
+ void SetupUniformbuffer()
 {
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
@@ -648,8 +645,7 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 void SetupRenderPass()
 {
-
-	vk::AttachmentDescription attachments[3] = {};
+	vk::AttachmentDescription attachments[2] = {};
 	attachments[0].format = deviceVulkan->swapchain.format;
 	attachments[0].samples = NUM_SAMPLES;
 	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
@@ -670,15 +666,7 @@ void SetupRenderPass()
 	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	attachments[1].flags = AttachmentDescriptionFlagBits(0);
 
-	attachments[2].format = postProcBuffer.format;
-	attachments[2].samples = NUM_SAMPLES;
-	attachments[2].loadOp = vk::AttachmentLoadOp::eLoad;
-	attachments[2].storeOp = vk::AttachmentStoreOp::eStore;
-	attachments[2].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[2].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[2].initialLayout = vk::ImageLayout::eUndefined;
-	attachments[2].finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	attachments[2].flags = AttachmentDescriptionFlagBits(0);
+	
 
 	std::vector<AttachmentReference> references;
 
@@ -686,13 +674,8 @@ void SetupRenderPass()
 		.setAttachment(0)
 		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
 
-	vk::AttachmentReference secondColorReference = vk::AttachmentReference()
-		.setAttachment(2)
-		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
 
 	references.push_back(color_reference);
-	references.push_back(secondColorReference);
 
 
 	vk::AttachmentReference depth_reference = vk::AttachmentReference()
@@ -732,6 +715,104 @@ void SetupRenderPass()
 	
 	renderPassPostProc = deviceVulkan->device.createRenderPass(rp_info);
 }
+
+void SetupScenePassData()
+{
+	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
+	AttachmentCreateInfo attchCinfo;
+	attchCinfo.format = Format::eR8G8B8A8Unorm;
+	attchCinfo.height = screenHeight;
+	attchCinfo.width = screenWidth;
+	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	attchCinfo.layerCount = 1;
+
+	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
+	AttachmentCreateInfo attchCinfoDepth;
+	attchCinfoDepth.format = Format::eD24UnormS8Uint;
+	attchCinfoDepth.height = screenHeight;
+	attchCinfoDepth.width = screenWidth;
+	attchCinfoDepth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+	attchCinfoDepth.layerCount = 1;
+
+	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
+	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfoDepth, allocator);
+	framebufferRenderScene->CreateRenderpass(deviceVulkan->device);
+
+
+}
+
+void SetupPostProcPass()
+{
+	vk::AttachmentDescription attachments[2] = {};
+	attachments[0].format = deviceVulkan->swapchain.format;
+	attachments[0].samples = NUM_SAMPLES;
+	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+	attachments[0].flags = AttachmentDescriptionFlagBits(0);
+
+	attachments[1].format = vk::Format::eD24UnormS8Uint;
+	attachments[1].samples = NUM_SAMPLES;
+	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+	attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachments[1].initialLayout = vk::ImageLayout::eUndefined;
+	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+	attachments[1].flags = AttachmentDescriptionFlagBits(0);
+
+	std::vector<AttachmentReference> references;
+
+	vk::AttachmentReference color_reference = vk::AttachmentReference()
+		.setAttachment(0)
+		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+
+
+	references.push_back(color_reference);
+
+
+	vk::AttachmentReference depth_reference = vk::AttachmentReference()
+		.setAttachment(1)
+		.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+	vk::SubpassDescription subpass = vk::SubpassDescription()
+		.setPipelineBindPoint(PipelineBindPoint::eGraphics)
+		.setFlags(vk::SubpassDescriptionFlagBits(0))
+		.setInputAttachmentCount(0)
+		.setPInputAttachments(0)
+		.setColorAttachmentCount(1)
+		.setPColorAttachments(references.data())
+		.setPResolveAttachments(NULL)
+		.setPDepthStencilAttachment(&depth_reference)
+		.setPreserveAttachmentCount(0)
+		.setPResolveAttachments(NULL);
+
+	vk::SubpassDependency dependency = vk::SubpassDependency()
+		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
+		.setDstSubpass(0)
+		.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
+		.setSrcAccessMask(vk::AccessFlagBits(0))
+		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+
+	vk::RenderPassCreateInfo rp_info = RenderPassCreateInfo()
+		.setPNext(NULL)
+		.setAttachmentCount(2)
+		.setPAttachments(attachments)
+		.setSubpassCount(1)
+		.setPSubpasses(&subpass)
+		.setDependencyCount(1)
+		.setPDependencies(&dependency);
+
+
+	renderPassPostProc = deviceVulkan->device.createRenderPass(rp_info);
+}
+
+
 
 void SetupShaders()
 {
@@ -816,16 +897,6 @@ vk::Framebuffer CreateFrameBuffer(
 void SetupFramebuffers()
 {
 
-	fbVulkan = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
-	AttachmentCreateInfo attchCinfo;
-	attchCinfo.format = Format::eR8G8B8A8Unorm;
-	attchCinfo.height = screenHeight;
-	attchCinfo.width = screenWidth;
-	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
-	attchCinfo.layerCount = 1;
-
-	fbVulkan->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
-	fbVulkan->CreateRenderpass(deviceVulkan->device);
 
 	std::vector<vk::ImageView> attachments;
 
@@ -837,12 +908,6 @@ void SetupFramebuffers()
 		attachments[0] = deviceVulkan->swapchain.views[i];
 		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPassPostProc));
 	}
-
-	//std::vector<vk::ImageView> attachments2;;
-	//
-	//attachments2.push_back(postProcBuffer.view);
-	//attachments2.push_back(depthBuffer.view);
-	//CreateFrameBuffer(deviceVulkan->device, attachments2, screenWidth, screenHeight, renderPassPostProc);
 }
 
 
@@ -936,9 +1001,37 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 		BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
 		dataSize);
 
-	oVertexBuffer.inputDescription.binding = 0;
-	oVertexBuffer.inputDescription.inputRate = vk::VertexInputRate::eVertex;
-	oVertexBuffer.inputDescription.stride = sizeof(VertexData);
+
+	// Create staging buffer
+
+	CopyBufferMemory(stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
+
+	vmaDestroyBuffer(allocator, stagingT.buffer, stagingT.allocation);
+	
+}
+
+#include "PipelineCreationDump.h"
+
+void SetupPipeline()
+{
+	auto shaderLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
+
+	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
+		.setPNext(NULL)
+		.setPushConstantRangeCount(0)
+		.setPPushConstantRanges(NULL)
+		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
+		.setPSetLayouts(shaderLayoutPBR.data());
+
+	pipelineLayout = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
+
+	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+	vk::VertexInputBindingDescription inputDescription;
+
+
+	inputDescription.binding = 0;
+	inputDescription.inputRate = vk::VertexInputRate::eVertex;
+	inputDescription.stride = sizeof(VertexData);
 
 	// 12 bits 
 	// 8  bits 
@@ -975,44 +1068,16 @@ void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRa
 	att5.offset = 44;
 
 
-	oVertexBuffer.inputAttributes.push_back(att1);
-	oVertexBuffer.inputAttributes.push_back(att2);
-	oVertexBuffer.inputAttributes.push_back(att3);
-	oVertexBuffer.inputAttributes.push_back(att4);
-	oVertexBuffer.inputAttributes.push_back(att5);
-	// Create staging buffer
+	inputAttributes.push_back(att1);
+	inputAttributes.push_back(att2);
+	inputAttributes.push_back(att3);
+	inputAttributes.push_back(att4);
+	inputAttributes.push_back(att5);
 
-	CopyBufferMemory(stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
-
-	vmaDestroyBuffer(allocator, stagingT.buffer, stagingT.allocation);
-	
-}
-
-void SetupPipeline()
-{
-	auto shaderLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
-
-	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
-		.setPNext(NULL)
-		.setPushConstantRangeCount(0)
-		.setPPushConstantRanges(NULL)
-		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
-		.setPSetLayouts(shaderLayoutPBR.data());
-
-	pipelineLayout = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
-
-	std::vector<vk::DynamicState> dynamicStateEnables;
-	dynamicStateEnables.resize(VK_DYNAMIC_STATE_RANGE_SIZE); //[VK_DYNAMIC_STATE_RANGE_SIZE];
-
-	vk::PipelineDynamicStateCreateInfo dynamicState = PipelineDynamicStateCreateInfo()
-		.setPDynamicStates(dynamicStateEnables.data())
-		.setDynamicStateCount(1);
-
-	assert(models[0]->vertexBuffer.inputAttributes.size() != 0);
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
 		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
-		.setPVertexBindingDescriptions(&models[0]->vertexBuffer.inputDescription)
-		.setPVertexAttributeDescriptions(models[0]->vertexBuffer.inputAttributes.data())
+		.setPVertexBindingDescriptions(&inputDescription)
+		.setPVertexAttributeDescriptions(inputAttributes.data())
 		.setVertexAttributeDescriptionCount(5)
 		.setVertexBindingDescriptionCount(1);
 
@@ -1020,20 +1085,8 @@ void SetupPipeline()
 		.setPrimitiveRestartEnable(VK_FALSE)
 		.setTopology(vk::PrimitiveTopology::eTriangleList);
 
-	vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
-		.setPolygonMode(vk::PolygonMode::eFill)
-		.setCullMode(vk::CullModeFlagBits::eBack)
-		.setFrontFace(vk::FrontFace::eCounterClockwise)
-		.setDepthClampEnable(VK_FALSE)
-		.setRasterizerDiscardEnable(VK_FALSE)
-		.setDepthBiasEnable(VK_FALSE)
-		.setDepthBiasConstantFactor(0)
-		.setDepthBiasClamp(0)
-		.setDepthBiasSlopeFactor(0)
-		.setLineWidth(1.0f);
+	vk::PipelineRasterizationStateCreateInfo rs = CreateStandardRasterizerState();
 
-
-	vk::PipelineColorBlendStateCreateInfo cb = {};
 
 	vk::PipelineColorBlendAttachmentState att_state[1] = {};
 	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
@@ -1045,7 +1098,7 @@ void SetupPipeline()
 	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
 	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
 
-
+	vk::PipelineColorBlendStateCreateInfo cb = {};
 	cb.attachmentCount = 1;
 	cb.pAttachments = att_state;
 	cb.logicOpEnable = VK_FALSE;
@@ -1062,6 +1115,14 @@ void SetupPipeline()
 		.setPScissors(NULL)
 		.setPViewports(NULL);
 
+
+	std::vector<vk::DynamicState> dynamicStateEnables;
+	dynamicStateEnables.resize(VK_DYNAMIC_STATE_RANGE_SIZE); //[VK_DYNAMIC_STATE_RANGE_SIZE];
+
+	vk::PipelineDynamicStateCreateInfo dynamicState = PipelineDynamicStateCreateInfo()
+		.setPDynamicStates(dynamicStateEnables.data())
+		.setDynamicStateCount(1);
+
 	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eViewport;
 	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eScissor;
 
@@ -1073,9 +1134,6 @@ void SetupPipeline()
 		.setMinDepthBounds(0)
 		.setMaxDepthBounds(1.0f)
 		.setStencilTestEnable(VK_FALSE);
-	//.setBack(vk::StencilOpState(StencilOp::eKeep, StencilOp::eKeep, StencilOp::eKeep, CompareOp::eAlways, 0));
-
-	//ds.setFront(ds.back);
 
 	vk::PipelineMultisampleStateCreateInfo ms = PipelineMultisampleStateCreateInfo()
 		.setRasterizationSamples(NUM_SAMPLES)
@@ -1087,6 +1145,7 @@ void SetupPipeline()
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfo = shaderProgramPBR->GetPipelineShaderInfo();
 
+	// Create graphics pipeline for the first shader
 	vk::GraphicsPipelineCreateInfo gfxPipe = GraphicsPipelineCreateInfo()
 		.setLayout(pipelineLayout)
 		.setBasePipelineHandle(nullptr)
@@ -1108,53 +1167,10 @@ void SetupPipeline()
 	pipelinePBR = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
 
-	vk::PipelineColorBlendAttachmentState att_state2[1] = {};
-	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
-	att_state[0].blendEnable = VK_FALSE;
-	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
-	att_state[0].colorBlendOp = vk::BlendOp::eAdd;
-	att_state[0].srcColorBlendFactor = vk::BlendFactor::eZero;
-	att_state[0].dstColorBlendFactor = vk::BlendFactor::eZero;
-	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
-	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
-
-
-	vk::PipelineColorBlendStateCreateInfo cb2 = {};
-
-	cb2.attachmentCount = 1;
-	cb2.pAttachments = att_state;
-	cb2.logicOpEnable = VK_FALSE;
-	cb2.logicOp = vk::LogicOp::eNoOp;
-	cb2.blendConstants[0] = 1.0f;	
-	cb2.blendConstants[1] = 1.0f;
-	cb2.blendConstants[2] = 1.0f;
-	cb2.blendConstants[3] = 1.0f;
-
-	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
-		.setLayout(pipelineLayout)
-		.setBasePipelineHandle(nullptr)
-		.setBasePipelineIndex(0)
-		.setPVertexInputState(&vi)
-		.setPInputAssemblyState(&ia)
-		.setPRasterizationState(&rs)
-		.setPColorBlendState(&cb2)
-		.setPTessellationState(VK_NULL_HANDLE)
-		.setPMultisampleState(&ms)
-		.setPDynamicState(&dynamicState)
-		.setPViewportState(&vp)
-		.setPDepthStencilState(&ds)
-		.setPStages(shaderPipelineInfo.data())
-		.setStageCount(shaderPipelineInfo.size())
-		.setRenderPass(fbVulkan->renderpass)
-		.setSubpass(0);
-
-	pipelineRenderScene = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
-
-
+	// Create graphics pipeline for the second shader
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
 
-
-	vk::GraphicsPipelineCreateInfo gfxPipe3 = GraphicsPipelineCreateInfo()
+	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
 		.setLayout(pipelineLayout)
 		.setBasePipelineHandle(nullptr)
 		.setBasePipelineIndex(0)
@@ -1173,8 +1189,12 @@ void SetupPipeline()
 		.setSubpass(0);
 
 
-	pipelineRed = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe3);
-	//vk::PipelineDynamicStateCreateInfo dynamicState = vk
+	pipelineRed = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+
+
+	/* CREATE PIPELINE FOR */
+
+
 }
 
 void InitViewports(vk::CommandBuffer aBuffer)
@@ -1547,6 +1567,7 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 	postProcBuffer.format = Format::eR8G8B8A8Unorm;
 
 	SetupRenderPass();
+	SetupScenePassData();
 
 	SetupFramebuffers();
 	SetupQuerypool(deviceVulkan->device);
@@ -1633,7 +1654,7 @@ void RendererVulkan::Destroy()
 	deviceVulkan->presentQueue.waitIdle();
 	
 	// free our dynamic uniform buffer thing
-	fbVulkan->Destroy(allocator, deviceVulkan->device);
+	framebufferRenderScene->Destroy(allocator, deviceVulkan->device);
 
 	for (auto& e : renderingContextResources)
 	{
@@ -1668,7 +1689,6 @@ void RendererVulkan::Destroy()
 
 	deviceVulkan->device.destroyPipeline(pipelinePBR);
 	deviceVulkan->device.destroyPipeline(pipelineRed);
-	deviceVulkan->device.destroyPipeline(pipelineRenderScene);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
 	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
 

@@ -243,7 +243,5 @@ inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, v
 		0, nullptr,
 		0, nullptr,
 		1, &barrier);
-
 }
-
 

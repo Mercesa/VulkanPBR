@@ -177,6 +177,7 @@
     <ClCompile Include="ObjectRenderingDataVulkan.cpp" />
     <ClCompile Include="QueryPoolVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
+    <ClCompile Include="RenderScenePass.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
     <ClCompile Include="SDLLowLevelWindow.cpp" />
     <ClCompile Include="ShaderProgramVulkan.cpp" />
@@ -215,9 +216,11 @@
     <ClInclude Include="NewCamera.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectRenderingDataVulkan.h" />
+    <ClInclude Include="PipelineCreationDump.h" />
     <ClInclude Include="QueryPoolVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
+    <ClInclude Include="RenderScenePass.h" />
     <ClInclude Include="ResourceManager.h" />
     <ClInclude Include="SDLLowLevelWindow.h" />
     <ClInclude Include="ShaderProgramVulkan.h" />

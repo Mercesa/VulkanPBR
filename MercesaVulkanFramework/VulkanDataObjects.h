@@ -24,8 +24,7 @@ struct ImageVulkan
 
 struct VertexBufferVulkan
 {
-	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
-	vk::VertexInputBindingDescription inputDescription;
+
 	vk::Buffer buffer;
 	VmaAllocation allocation;
 };

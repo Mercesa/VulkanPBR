@@ -42,6 +42,9 @@
     <Filter Include="Platform Independent\GUI">
       <UniqueIdentifier>{9ba11da8-5f00-4a73-8455-ccc00a521ded}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan Structures\ScenePasses">
+      <UniqueIdentifier>{1c0fa380-d667-472b-a091-796a40c11142}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -118,6 +121,9 @@
     </ClCompile>
     <ClCompile Include="MainGUI.cpp">
       <Filter>Platform Independent\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderScenePass.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -246,6 +252,12 @@
     </ClInclude>
     <ClInclude Include="MainGUI.h">
       <Filter>Platform Independent\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineCreationDump.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderScenePass.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
