@@ -270,5 +270,11 @@
     <None Include="Imgui\main.cpp">
       <Filter>Imgui</Filter>
     </None>
+    <None Include="Shaders\FragmentShaderPostProc.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\VertexShaderPostProc.vert">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

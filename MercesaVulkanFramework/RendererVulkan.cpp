@@ -167,6 +167,8 @@ std::unique_ptr<DeviceVulkan> deviceVulkan;
 
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
+std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
+
 
 struct imguiData
 {
@@ -702,7 +704,7 @@ void SetupRenderPass()
 		.setFlags(vk::SubpassDescriptionFlagBits(0))
 		.setInputAttachmentCount(0)
 		.setPInputAttachments(0)
-		.setColorAttachmentCount(2)
+		.setColorAttachmentCount(1)
 		.setPColorAttachments(references.data())
 		.setPResolveAttachments(NULL)
 		.setPDepthStencilAttachment(&depth_reference)
@@ -720,7 +722,7 @@ void SetupRenderPass()
 
 	vk::RenderPassCreateInfo rp_info = RenderPassCreateInfo()
 		.setPNext(NULL)
-		.setAttachmentCount(3)
+		.setAttachmentCount(2)
 		.setPAttachments(attachments)
 		.setSubpassCount(1)
 		.setPSubpasses(&subpass)
@@ -771,6 +773,25 @@ void SetupShaders()
 	std::vector<ShaderDataVulkan> shaderDataRed = { vertexDataRed, fragmentDataRed };
 
 	shaderProgramRed->LoadShaders(deviceVulkan->device, shaderDataRed);
+
+
+	shaderProgramPostProc = std::make_unique<ShaderProgramVulkan>();
+
+	ShaderDataVulkan vertexDataPostProc;
+	ShaderDataVulkan fragmentDataPostProc;
+
+	vertexDataPostProc.entryPointName = "main";
+	vertexDataPostProc.shaderStage = ShaderStageFlagBits::eVertex;
+	vertexDataPostProc.shaderFile = "Shaders/Bin/postProcVertexShader.spv";
+
+	fragmentDataPostProc.entryPointName = "main";
+	fragmentDataPostProc.shaderStage = ShaderStageFlagBits::eFragment;
+	fragmentDataPostProc.shaderFile = "Shaders/Bin/postProcFragmentShader.spv";
+
+	std::vector<ShaderDataVulkan> shaderDataPostProc = { vertexDataPostProc, fragmentDataPostProc };
+
+	shaderProgramPostProc->LoadShaders(deviceVulkan->device, shaderDataPostProc);
+
 }
 
 vk::Framebuffer CreateFrameBuffer(
@@ -803,17 +824,13 @@ void SetupFramebuffers()
 	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
 	attchCinfo.layerCount = 1;
 
-
 	fbVulkan->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
 	fbVulkan->CreateRenderpass(deviceVulkan->device);
 
-
 	std::vector<vk::ImageView> attachments;
 
-	//attachments[2] = postProcBuffer.view;
 	attachments.push_back(vk::ImageView(nullptr));
 	attachments.push_back(depthBuffer.view);
-	attachments.push_back(postProcBuffer.view);
 
 	for (int i = 0; i < deviceVulkan->swapchain.images.size(); ++i)
 	{
@@ -1018,7 +1035,7 @@ void SetupPipeline()
 
 	vk::PipelineColorBlendStateCreateInfo cb = {};
 
-	vk::PipelineColorBlendAttachmentState att_state[2] = {};
+	vk::PipelineColorBlendAttachmentState att_state[1] = {};
 	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
 	att_state[0].blendEnable = VK_FALSE;
 	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
@@ -1028,16 +1045,8 @@ void SetupPipeline()
 	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
 	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
 
-	att_state[1].colorWriteMask = vk::ColorComponentFlagBits(0xF);
-	att_state[1].blendEnable = VK_FALSE;
-	att_state[1].alphaBlendOp = vk::BlendOp::eAdd;
-	att_state[1].colorBlendOp = vk::BlendOp::eAdd;
-	att_state[1].srcColorBlendFactor = vk::BlendFactor::eZero;
-	att_state[1].dstColorBlendFactor = vk::BlendFactor::eZero;
-	att_state[1].srcAlphaBlendFactor = vk::BlendFactor::eZero;
-	att_state[1].dstAlphaBlendFactor = vk::BlendFactor::eZero;
 
-	cb.attachmentCount = 2;
+	cb.attachmentCount = 1;
 	cb.pAttachments = att_state;
 	cb.logicOpEnable = VK_FALSE;
 	cb.logicOp = vk::LogicOp::eNoOp;

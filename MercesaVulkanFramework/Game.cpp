@@ -157,7 +157,7 @@ void Game::Update(float iDT)
 	camera->update(iDT);
 	
 
-	std::cout << camera->rotation.y << std::endl;
+	//std::cout << camera->rotation.y << std::endl;
 	//std::cout << "Light pos: " << lights[0].position.x << std::endl;
 }
 

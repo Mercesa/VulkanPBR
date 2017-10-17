@@ -47,9 +47,7 @@ layout (location = 2) in vec3 normal;
 layout (location = 3) in vec3 fragPos;
 layout (location = 4) in mat3 TBN;
 
-
 layout (location = 0) out vec4 outColor;
-layout (location = 1) out vec4 outSecond;
 
 const float PI = 3.14159265359;
 
