@@ -102,7 +102,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjDir)\libs\Assimp\x64-Debug;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjDir)\libs\Assimp\x64-Debug;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include;Imgui/</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,7 +142,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;$(VULKAN_SDK)\Third-Party\Include;$(VULKAN_SDK)\glslang;$(ProjectDir)\libs\Assimp\;$(ProjectDir)\Libs\stb-master;$(ProjectDir)\Libs\SDL\include;$(ProjectDir)\Libs\glfw-3.2.1\include;Imgui/</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -155,7 +155,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="CommandpoolVulkan.cpp" />
     <ClCompile Include="DescriptorLayoutHelper.h" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
@@ -164,7 +163,14 @@
     <ClCompile Include="FramebufferVulkan.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="GLFWLowLevelWindow.cpp" />
+    <ClCompile Include="Imgui\imgui.cpp" />
+    <ClCompile Include="Imgui\imgui_demo.cpp" />
+    <ClCompile Include="Imgui\imgui_draw.cpp" />
+    <ClCompile Include="Imgui\imgui_impl_glfw_vulkan.cpp" />
+    <None Include="Imgui\main.cpp" />
+    <ClCompile Include="inputGlfw.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MainGUI.cpp" />
     <ClCompile Include="ModelLoader.cpp" />
     <ClCompile Include="ModelVulkan.cpp" />
     <ClCompile Include="Object.cpp" />
@@ -177,7 +183,6 @@
     <ClCompile Include="TextureVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.h" />
     <ClInclude Include="CommandpoolVulkan.h" />
     <ClInclude Include="ConstantBuffers.h" />
     <ClInclude Include="DescriptorPoolVulkan.h" />
@@ -191,9 +196,18 @@
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />
+    <ClInclude Include="Imgui\imconfig.h" />
+    <ClInclude Include="Imgui\imgui.h" />
+    <ClInclude Include="Imgui\imgui_impl_glfw_vulkan.h" />
+    <ClInclude Include="Imgui\imgui_internal.h" />
+    <ClInclude Include="Imgui\stb_rect_pack.h" />
+    <ClInclude Include="Imgui\stb_textedit.h" />
+    <ClInclude Include="Imgui\stb_truetype.h" />
     <ClInclude Include="iModel.h" />
+    <ClInclude Include="inputGlfw.h" />
     <ClInclude Include="iObjectRenderingData.h" />
     <ClInclude Include="iTexture.h" />
+    <ClInclude Include="MainGUI.h" />
     <ClInclude Include="Material.h" />
     <ClInclude Include="MaterialComponent.h" />
     <ClInclude Include="ModelLoader.h" />
@@ -213,6 +227,8 @@
     <ClInclude Include="VulkanHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Imgui\glsl_shader.frag" />
+    <None Include="Imgui\glsl_shader.vert" />
     <None Include="Shaders\FragmentShaderRed.frag" />
     <None Include="Shaders\FragmentShaderStart.frag" />
     <None Include="Shaders\VertexShaderRed.vert" />

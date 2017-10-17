@@ -14,6 +14,8 @@ public:
 	RendererVulkan();
 	~RendererVulkan();
 	
+
+	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
 	void Create(
 		std::vector<Object>& iMeshes, 
 		ResourceManager* const iResourceManager,
@@ -22,6 +24,8 @@ public:
 	void BeginFrame(const NewCamera& iCamera, const std::vector<Light>& iLights);
 	void Render(const std::vector<Object>& iObjects);
 	void Destroy();
+
+	uint32_t currentBuffer = 0;
 
 };
 

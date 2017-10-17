@@ -25,8 +25,11 @@ INITIALIZE_EASYLOGGINGPP
 #include "EngineTimer.h"
 #include "ResourceManager.h"
 #include "GLFWLowLevelWindow.h"
-using namespace vk;
+#include "inputGlfw.h"
+#include "MainGUI.h"
 
+#include <imgui.h>
+#include "Imgui/imgui_impl_glfw_vulkan.h"
 
 
 std::unique_ptr<RendererVulkan> renderer;
@@ -34,8 +37,8 @@ std::unique_ptr<Game> CurrentGame;
 std::unique_ptr<EngineTimer> engineTimer;
 std::unique_ptr<ResourceManager> resourceManager;
 std::unique_ptr<GLFWLowLevelWindow> window;
-
-
+std::unique_ptr<inputGlfw> input;
+std::unique_ptr<MainGUI> gui;
 bool mouseFirstFrame = true;
 
 double lastX = 0;
@@ -43,21 +46,36 @@ double lastY = 0;
 double relX = 0;
 double relY = 0;
 
+static bool startMenu = false;
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+void cursorpos_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	if (mouseFirstFrame)
+	if(!startMenu)
+	input->MouseMoveInput(xpos, ypos);
+}
+
+void mousebutton_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	ImGui_ImplGlfwVulkan_MouseButtonCallback(window, button, action, mods);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (!startMenu)
 	{
-		lastX = xpos;
-		lastY = ypos;
-		mouseFirstFrame = false;
+		input->KeyboardInput(key, scancode, action, mods);
 	}
+	ImGui_ImplGlfwVulkan_KeyCallback(window, key, scancode, action, mods);
+}
 
-	relX = xpos - lastX;
-	relY = lastY - ypos;
+void char_callback(GLFWwindow* window, unsigned int c)
+{
+	ImGui_ImplGlfwVulkan_CharCallback(window, c);
+}
 
-	lastX = xpos;
-	lastY = ypos;
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	ImGui_ImplGlfwVulkan_ScrollCallback(window, xoffset, yoffset);
 }
 
 void processInput(GLFWwindow *window)
@@ -65,7 +83,10 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		startMenu = !startMenu;
+	}
 }
 
 int main()
@@ -80,145 +101,57 @@ int main()
 	freopen("conout$", "w", stderr);
 #endif
 
-
-	CurrentGame = std::make_unique<Game>();
 	resourceManager = std::make_unique<ResourceManager>();
+	input = std::make_unique<inputGlfw>();
 	window = std::make_unique<GLFWLowLevelWindow>();
-	window->Create(1280, 720);
 	renderer = std::make_unique<RendererVulkan>();
-
-	CurrentGame->resourceManager = resourceManager.get();
-	CurrentGame->Init();
-
-	renderer->Create(CurrentGame->gameObjects, resourceManager.get(), window.get());
-
 	engineTimer = std::make_unique<EngineTimer>();
+	gui = std::make_unique<MainGUI>();
 
 	GLFWLowLevelWindow* glfwWindow = dynamic_cast<GLFWLowLevelWindow*>(window.get());
 
+	input->Initialize();
+	CurrentGame = std::make_unique<Game>(input.get(), resourceManager.get());
+	window->Create(1280, 720);
+	CurrentGame->Init();
+	renderer->Create(CurrentGame->gameObjects, resourceManager.get(), window.get());
+
 	glfwSetInputMode(glfwWindow->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwMakeContextCurrent(glfwWindow->window);
-	glfwSetCursorPosCallback(glfwWindow->window, mouse_callback);
-
-	LOG(INFO) << "setup completed" << std::endl;
-
-	static float camX, camY, camZ;
-	static float camRotX, camRotY, camRotZ;
-	static float mouseMoveRelX, mouseMoveRelY;
-	camX = 0.0f;
-	camY = 0.0f;
-	camZ = 0.0f;
-
-	mouseMoveRelX = 0.0f;
-	mouseMoveRelY = 0.0f;
-    // Poll for user input.
-    bool stillRunning = true;
-
-	bool firstFrame = true;
+	
+	glfwSetCursorPosCallback(glfwWindow->window, cursorpos_callback);
+	glfwSetMouseButtonCallback(glfwWindow->window, mousebutton_callback);
+	glfwSetKeyCallback(glfwWindow->window, key_callback);
+	glfwSetCharCallback(glfwWindow->window, char_callback);
+	glfwSetScrollCallback(glfwWindow->window, scroll_callback);
 
 	engineTimer->Start();
-    while(!glfwWindowShouldClose(glfwWindow->window)) {
-		glfwPollEvents();
-		processInput(glfwWindow->window);
+
+    while(!glfwWindowShouldClose(glfwWindow->window)) 
+	{
+		// Update timer
 		engineTimer->Update();
 
-		camRotX = 0.0f;
-		camRotY = 0.0f;
-		camRotZ = 0.0f;
-		CurrentGame->camera->keys.up = false;
-		CurrentGame->camera->keys.down = false;
-		CurrentGame->camera->keys.left = false;
-		CurrentGame->camera->keys.right = false;
+		ImGui_ImplGlfwVulkan_NewFrame();
 
-		mouseMoveRelX = 0.0f;
-		mouseMoveRelY = 0.0f;
+		// Process input
+		input->Update();
+		glfwPollEvents();
+		processInput(glfwWindow->window);
 
-        SDL_Event event;
-       // while(SDL_PollEvent(&event)) 
-		/*{
+		// Update game
+		CurrentGame->Update(engineTimer->GetDeltaTime());
 
-            switch(event.type) {
-
-            case SDL_QUIT:
-                stillRunning = false;
-                break;
-
-			case SDL_KEYDOWN:
-				if (event.key.keysym.sym == SDLK_ESCAPE)
-				{
-					stillRunning = false;
-				}
-
-				if (event.key.keysym.sym == SDLK_w)
-				{
-					camY += 1.0f;
-					CurrentGame->camera->keys.up = true;
-				}
-
-				if (event.key.keysym.sym == SDLK_a)
-				{
-					camX -= 1.0f;
-					CurrentGame->camera->keys.left = true;
-				}
-
-				if (event.key.keysym.sym == SDLK_s)
-				{
-					camY -= 1.0f;
-					CurrentGame->camera->keys.down = true;
-				}
-
-				if (event.key.keysym.sym == SDLK_d)
-				{
-					camX += 1.0f;
-					CurrentGame->camera->keys.right = true;
-
-				}
-
-				if (event.key.keysym.sym == SDLK_q)
-				{
-					camRotY -= 1.0f;
-				}
-
-				if (event.key.keysym.sym == SDLK_e)
-				{
-					camRotY += 1.0f;
-				}
-
-				break;
-
-
-			case SDL_MOUSEMOTION:
-				mouseMoveRelX = event.motion.xrel;
-				mouseMoveRelY = event.motion.yrel;
-				break;
-
-            default:
-                // Do nothing.
-                break;
-            }	
-
-        }
-		*/
-
-
-		if (!firstFrame)
+		if (startMenu)
 		{
-			CurrentGame->Update(engineTimer->GetDeltaTime());
-			CurrentGame->camera->rotate(glm::vec3(-relY, -relX, 0.0f));
-			CurrentGame->camera->update(1.0f);
-
-			renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
-			renderer->Render(CurrentGame->gameObjects);	
+			gui->Update(CurrentGame.get());
 		}
-
-		firstFrame = false;
-	
-		
-		relX = 0;
-		relY = 0;
-       // SDL_Delay(10);
+		// Render resources
+		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
+		renderer->Render(CurrentGame->gameObjects);	
     }
 	
+	ImGui_ImplGlfwVulkan_Shutdown();
 	window->Destroy();
 	renderer->Destroy();
 	std::cin.get();

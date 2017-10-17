@@ -27,9 +27,6 @@
     <Filter Include="Game application">
       <UniqueIdentifier>{12dc8bb7-3e27-4ce7-90f4-9201680ba230}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Vulkan Structures\Window">
-      <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Platform Independent\Rendering">
       <UniqueIdentifier>{cc7e9991-d866-4f62-b7f8-14428903acbe}</UniqueIdentifier>
     </Filter>
@@ -38,6 +35,12 @@
     </Filter>
     <Filter Include="Imgui">
       <UniqueIdentifier>{91f3793d-71f0-4d1c-a913-f56198bc6be7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent\Window">
+      <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent\GUI">
+      <UniqueIdentifier>{9ba11da8-5f00-4a73-8455-ccc00a521ded}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -53,9 +56,6 @@
     <ClCompile Include="CommandpoolVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Platform Independent</Filter>
-    </ClCompile>
     <ClCompile Include="ModelLoader.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
@@ -66,7 +66,7 @@
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="SDLLowLevelWindow.cpp">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClCompile>
     <ClCompile Include="DescriptorLayoutHelper.h">
       <Filter>Vulkan Structures</Filter>
@@ -99,7 +99,25 @@
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="GLFWLowLevelWindow.cpp">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_demo.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_draw.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_impl_glfw_vulkan.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="inputGlfw.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="MainGUI.cpp">
+      <Filter>Platform Independent\GUI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -136,9 +154,6 @@
     <ClInclude Include="ConstantBuffers.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Platform Independent</Filter>
-    </ClInclude>
     <ClInclude Include="ModelLoader.h">
       <Filter>Utility</Filter>
     </ClInclude>
@@ -152,10 +167,10 @@
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="iLowLevelWindow.h">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClInclude>
     <ClInclude Include="SDLLowLevelWindow.h">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClInclude>
     <ClInclude Include="NewCamera.h">
       <Filter>Platform Independent</Filter>
@@ -203,7 +218,34 @@
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="GLFWLowLevelWindow.h">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui_impl_glfw_vulkan.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui_internal.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_rect_pack.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_textedit.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_truetype.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imconfig.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="inputGlfw.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="MainGUI.h">
+      <Filter>Platform Independent\GUI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -218,6 +260,15 @@
     </None>
     <None Include="Shaders\VertexShaderRed.vert">
       <Filter>Shaders</Filter>
+    </None>
+    <None Include="Imgui\glsl_shader.frag">
+      <Filter>Imgui</Filter>
+    </None>
+    <None Include="Imgui\glsl_shader.vert">
+      <Filter>Imgui</Filter>
+    </None>
+    <None Include="Imgui\main.cpp">
+      <Filter>Imgui</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -64,6 +64,11 @@
 #include "TextureVulkan.h"
 #include "ObjectRenderingDataVulkan.h"
 #include "GLFWLowLevelWindow.h"
+
+#include <imgui.h>
+
+#include <imgui_impl_glfw_vulkan.h>
+
 CBModelMatrixSingle singleModelmatrixData;
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
@@ -100,13 +105,14 @@ struct RenderingContextResources
 
 	vk::QueryPool queryPool;
 	vk::CommandBuffer commandBuffer;
+	vk::CommandBuffer commandBufferIMGUI;
 };
 
 
-uint32_t currentBuffer = 0;
 
 std::vector<vk::Framebuffer> framebuffers;
 std::vector<vk::Framebuffer> framebufferScene;
+std::vector<vk::Framebuffer> framebuffersImgui;
 
 std::unique_ptr<FramebufferVulkan> fbVulkan;
 
@@ -162,6 +168,13 @@ std::unique_ptr<DeviceVulkan> deviceVulkan;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
 
+struct imguiData
+{
+	vk::RenderPass renderpass;
+	vk::DescriptorPool descriptorPool;
+
+} imguiDataObj;
+
 RendererVulkan::RendererVulkan()
 {
 }
@@ -171,15 +184,115 @@ RendererVulkan::~RendererVulkan()
 {
 }
 
-
-vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* const window)
+static void check_vk_result(VkResult err)
 {
-	vk::Win32SurfaceCreateInfoKHR surfaceInfo = vk::Win32SurfaceCreateInfoKHR()
-		.setHinstance(GetModuleHandle(NULL))
-		.setHwnd(window->GetWindowHandle());
-	return instance.createWin32SurfaceKHR(surfaceInfo);
+	if (err == 0) return;
+	printf("VkResult %d\n", err);
+	if (err < 0)
+		abort();
 }
 
+
+void RendererVulkan::SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow)
+{
+
+	// Create special pool for imgui
+	VkDescriptorPoolSize pool_size[11] =
+	{
+		{ VK_DESCRIPTOR_TYPE_SAMPLER, 100 },
+		{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 },
+		{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 100 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 100 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 100 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 100},
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100 },
+		{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
+		{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 100 },
+		{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 100 }
+	};
+	VkDescriptorPoolCreateInfo pool_info = {};
+	pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	pool_info.maxSets = 100 * 11;
+	pool_info.poolSizeCount = 11;
+	pool_info.pPoolSizes = pool_size;
+
+	VkDescriptorPool tPool;
+	vkCreateDescriptorPool((VkDevice)deviceVulkan->device, &pool_info, nullptr, &tPool);
+	imguiDataObj.descriptorPool = tPool;
+	
+	VkAttachmentDescription attachment = {};
+	attachment.format = VkFormat(deviceVulkan->swapchain.format);
+	attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+	attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	VkAttachmentReference color_attachment = {};
+	color_attachment.attachment = 0;
+	color_attachment.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &color_attachment;
+	VkRenderPassCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	info.attachmentCount = 1;
+	info.pAttachments = &attachment;
+	info.subpassCount = 1;
+	info.pSubpasses = &subpass;
+
+	VkRenderPass tRP = VK_NULL_HANDLE;
+	vkCreateRenderPass(deviceVulkan->device, &info, nullptr, &tRP);
+	imguiDataObj.renderpass = tRP;
+
+	{
+		vk::ImageView attachment[1];
+		vk::FramebufferCreateInfo fbInfo = {};
+		fbInfo.renderPass = imguiDataObj.renderpass;
+		fbInfo.attachmentCount = 1;
+		fbInfo.pAttachments = attachment;
+		fbInfo.width = screenWidth;
+		fbInfo.height = screenHeight;
+		fbInfo.layers = 1;
+		for (uint32_t i = 0; i < deviceVulkan->swapchain.views.size(); i++)
+		{
+			attachment[0] = deviceVulkan->swapchain.views[i];
+			framebuffersImgui.push_back(deviceVulkan->device.createFramebuffer(fbInfo, nullptr));
+		}
+
+	}
+
+	ImGui_ImplGlfwVulkan_Init_Data imgui_init_data;
+	imgui_init_data.allocator = VK_NULL_HANDLE;
+	imgui_init_data.device = deviceVulkan->device;
+	imgui_init_data.gpu = deviceVulkan->physicalDevice;
+	imgui_init_data.pipeline_cache = VK_NULL_HANDLE;
+	imgui_init_data.render_pass = tRP;
+	imgui_init_data.descriptor_pool = tPool;
+	imgui_init_data.check_vk_result = check_vk_result;
+
+	GLFWLowLevelWindow* glfwWindow = dynamic_cast<GLFWLowLevelWindow*>(iIlowLevelWindow);
+	ImGui_ImplGlfwVulkan_Init(glfwWindow->window, false, &imgui_init_data);
+
+	{
+		vk::CommandBufferBeginInfo begin_info = vk::CommandBufferBeginInfo();
+
+		renderingContextResources[currentBuffer]->commandBufferIMGUI.begin(begin_info);
+		ImGui_ImplGlfwVulkan_CreateFontsTexture(renderingContextResources[currentBuffer]->commandBufferIMGUI);
+		renderingContextResources[currentBuffer]->commandBufferIMGUI.end();
+
+		vk::SubmitInfo end_info = vk::SubmitInfo()
+			.setCommandBufferCount(1)
+			.setPCommandBuffers(&renderingContextResources[currentBuffer]->commandBufferIMGUI);
+		deviceVulkan->graphicsQueue.submit(end_info, vk::Fence(nullptr));
+		deviceVulkan->device.waitIdle();
+		ImGui_ImplGlfwVulkan_InvalidateFontUploadObjects();
+	}
+}
 
 void SetupApplication(iLowLevelWindow* const iLowLevelWindow)
 {
@@ -240,6 +353,7 @@ void SetupCommandBuffer()
 	for (int i = 0; i < renderingContextResources.size(); ++i)
 	{
 		renderingContextResources[i]->commandBuffer = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, 1)[0];
+		renderingContextResources[i]->commandBufferIMGUI = cmdPool->AllocateBuffer(deviceVulkan->device, CommandBufferLevel::ePrimary, 1)[0];
 	}
 }
 
@@ -1094,6 +1208,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 {
 	vk::CommandBufferBeginInfo cmd_begin = vk::CommandBufferBeginInfo();
 
+	cmd_begin.flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
 	iBuffer.begin(cmd_begin);
 
 	vk::ClearValue clear_values[3] = {};
@@ -1178,6 +1293,33 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	iBuffer.end();
 
 }
+void SetupCommandBuffersImgui(const vk::CommandBuffer& iBuffer, uint32_t index)
+{
+
+	vk::ClearValue clear_values[1] = {};
+	clear_values[0].color.float32[0] = 0.0f;
+	clear_values[0].color.float32[1] = 0.0f;
+	clear_values[0].color.float32[2] = 0.0f;
+	clear_values[0].color.float32[3] = 0.0f;
+
+	vk::CommandBufferBeginInfo begin_info = vk::CommandBufferBeginInfo()
+		.setFlags(vk::CommandBufferUsageFlagBits::eSimultaneousUse);
+
+	iBuffer.begin(begin_info);
+	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
+		.setRenderPass(imguiDataObj.renderpass)
+		.setFramebuffer(framebuffersImgui[index])
+		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
+		.setClearValueCount(3)
+		.setPClearValues(clear_values);
+
+	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
+
+	ImGui_ImplGlfwVulkan_Render(iBuffer);
+	iBuffer.endRenderPass();
+
+	iBuffer.end();
+}
 
 void SetupRTTexture(
 	vk::Device iDevice, 
@@ -1193,34 +1335,6 @@ void SetupRTTexture(
 		oImage, iTextureWidth, iTextureHeight);
 
 	oImageView = CreateImageView(iDevice, oImage, Format::eR8G8B8A8Unorm);
-
-
-	//std::vector<vk::AttachmentDescription> attachmentDescriptions = {};
-
-	//vk::AttachmentDescription renderTargetAttachment;
-	//
-	//renderTargetAttachment.format = vk::Format::eR8G8B8Unorm;
-	//renderTargetAttachment.samples = NUM_SAMPLES;
-	//renderTargetAttachment.loadOp = AttachmentLoadOp::eClear;
-	//renderTargetAttachment.storeOp = AttachmentStoreOp::eStore;
-	//renderTargetAttachment.stencilLoadOp = AttachmentLoadOp::eDontCare;
-	//renderTargetAttachment.stencilStoreOp= AttachmentStoreOp::eDontCare;
-	//renderTargetAttachment.initialLayout = vk::ImageLayout::eUndefined;
-	//renderTargetAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	//
-	//vk::AttachmentDescription depthTargetAttachment;
-	//
-	//renderTargetAttachment.format = vk::Format::eR8G8B8Unorm;
-	//renderTargetAttachment.samples = NUM_SAMPLES;
-	//renderTargetAttachment.loadOp = AttachmentLoadOp::eClear;
-	//renderTargetAttachment.storeOp = AttachmentStoreOp::eStore;
-	//renderTargetAttachment.stencilLoadOp = AttachmentLoadOp::eDontCare;
-	//renderTargetAttachment.stencilStoreOp = AttachmentStoreOp::eDontCare;
-	//renderTargetAttachment.initialLayout = vk::ImageLayout::eUndefined;
-	//renderTargetAttachment.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-
-	//vk::AttachmentReference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
-	//vk::AttachmentReference{ 1, vk::ImageLayout::eDepthStencilAttachmentOptimal };
 
 }
 
@@ -1331,6 +1445,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	if (firstFrame)
 	{
 		SetupCommandBuffers(renderingContextResources[currentBuffer]->commandBuffer, currentBuffer, iObjects);
+		SetupCommandBuffersImgui(renderingContextResources[currentBuffer]->commandBufferIMGUI, currentBuffer);
 		firstFrame = false;
 	}
 
@@ -1339,6 +1454,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 		//std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
 		int32_t nextBuffer = (currentBuffer + 1) % 2;
 		SetupCommandBuffers(renderingContextResources[nextBuffer]->commandBuffer, nextBuffer, iObjects);
+		SetupCommandBuffersImgui(renderingContextResources[nextBuffer]->commandBufferIMGUI, nextBuffer);
 
 		deviceVulkan->device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
 		deviceVulkan->device.resetFences(graphicsQueueFinishedFence);
@@ -1352,11 +1468,14 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
 	vk::SubmitInfo submit_info[1] = {};
+	vk::CommandBuffer commandBuffers[2] = { renderingContextResources[currentBuffer]->commandBuffer, renderingContextResources[currentBuffer]->commandBufferIMGUI };
+
+
 	submit_info[0].waitSemaphoreCount = 1;
 	submit_info[0].pWaitSemaphores = &imageAcquiredSemaphore;
 	submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-	submit_info[0].commandBufferCount = 1;
-	submit_info[0].pCommandBuffers = &renderingContextResources[currentBuffer]->commandBuffer;
+	submit_info[0].commandBufferCount = 2;
+	submit_info[0].pCommandBuffers = commandBuffers;
 	submit_info[0].signalSemaphoreCount = 1;
 	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
 
@@ -1380,9 +1499,7 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
 }
 
-
 void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
-
 
 void SetupQuerypool(const vk::Device& iDevice)
 {
@@ -1403,6 +1520,7 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 
 	SetupApplication(iIlowLevelWindow);
 	SetupWindowSystem();
+
 	SetupDevice();
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
@@ -1412,6 +1530,11 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 	}
 
 	SetupSwapchain();
+	deviceVulkan->SetupDeviceQueue();
+	SetupCommandBuffer();
+
+	SetupIMGUI(iIlowLevelWindow);
+
 
 	SetupUniformbuffer();
 	SetupShaders();
@@ -1423,9 +1546,7 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 	SetupRenderPass();
 
 	SetupFramebuffers();
-	SetupCommandBuffer();
 	SetupQuerypool(deviceVulkan->device);
-	deviceVulkan->SetupDeviceQueue();
 	
 	
 	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
@@ -1513,6 +1634,7 @@ void RendererVulkan::Destroy()
 
 	for (auto& e : renderingContextResources)
 	{
+		e->commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 		e->commandBuffer.reset(vk::CommandBufferResetFlagBits::eReleaseResources);
 	}
 
