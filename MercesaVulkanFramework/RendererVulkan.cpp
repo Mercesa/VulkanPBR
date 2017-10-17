@@ -340,11 +340,6 @@ void SetupDevice()
 }
 
 
-void SetupWindowSystem()
-{
-
-}
-
 void SetupCommandBuffer()
 {
 	cmdPool = std::make_unique<CommandpoolVulkan>();
@@ -1519,7 +1514,6 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 {
 
 	SetupApplication(iIlowLevelWindow);
-	SetupWindowSystem();
 
 	SetupDevice();
 

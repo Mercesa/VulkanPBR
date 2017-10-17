@@ -45,7 +45,7 @@ void Game::Init()
 	auto SphereModel = resourceManager->LoadModel("Models/Sphere/Sphere.obj");
 	Material material;
 
-	material.diffuseTexture = resourceManager->LoadTexture("Textures/Cerberus_A.tga");
+	material.diffuseTexture = resourceManager->LoadTexture("Textures/rustediron2_basecolor.png");
 	material.specularTexture = resourceManager->LoadTexture("Textures/rustediron2_metallic.png");
 	material.normalTexture = resourceManager->LoadTexture("Textures/rustediron2_normal.png");
 	material.roughnessTexture = resourceManager->LoadTexture("Textures/rustediron2_roughness.png");
@@ -79,14 +79,21 @@ void Game::Init()
 
 
 	// New model
-	//auto DragonModel = ModelLoader::LoadModel("Models/Lucy/Lucy.obj", false)[0];
-	//DragonModel.filepaths[RawMeshData::eAlbedo] = "Textures/CopperRock/copper-rock1-alb.png";
-	//DragonModel.filepaths[RawMeshData::eSpecularMetal] = "Textures/CopperRock/copper-rock1-metal.png";
-	//DragonModel.filepaths[RawMeshData::eNormal] = "Textures/CopperRock/copper-rock1-normal.png";
-	//DragonModel.filepaths[RawMeshData::eRough] = "Textures/CopperRock/copper-rock1-rough.png";
-	//DragonModel.filepaths[RawMeshData::eAO] = "Textures/CopperRock/copper-rock1-ao.png";
+	auto DragonModel = resourceManager->LoadModel("Models/Lucy/Lucy.obj")[0];
+	material.diffuseTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-alb.png");
+	material.specularTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-metal.png");
+	material.normalTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-normal.png");
+	material.roughnessTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-rough.png");
+	material.aoTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-ao.png");
+
+	obj.model = DragonModel;
+	obj.material = material;
+	obj.renderingData = resourceManager->RegisterRenderObject();
+	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+	gameObjects.push_back(obj);
+
 	//
-	//obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+	//
 	//obj.rawMeshData = DragonModel;
 	//gameObjects.push_back(obj);
 

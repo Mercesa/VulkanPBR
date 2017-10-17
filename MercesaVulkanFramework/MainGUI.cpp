@@ -44,20 +44,17 @@ void ShowLightMenu(std::vector<Light>& iLights)
 
 	if(ImGui::Begin("Light Menu", &showLightMenu))
 	{
-		if (ImGui::TreeNode("Lights"))
+
+		for (auto& e : iLights)
 		{
-		
-			
-			for (auto& e : iLights)
+			if (ImGui::TreeNode("Lights"))
 			{
 			
 					ImGui::ColorPicker3("##Picker", arr);
 					e.diffuseColor.r = arr[0];
 					e.diffuseColor.g = arr[1];
 					e.diffuseColor.b = arr[2];
-
-				
-
+					
 			}
 			
 			ImGui::TreePop();
@@ -82,7 +79,6 @@ void MainGUI::Update(Game* const iGame)
 		}
 		ImGui::EndMainMenuBar();
 	}
-
 
 
 	if (showLightMenu) {
