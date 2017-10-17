@@ -64,14 +64,16 @@
 #include "TextureVulkan.h"
 #include "ObjectRenderingDataVulkan.h"
 #include "GLFWLowLevelWindow.h"
+#include "PipelineCreationDump.h"
 
+#include "RenderScenePass.h"
 #include <imgui.h>
 
 #include <imgui_impl_glfw_vulkan.h>
 
-CBModelMatrixSingle singleModelmatrixData;
 CBMatrix matrixConstantBufferData;
 CBLights lightConstantBufferData;
+CBModelMatrixSingle matrixSingleData;
 
 
 #define NUM_SAMPLES vk::SampleCountFlagBits::e1
@@ -115,16 +117,13 @@ std::vector<vk::Framebuffer> framebuffersImgui;
 std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
 
 vk::PipelineLayout pipelineLayout;
-vk::PipelineLayout pipelineLayoutRenderScene
-;
+vk::PipelineLayout pipelineLayoutRenderScene;
 
 TextureData depthBuffer;
-TextureData postProcBuffer;
 
 
 std::vector<std::unique_ptr<RenderingContextResources>> renderingContextResources;
 
-vk::RenderPass renderPassPostProc;
 
 // Device and instance
 vk::Instance instance;
@@ -166,6 +165,7 @@ std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
 
+std::unique_ptr<RenderScenePass> renderPassScene;
 
 struct imguiData
 {
@@ -318,9 +318,6 @@ void SetupApplication(iLowLevelWindow* const iLowLevelWindow)
 		instance.destroy();
 		return;
 	}
-	// vk::ApplicationInfo allows the programmer to specifiy some basic information about the
-	// program, which can be useful for layers and tools to provide more debug information.
-	
 }
 
 
@@ -643,79 +640,6 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 	}
 }
 
-void SetupRenderPass()
-{
-	vk::AttachmentDescription attachments[2] = {};
-	attachments[0].format = deviceVulkan->swapchain.format;
-	attachments[0].samples = NUM_SAMPLES;
-	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[0].initialLayout = vk::ImageLayout::eUndefined;
-	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
-	attachments[0].flags = AttachmentDescriptionFlagBits(0);
-
-	attachments[1].format = vk::Format::eD24UnormS8Uint;
-	attachments[1].samples = NUM_SAMPLES;
-	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[1].initialLayout = vk::ImageLayout::eUndefined;
-	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-	attachments[1].flags = AttachmentDescriptionFlagBits(0);
-
-	
-
-	std::vector<AttachmentReference> references;
-
-	vk::AttachmentReference color_reference = vk::AttachmentReference()
-		.setAttachment(0)
-		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
-
-	references.push_back(color_reference);
-
-
-	vk::AttachmentReference depth_reference = vk::AttachmentReference()
-		.setAttachment(1)
-		.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-	vk::SubpassDescription subpass = vk::SubpassDescription()
-		.setPipelineBindPoint(PipelineBindPoint::eGraphics)
-		.setFlags(vk::SubpassDescriptionFlagBits(0))
-		.setInputAttachmentCount(0)
-		.setPInputAttachments(0)
-		.setColorAttachmentCount(1)
-		.setPColorAttachments(references.data())
-		.setPResolveAttachments(NULL)
-		.setPDepthStencilAttachment(&depth_reference)
-		.setPreserveAttachmentCount(0)
-		.setPResolveAttachments(NULL);
-
-	vk::SubpassDependency dependency = vk::SubpassDependency()
-		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-		.setDstSubpass(0)
-		.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setSrcAccessMask(vk::AccessFlagBits(0))
-		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-
-	vk::RenderPassCreateInfo rp_info = RenderPassCreateInfo()
-		.setPNext(NULL)
-		.setAttachmentCount(2)
-		.setPAttachments(attachments)
-		.setSubpassCount(1)
-		.setPSubpasses(&subpass)
-		.setDependencyCount(1)
-		.setPDependencies(&dependency);
-
-	
-	renderPassPostProc = deviceVulkan->device.createRenderPass(rp_info);
-}
-
 void SetupScenePassData()
 {
 	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
@@ -737,81 +661,7 @@ void SetupScenePassData()
 	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
 	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfoDepth, allocator);
 	framebufferRenderScene->CreateRenderpass(deviceVulkan->device);
-
-
 }
-
-void SetupPostProcPass()
-{
-	vk::AttachmentDescription attachments[2] = {};
-	attachments[0].format = deviceVulkan->swapchain.format;
-	attachments[0].samples = NUM_SAMPLES;
-	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
-	attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[0].initialLayout = vk::ImageLayout::eUndefined;
-	attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
-	attachments[0].flags = AttachmentDescriptionFlagBits(0);
-
-	attachments[1].format = vk::Format::eD24UnormS8Uint;
-	attachments[1].samples = NUM_SAMPLES;
-	attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
-	attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachments[1].initialLayout = vk::ImageLayout::eUndefined;
-	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-	attachments[1].flags = AttachmentDescriptionFlagBits(0);
-
-	std::vector<AttachmentReference> references;
-
-	vk::AttachmentReference color_reference = vk::AttachmentReference()
-		.setAttachment(0)
-		.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
-
-	references.push_back(color_reference);
-
-
-	vk::AttachmentReference depth_reference = vk::AttachmentReference()
-		.setAttachment(1)
-		.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-	vk::SubpassDescription subpass = vk::SubpassDescription()
-		.setPipelineBindPoint(PipelineBindPoint::eGraphics)
-		.setFlags(vk::SubpassDescriptionFlagBits(0))
-		.setInputAttachmentCount(0)
-		.setPInputAttachments(0)
-		.setColorAttachmentCount(1)
-		.setPColorAttachments(references.data())
-		.setPResolveAttachments(NULL)
-		.setPDepthStencilAttachment(&depth_reference)
-		.setPreserveAttachmentCount(0)
-		.setPResolveAttachments(NULL);
-
-	vk::SubpassDependency dependency = vk::SubpassDependency()
-		.setSrcSubpass(VK_SUBPASS_EXTERNAL)
-		.setDstSubpass(0)
-		.setSrcStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setDstStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput)
-		.setSrcAccessMask(vk::AccessFlagBits(0))
-		.setDstAccessMask(vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-
-	vk::RenderPassCreateInfo rp_info = RenderPassCreateInfo()
-		.setPNext(NULL)
-		.setAttachmentCount(2)
-		.setPAttachments(attachments)
-		.setSubpassCount(1)
-		.setPSubpasses(&subpass)
-		.setDependencyCount(1)
-		.setPDependencies(&dependency);
-
-
-	renderPassPostProc = deviceVulkan->device.createRenderPass(rp_info);
-}
-
 
 
 void SetupShaders()
@@ -896,8 +746,6 @@ vk::Framebuffer CreateFrameBuffer(
 
 void SetupFramebuffers()
 {
-
-
 	std::vector<vk::ImageView> attachments;
 
 	attachments.push_back(vk::ImageView(nullptr));
@@ -906,111 +754,9 @@ void SetupFramebuffers()
 	for (int i = 0; i < deviceVulkan->swapchain.images.size(); ++i)
 	{
 		attachments[0] = deviceVulkan->swapchain.views[i];
-		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPassPostProc));
+		framebuffers.push_back(CreateFrameBuffer(deviceVulkan->device, attachments, screenWidth, screenHeight, renderPassScene->renderpass));
 	}
 }
-
-
-void CopyBufferMemory(vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
-{
-	vk::CommandBuffer tCmdBuffer = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
-
-	vk::BufferCopy copyRegion = vk::BufferCopy()
-		.setSrcOffset(0)
-		.setDstOffset(0)
-		.setSize(aSize);
-
-	tCmdBuffer.copyBuffer(srcBuffer, destBuffer, 1, &copyRegion);
-
-	EndSingleTimeCommands(deviceVulkan->device, tCmdBuffer, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
-}
-
-void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
-{
-	vk::BufferImageCopy region = vk::BufferImageCopy()
-		.setBufferOffset(0)
-		.setBufferRowLength(0)
-		.setBufferImageHeight(0)
-		.setImageOffset(vk::Offset3D(0, 0, 0))
-		.setImageExtent(vk::Extent3D(width, height, 1));
-
-	region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-
-	iBuffer.copyBufferToImage(
-		srcBuffer,
-		destImage,
-		ImageLayout::eTransferDstOptimal,
-		1,
-		&region);
-}
-
-void SetupIndexBuffer(BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData)
-{
-	BufferVulkan indexBufferStageT;
-
-	CreateSimpleBuffer(
-		allocator,
-		indexBufferStageT.allocation,
-		VMA_MEMORY_USAGE_CPU_ONLY,
-		indexBufferStageT.buffer,
-		vk::BufferUsageFlagBits::eTransferSrc,
-		sizeof(uint32_t) * iRawMeshData.indices.size());
-
-	CopyDataToBuffer(deviceVulkan->device, indexBufferStageT.allocation, (void*)iRawMeshData.indices.data(), sizeof(uint32_t) * iRawMeshData.indices.size());
-
-	CreateSimpleBuffer(
-		allocator,
-		oIndexBuffer.allocation,
-		VMA_MEMORY_USAGE_GPU_ONLY,
-		oIndexBuffer.buffer,
-		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-		sizeof(uint32_t) * iRawMeshData.indices.size());
-
-	CopyBufferMemory(indexBufferStageT.buffer, oIndexBuffer.buffer, oIndexBuffer.allocation->GetSize());
-
-	vmaDestroyBuffer(allocator, indexBufferStageT.buffer, indexBufferStageT.allocation);
-}
-
-void SetupVertexBuffer(VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata)
-{
-	size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
-
-	BufferVulkan stagingT;
-
-	CreateSimpleBuffer(allocator,
-		stagingT.allocation,
-		VMA_MEMORY_USAGE_CPU_ONLY,
-		stagingT.buffer,
-		BufferUsageFlagBits::eTransferSrc,
-		dataSize);
-
-
-	CopyDataToBuffer((VkDevice)deviceVulkan->device,
-		stagingT.allocation,
-		(void*)iRawMeshdata.vertices.data(),
-		dataSize);
-
-
-	CreateSimpleBuffer(allocator,
-		oVertexBuffer.allocation,
-		VMA_MEMORY_USAGE_GPU_ONLY,
-		oVertexBuffer.buffer,
-		BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
-		dataSize);
-
-
-	// Create staging buffer
-
-	CopyBufferMemory(stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
-
-	vmaDestroyBuffer(allocator, stagingT.buffer, stagingT.allocation);
-	
-}
-
-#include "PipelineCreationDump.h"
 
 void SetupPipeline()
 {
@@ -1161,7 +907,7 @@ void SetupPipeline()
 		.setPDepthStencilState(&ds)
 		.setPStages(shaderPipelineInfo.data())
 		.setStageCount(shaderPipelineInfo.size())
-		.setRenderPass(renderPassPostProc)
+		.setRenderPass(renderPassScene->renderpass)
 		.setSubpass(0);
 
 	pipelinePBR = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
@@ -1185,7 +931,7 @@ void SetupPipeline()
 		.setPDepthStencilState(&ds)
 		.setPStages(shaderPipelineInfoRed.data())
 		.setStageCount(shaderPipelineInfoRed.size())
-		.setRenderPass(renderPassPostProc)
+		.setRenderPass(renderPassScene->renderpass)
 		.setSubpass(0);
 
 
@@ -1252,7 +998,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	const vk::DeviceSize offsets[1] = { 0 };
 
 	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
-		.setRenderPass(renderPassPostProc)
+		.setRenderPass(renderPassScene->renderpass)
 		.setFramebuffer(framebuffers[index])
 		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
 		.setClearValueCount(3)
@@ -1282,8 +1028,6 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 		totalSet[1] = (renderingContextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
 		totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
 		totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
-
-
 
 		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, totalSet.size(), totalSet.data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
@@ -1345,98 +1089,7 @@ void SetupCommandBuffersImgui(const vk::CommandBuffer& iBuffer, uint32_t index)
 	iBuffer.end();
 }
 
-void SetupRTTexture(
-	vk::Device iDevice, 
-	uint32_t iTextureWidth, uint32_t iTextureHeight, 
-	vk::Image& oImage, VmaAllocation& oAllocation,
-	vk::ImageView& oImageView)
-{
-	CreateSimpleImage(allocator,
-		oAllocation,
-		VMA_MEMORY_USAGE_GPU_ONLY,
-		ImageUsageFlagBits::eColorAttachment | ImageUsageFlagBits::eSampled,
-		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
-		oImage, iTextureWidth, iTextureHeight);
 
-	oImageView = CreateImageView(iDevice, oImage, Format::eR8G8B8A8Unorm);
-
-}
-
-stbi_uc* LoadTexture(const std::string& iFilePath, int& oWidth, int& oHeight, int& oTexChannels, uint64_t& oImageSize)
-{
-	// Load texture with stbi
-	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
-
-	oImageSize = oWidth * oHeight * 4;
-
-	if (!pixels)
-	{
-		stbi_image_free(pixels);
-
-		LOG(ERROR) << "Load texture failed! Fallback to error texture..";
-		pixels = stbi_load("textures/ErrorTexture.png", &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
-		oImageSize = oWidth * oHeight * 4;
-		if (!pixels)
-		{
-			LOG(FATAL) << "FAILED TO LOAD ERRORTEXTURE, THIS SHOULD NOT HAPPEN";
-		}
-	}
-
-	return pixels;
-}
-
-
-void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
-{
-	int texWidth = 0;
-	int texHeight = 0;
-	int texChannels = 0;
-	uint64_t imageSize = 0;
-
-	stbi_uc* pixels = LoadTexture(iFilePath, texWidth, texHeight, texChannels, imageSize);
-
-	// Create staging buffer for image
-	BufferVulkan stagingBuffer;
-
-	// create simple buffer
-	CreateSimpleBuffer(allocator,
-		stagingBuffer.allocation,
-		VMA_MEMORY_USAGE_CPU_ONLY,
-		stagingBuffer.buffer,
-		BufferUsageFlagBits::eTransferSrc,
-		vk::DeviceSize(imageSize));
-
-	// Copy image data to buffer
-	CopyDataToBuffer(VkDevice(deviceVulkan->device), stagingBuffer.allocation, pixels, imageSize);
-
-	// Free image
-	stbi_image_free(pixels);
-
-
-	CreateSimpleImage(allocator,
-		oAllocation,
-		VMA_MEMORY_USAGE_GPU_ONLY,
-		ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled,
-		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
-		oImage, texWidth, texHeight);
-
-	TransitionImageLayout(iBuffer,
-		oImage,
-		vk::Format::eR8G8B8A8Unorm,
-		vk::ImageLayout::eUndefined,
-		vk::ImageLayout::eTransferDstOptimal);
-
-	CopyBufferToImage(iBuffer, stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-	TransitionImageLayout(iBuffer,
-		oImage,
-		vk::Format::eR8G8B8A8Unorm,
-		vk::ImageLayout::eTransferDstOptimal,
-		vk::ImageLayout::eShaderReadOnlyOptimal);
-
-
-	oStaging.push_back(stagingBuffer);
-}
 
 
 void CreateTextureSampler(vk::Device const aDevice)
@@ -1515,15 +1168,16 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 	deviceVulkan->presentQueue.presentKHR(&present);
 
-	//presentQueue.waitIdle();
 }
 
 void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& lights)
 {
+
 	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
 }
 
 void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
+
 
 void SetupQuerypool(const vk::Device& iDevice)
 {
@@ -1536,6 +1190,163 @@ void SetupQuerypool(const vk::Device& iDevice)
 		e->queryPool = iDevice.createQueryPool(poolCI);
 	}
 }
+
+
+// Will screw up if the GPU is already running, should fence it
+void RendererVulkan::PrepareResources(
+	std::queue<iTexture*> iTexturesToPrepare,
+	std::queue<iModel*> iModelsToPrepare,
+	std::queue<iObjectRenderingData*> iObjsToPrepare,
+	std::vector<Object> iObjects)
+{
+	std::vector<BufferVulkan> stagingBuffers;
+	vk::CommandBuffer cmdBufferResources = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
+
+	// Prepare the texture resources
+	while (!iTexturesToPrepare.empty())
+	{
+		iTexture* textureToWorkOn = iTexturesToPrepare.front();
+		iTexturesToPrepare.pop();
+		TextureVulkan* diffuseTexture = dynamic_cast<TextureVulkan*>(textureToWorkOn);
+
+		SetupTextureImage(cmdBufferResources, deviceVulkan->device, diffuseTexture->GetFilepath(), diffuseTexture->data.image, allocator, diffuseTexture->data.allocation, stagingBuffers);
+		diffuseTexture->data.view = CreateImageView(deviceVulkan->device, diffuseTexture->data.image, Format::eR8G8B8A8Unorm);
+		diffuseTexture->isPrepared = true;
+		textures.push_back(diffuseTexture);
+	}
+	
+	// Prepare the models
+	while (!iModelsToPrepare.empty())
+	{
+		iModel* modelToWorkOn = iModelsToPrepare.front();
+		iModelsToPrepare.pop();
+
+		if (modelToWorkOn->isPrepared)
+		{
+			auto e = dynamic_cast<ModelVulkan*>(modelToWorkOn);
+
+			SetupVertexBuffer(deviceVulkan->device, cmdBufferResources, allocator, e->vertexBuffer, e->data, stagingBuffers);
+			SetupIndexBuffer(deviceVulkan->device, cmdBufferResources, allocator, e->indexBuffer, e->data, stagingBuffers);
+
+
+			e->indiceCount = e->data.indices.size();
+
+			e->isPrepared = true;
+			models.push_back(e);
+		}
+	}
+
+	// Prepare the objects
+	//while (!iObjsToPrepare.empty())
+	//{
+	//	iObjectRenderingData* objectToWorkOn = iObjsToPrepare.front();
+	//	iObjsToPrepare.pop();
+	//
+	//	if (!objectToWorkOn->isPrepared)
+	//	{
+	//		auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
+	//
+	//		UniformBufferVulkan tUniformBuff;
+	//
+	//		CreateSimpleBuffer(allocator,
+	//			tUniformBuff.allocation,
+	//			VMA_MEMORY_USAGE_CPU_TO_GPU,
+	//			tUniformBuff.buffer,
+	//			vk::BufferUsageFlagBits::eUniformBuffer,
+	//			sizeof(CBMatrix));
+	//
+	//		//singleModelmatrixData.model = iObjects[i].modelMatrix;
+	//		CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, nullptr, sizeof(CBModelMatrixSingle));
+	//
+	//
+	//		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+	//		tUniformBuff.descriptorInfo.offset = 0;
+	//		tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
+	//
+	//		e->positionUniformBuffer = tUniformBuff;
+	//		e->isPrepared = true;
+	//		objRenderingData.push_back(e);
+	//
+	//	}
+	//}
+
+	EndSingleTimeCommands(deviceVulkan->device, cmdBufferResources, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
+
+	for (auto& e : stagingBuffers)
+	{
+		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
+	}
+
+	stagingBuffers.clear();
+	stagingBuffers.resize(0);
+	renderPassScene = std::make_unique<RenderScenePass>();
+	renderPassScene->CreateRenderpass(deviceVulkan->device, deviceVulkan->swapchain.format, NUM_SAMPLES);
+
+	SetupUniformbuffer();
+	SetupShaders();
+
+	SetupDepthbuffer();
+
+	SetupScenePassData();
+
+	SetupFramebuffers();
+	SetupQuerypool(deviceVulkan->device);
+
+
+	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
+	TransitionImageLayout(cmdBufferTextures, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+	for (int i = 0; i < iObjects.size(); ++i)
+	{
+		iObjectRenderingData* objectToWorkOn = iObjects[i].renderingData;
+		//iObjsToPrepare.pop();
+
+		if (!objectToWorkOn->isPrepared)
+		{
+			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
+
+			UniformBufferVulkan tUniformBuff;
+
+			CreateSimpleBuffer(allocator,
+				tUniformBuff.allocation,
+				VMA_MEMORY_USAGE_CPU_TO_GPU,
+				tUniformBuff.buffer,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				sizeof(CBMatrix));
+
+
+
+			matrixSingleData.model = iObjects[i].modelMatrix;
+			CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&matrixSingleData, sizeof(matrixSingleData));
+
+
+			tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+			tUniformBuff.descriptorInfo.offset = 0;
+			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
+
+			e->positionUniformBuffer = tUniformBuff;
+			e->isPrepared = true;
+			objRenderingData.push_back(e);
+
+		}
+	}
+
+	EndSingleTimeCommands(deviceVulkan->device, cmdBufferTextures, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
+	for (auto& e : stagingBuffers)
+	{
+		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
+	}
+	stagingBuffers.clear();
+	stagingBuffers.resize(0);
+
+	SetupPipeline();
+	SetupSemaphores();
+
+	CreateTextureSampler(deviceVulkan->device);
+
+	SetupDescriptorSet(iObjects);
+}
+
 
 void RendererVulkan::Create(std::vector<Object>& iObjects, 
 	ResourceManager* const iResourceManager,
@@ -1558,101 +1369,14 @@ void RendererVulkan::Create(std::vector<Object>& iObjects,
 
 	SetupIMGUI(iIlowLevelWindow);
 
-
-	SetupUniformbuffer();
-	SetupShaders();
-
-	SetupDepthbuffer();
-	SetupRTTexture(deviceVulkan->device, screenWidth, screenHeight, postProcBuffer.image, postProcBuffer.allocation, postProcBuffer.view);
-	postProcBuffer.format = Format::eR8G8B8A8Unorm;
-
-	SetupRenderPass();
-	SetupScenePassData();
-
-	SetupFramebuffers();
-	SetupQuerypool(deviceVulkan->device);
-	
-	
-	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
-	TransitionImageLayout(cmdBufferTextures, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-
-	// Staging buffers we will need to delete
-	std::vector<BufferVulkan> stagingBuffers;
-
-	// load in albedo textures in this loop
-	for (int i = 0; i < iObjects.size(); ++i)
-	{
-
-		if (!iObjects[i].model->isPrepared)
-		{
-			auto e = dynamic_cast<ModelVulkan*>(iObjects[i].model);
-
-
-			SetupVertexBuffer(e->vertexBuffer, e->data);
-			SetupIndexBuffer(e->indexBuffer, e->data);
-
-
-			e->indiceCount = e->data.indices.size();
-
-
-			e->isPrepared = true;
-			models.push_back(e);
-		}
-
-		SetupTexturesForObject(iObjects[i].material, stagingBuffers, cmdBufferTextures);
-
-		
-		if (!iObjects[i].renderingData->isPrepared)
-		{
-			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[i].renderingData);
-
-			UniformBufferVulkan tUniformBuff;
-
-			CreateSimpleBuffer(allocator,
-				tUniformBuff.allocation,
-				VMA_MEMORY_USAGE_CPU_TO_GPU,
-				tUniformBuff.buffer,
-				vk::BufferUsageFlagBits::eUniformBuffer,
-				sizeof(CBMatrix));
-
-			singleModelmatrixData.model = iObjects[i].modelMatrix;
-			CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&singleModelmatrixData, sizeof(singleModelmatrixData));
-
-
-			tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-			tUniformBuff.descriptorInfo.offset = 0;
-			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
-
-			e->positionUniformBuffer = tUniformBuff;
-			e->isPrepared = true;
-			objRenderingData.push_back(e);
-
-		}
-	}
-	
-	EndSingleTimeCommands(deviceVulkan->device, cmdBufferTextures, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
-
-	for (auto& e : stagingBuffers)
-	{
-		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
-	}
-	stagingBuffers.clear();
-	stagingBuffers.resize(1);
-
-	SetupPipeline();
-	SetupSemaphores();
-
-	CreateTextureSampler(deviceVulkan->device);
-
-	SetupDescriptorSet(iObjects);
-	//iObjects.clear();
-	//iObjects.resize(1);
 }
 
 void RendererVulkan::Destroy()
 {
 	deviceVulkan->presentQueue.waitIdle();
 	
+
+	renderPassScene->Destroy(deviceVulkan->device);
 	// free our dynamic uniform buffer thing
 	framebufferRenderScene->Destroy(allocator, deviceVulkan->device);
 
@@ -1690,7 +1414,6 @@ void RendererVulkan::Destroy()
 	deviceVulkan->device.destroyPipeline(pipelinePBR);
 	deviceVulkan->device.destroyPipeline(pipelineRed);
 	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
-	deviceVulkan->device.destroyRenderPass(renderPassPostProc);
 
 
 	for (auto& e : renderingContextResources)
@@ -1730,76 +1453,14 @@ void RendererVulkan::Destroy()
 	}
 
 
-	vmaDestroyImage(allocator, postProcBuffer.image, postProcBuffer.allocation);
-	deviceVulkan->device.destroyImageView(postProcBuffer.view);
 	instance.destroySurfaceKHR(deviceVulkan->swapchain.surface);
 	
 	deviceVulkan->device.destroySwapchainKHR(deviceVulkan->swapchain.swapchain);
 
-
-	//device.destroyImage(depthImage);
-	//device.destroyImage(testTexture.image);
 
 	// Clean up.
 	vmaDestroyAllocator(allocator);
 	deviceVulkan->device.waitIdle();
 	deviceVulkan->device.destroy();
 	instance.destroy();
-}
-
-
-void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer)
-{
-
-	// if texture is already prepared, then just ignore it.
-	if(!material.diffuseTexture->isPrepared)
-	{
-		TextureVulkan* diffuseTexture = dynamic_cast<TextureVulkan*>(material.diffuseTexture);
-
-		SetupTextureImage(iBuffer, deviceVulkan->device, diffuseTexture->GetFilepath(), diffuseTexture->data.image, diffuseTexture->data.allocation, iStagingBuffers);
-		diffuseTexture->data.view = CreateImageView(deviceVulkan->device, diffuseTexture->data.image, Format::eR8G8B8A8Unorm);
-		diffuseTexture->isPrepared = true;
-		textures.push_back(diffuseTexture);
-	}
-
-	if (!material.specularTexture->isPrepared)
-	{
-		TextureVulkan* specularTexture = dynamic_cast<TextureVulkan*>(material.specularTexture);
-
-		SetupTextureImage(iBuffer, deviceVulkan->device, specularTexture->GetFilepath(), specularTexture->data.image, specularTexture->data.allocation, iStagingBuffers);
-		specularTexture->data.view = CreateImageView(deviceVulkan->device, specularTexture->data.image, Format::eR8G8B8A8Unorm);
-		specularTexture->isPrepared = true;
-		textures.push_back(specularTexture);
-	}
-
-	if (!material.roughnessTexture->isPrepared)
-	{
-		TextureVulkan* roughnessTexture = dynamic_cast<TextureVulkan*>(material.roughnessTexture);
-
-		SetupTextureImage(iBuffer, deviceVulkan->device, roughnessTexture->GetFilepath(), roughnessTexture->data.image, roughnessTexture->data.allocation, iStagingBuffers);
-		roughnessTexture->data.view = CreateImageView(deviceVulkan->device, roughnessTexture->data.image, Format::eR8G8B8A8Unorm);
-		roughnessTexture->isPrepared = true;
-		textures.push_back(roughnessTexture);
-	}
-
-	if (!material.aoTexture->isPrepared)
-	{
-		TextureVulkan* aoTexture = dynamic_cast<TextureVulkan*>(material.aoTexture);
-
-		SetupTextureImage(iBuffer, deviceVulkan->device, aoTexture->GetFilepath(), aoTexture->data.image, aoTexture->data.allocation, iStagingBuffers);
-		aoTexture->data.view = CreateImageView(deviceVulkan->device, aoTexture->data.image, Format::eR8G8B8A8Unorm);
-		aoTexture->isPrepared = true;
-		textures.push_back(aoTexture);
-	}
-
-	if (!material.normalTexture->isPrepared)
-	{
-		TextureVulkan* normalTexture = dynamic_cast<TextureVulkan*>(material.normalTexture);
-
-		SetupTextureImage(iBuffer, deviceVulkan->device, normalTexture->GetFilepath(), normalTexture->data.image, normalTexture->data.allocation, iStagingBuffers);
-		normalTexture->data.view = CreateImageView(deviceVulkan->device, normalTexture->data.image, Format::eR8G8B8A8Unorm);
-		normalTexture->isPrepared = true;
-		textures.push_back(normalTexture);
-	}
-	
 }

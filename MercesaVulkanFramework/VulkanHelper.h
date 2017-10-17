@@ -245,3 +245,174 @@ inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, v
 		1, &barrier);
 }
 
+inline stbi_uc* LoadTexture(const std::string& iFilePath, int& oWidth, int& oHeight, int& oTexChannels, uint64_t& oImageSize)
+{
+	// Load texture with stbi
+	stbi_uc* pixels = stbi_load(iFilePath.c_str(), &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
+
+	oImageSize = oWidth * oHeight * 4;
+
+	if (!pixels)
+	{
+		stbi_image_free(pixels);
+
+		LOG(ERROR) << "Load texture failed! Fallback to error texture..";
+		pixels = stbi_load("textures/ErrorTexture.png", &oWidth, &oHeight, &oTexChannels, STBI_rgb_alpha);
+		oImageSize = oWidth * oHeight * 4;
+		if (!pixels)
+		{
+			LOG(FATAL) << "FAILED TO LOAD ERRORTEXTURE, THIS SHOULD NOT HAPPEN";
+		}
+	}
+
+	return pixels;
+}
+
+
+inline void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Image destImage, uint32_t width, uint32_t height)
+{
+	vk::BufferImageCopy region = vk::BufferImageCopy()
+		.setBufferOffset(0)
+		.setBufferRowLength(0)
+		.setBufferImageHeight(0)
+		.setImageOffset(vk::Offset3D(0, 0, 0))
+		.setImageExtent(vk::Extent3D(width, height, 1));
+
+	region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+
+	iBuffer.copyBufferToImage(
+		srcBuffer,
+		destImage,
+		ImageLayout::eTransferDstOptimal,
+		1,
+		&region);
+}
+
+
+void CopyBufferMemory(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
+{
+
+	vk::BufferCopy copyRegion = vk::BufferCopy()
+		.setSrcOffset(0)
+		.setDstOffset(0)
+		.setSize(aSize);
+
+	iBuffer.copyBuffer(srcBuffer, destBuffer, 1, &copyRegion);
+
+}
+inline void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std::string iFilePath, vk::Image& oImage, VmaAllocator iAllocator, VmaAllocation& oAllocation, std::vector<BufferVulkan>& oStaging)
+{
+	int texWidth = 0;
+	int texHeight = 0;
+	int texChannels = 0;
+	uint64_t imageSize = 0;
+
+	stbi_uc* pixels = LoadTexture(iFilePath, texWidth, texHeight, texChannels, imageSize);
+
+	// Create staging buffer for image
+	BufferVulkan stagingBuffer;
+
+	// create simple buffer
+	CreateSimpleBuffer(iAllocator,
+		stagingBuffer.allocation,
+		VMA_MEMORY_USAGE_CPU_ONLY,
+		stagingBuffer.buffer,
+		BufferUsageFlagBits::eTransferSrc,
+		vk::DeviceSize(imageSize));
+
+	// Copy image data to buffer
+	CopyDataToBuffer(VkDevice(iDevice), stagingBuffer.allocation, pixels, imageSize);
+
+	// Free image
+	stbi_image_free(pixels);
+
+
+	CreateSimpleImage(iAllocator,
+		oAllocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		ImageUsageFlagBits::eTransferDst | ImageUsageFlagBits::eSampled,
+		Format::eR8G8B8A8Unorm, ImageLayout::eUndefined,
+		oImage, texWidth, texHeight);
+
+	TransitionImageLayout(iBuffer,
+		oImage,
+		vk::Format::eR8G8B8A8Unorm,
+		vk::ImageLayout::eUndefined,
+		vk::ImageLayout::eTransferDstOptimal);
+
+	CopyBufferToImage(iBuffer, stagingBuffer.buffer, oImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+
+	TransitionImageLayout(iBuffer,
+		oImage,
+		vk::Format::eR8G8B8A8Unorm,
+		vk::ImageLayout::eTransferDstOptimal,
+		vk::ImageLayout::eShaderReadOnlyOptimal);
+
+
+	oStaging.push_back(stagingBuffer);
+}
+
+
+void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData, std::vector<BufferVulkan>& oStaging)
+{
+	BufferVulkan indexBufferStageT;
+
+	CreateSimpleBuffer(
+		iAllocator,
+		indexBufferStageT.allocation,
+		VMA_MEMORY_USAGE_CPU_ONLY,
+		indexBufferStageT.buffer,
+		vk::BufferUsageFlagBits::eTransferSrc,
+		sizeof(uint32_t) * iRawMeshData.indices.size());
+
+	CopyDataToBuffer(iDevice, indexBufferStageT.allocation, (void*)iRawMeshData.indices.data(), sizeof(uint32_t) * iRawMeshData.indices.size());
+
+	CreateSimpleBuffer(
+		iAllocator,
+		oIndexBuffer.allocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		oIndexBuffer.buffer,
+		vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+		sizeof(uint32_t) * iRawMeshData.indices.size());
+
+	CopyBufferMemory(iBuffer, indexBufferStageT.buffer, oIndexBuffer.buffer, oIndexBuffer.allocation->GetSize());
+
+	oStaging.push_back(indexBufferStageT);
+}
+
+void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
+{
+	size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
+
+	BufferVulkan stagingT;
+
+	CreateSimpleBuffer(iAllocator,
+		stagingT.allocation,
+		VMA_MEMORY_USAGE_CPU_ONLY,
+		stagingT.buffer,
+		BufferUsageFlagBits::eTransferSrc,
+		dataSize);
+
+
+	CopyDataToBuffer(iDevice,
+		stagingT.allocation,
+		(void*)iRawMeshdata.vertices.data(),
+		dataSize);
+
+
+	CreateSimpleBuffer(iAllocator,
+		oVertexBuffer.allocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		oVertexBuffer.buffer,
+		BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
+		dataSize);
+
+
+	// Create staging buffer
+
+	CopyBufferMemory(iBuffer, stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
+	oStaging.push_back(stagingT);
+}

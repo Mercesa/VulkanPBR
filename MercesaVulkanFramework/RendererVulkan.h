@@ -1,11 +1,16 @@
 #pragma once
 #include <vector>
+#include <queue>
 
 class NewCamera;
 class Light;
 struct RawMeshData;
 
-struct Object;
+class iModel;
+class iTexture;
+class iObjectRenderingData;
+
+class Object;
 class ResourceManager;
 class iLowLevelWindow;
 class RendererVulkan
@@ -21,6 +26,12 @@ public:
 		ResourceManager* const iResourceManager,
 		iLowLevelWindow* const iIlowLevelWindow);
 	
+	void PrepareResources(
+		std::queue<iTexture*> iTexturesToPrepare,
+		std::queue<iModel*> iModelsToPrepare,
+		std::queue<iObjectRenderingData*> iObjsToPrepare,
+		std::vector<Object> iObjects);
+
 	void BeginFrame(const NewCamera& iCamera, const std::vector<Light>& iLights);
 	void Render(const std::vector<Object>& iObjects);
 	void Destroy();

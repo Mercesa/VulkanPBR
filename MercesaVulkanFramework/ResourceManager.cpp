@@ -31,6 +31,8 @@ iTexture* const ResourceManager::LoadTexture(const std::string& iFilepath)
 	iTexture* returnVal = texture.get();
 	textureMap[iFilepath] = std::move(texture);
 
+	texturesToPrepare.push(returnVal);
+
 	return returnVal;
 }
 
@@ -79,6 +81,11 @@ std::vector<iModel*> const ResourceManager::LoadModel(const std::string& iFilepa
 	// Store our vector of unique ptrs to the resource map
 	modelMap[iFilepath] = std::move(tModelsToStore);
 
+	for (auto& e : tModelsToReturn)
+	{
+		modelsToPrepare.push(e);
+	}
+
 	// return these models
 	return tModelsToReturn;
 }
@@ -90,6 +97,7 @@ iObjectRenderingData* const ResourceManager::RegisterRenderObject()
 	iObjectRenderingData* tDataToReturn = renderData.get();
 
 	renderingData.push_back(std::move(renderData));
+	objsToPrepare.push(tDataToReturn);
 
 	return tDataToReturn;
 }

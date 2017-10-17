@@ -123,7 +123,7 @@
       <Filter>Platform Independent\GUI</Filter>
     </ClCompile>
     <ClCompile Include="RenderScenePass.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Vulkan Structures\ScenePasses</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -257,7 +257,7 @@
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="RenderScenePass.h">
-      <Filter>Header Files</Filter>
+      <Filter>Vulkan Structures\ScenePasses</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

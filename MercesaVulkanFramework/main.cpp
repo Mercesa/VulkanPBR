@@ -115,6 +115,11 @@ int main()
 	window->Create(1280, 720);
 	CurrentGame->Init();
 	renderer->Create(CurrentGame->gameObjects, resourceManager.get(), window.get());
+	renderer->PrepareResources(
+		resourceManager->texturesToPrepare, 
+		resourceManager->modelsToPrepare, 
+		resourceManager->objsToPrepare, 
+		CurrentGame->gameObjects);
 
 	glfwSetInputMode(glfwWindow->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwMakeContextCurrent(glfwWindow->window);
