@@ -725,24 +725,7 @@ void SetupShaders()
 
 }
 
-vk::Framebuffer CreateFrameBuffer(
-	const vk::Device& iDevice,
-	const std::vector<vk::ImageView>& iAttachments,
-	const uint32_t iWidth, const uint32_t iHeight,
-	const vk::RenderPass& iRenderPass)
-{
-	vk::FramebufferCreateInfo fb_info = vk::FramebufferCreateInfo()
-		.setRenderPass(iRenderPass)
-		.setAttachmentCount(iAttachments.size())
-		.setPAttachments(iAttachments.data())
-		.setWidth(iWidth)
-		.setHeight(iHeight)
-		.setLayers(1);
 
-	vk::Framebuffer tFBuffer = iDevice.createFramebuffer(fb_info);
-
-	return tFBuffer;
-}
 
 void SetupFramebuffers()
 {
@@ -936,10 +919,10 @@ void SetupPipeline()
 
 
 	pipelineRed = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+}
 
-
-	/* CREATE PIPELINE FOR */
-
+void SetupScenePipeline()
+{
 
 }
 
@@ -1172,7 +1155,6 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& lights)
 {
-
 	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
 }
 
