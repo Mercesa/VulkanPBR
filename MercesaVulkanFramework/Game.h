@@ -5,29 +5,30 @@
 #include "GraphicsStructures.h"
 
 #include "glm/gtx/common.hpp"
-class Camera;
-class Light;
 
-struct Object
-{
-	glm::mat4 modelMatrix;
-	uint32_t vulkanModelID;
-	RawMeshData rawMeshData;
-};
+#include "NewCamera.h"
+#include "Object.h"
+#include "ResourceManager.h"
+#include "inputGlfw.h"
+
+struct Light;
+
 
 class Game
 {
 public:
-	Game();
+	Game(inputGlfw* const iInput, ResourceManager* const iResourceManager);
 	~Game();
 	
 	void Init();
-	void Update();
+	void Update(float iDT);
 	void Destroy();
 
 	std::vector<Light> lights;
-	std::unique_ptr<Camera> camera;
-	std::vector<RawMeshData> modelsToBeLoaded;
+	std::unique_ptr<NewCamera> camera;
 	std::vector<Object> gameObjects;
+	ResourceManager* const resourceManager;
+	inputGlfw* const input;
+	
 };
 

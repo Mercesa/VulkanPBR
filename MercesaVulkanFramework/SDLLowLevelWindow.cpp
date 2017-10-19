@@ -5,7 +5,6 @@
 
 #include "easylogging++.h"
 
-
 void SDLLowLevelWindow::Create(const int32_t& iWidth, const int32_t& iHeight)
 {
 	// Create an SDL window that supports Vulkan and OpenGL rendering.
@@ -47,4 +46,9 @@ HWND SDLLowLevelWindow::GetWindowHandle()
 	{
 		return windowInfo.info.win.window;
 	}
+}
+
+std::vector<const char*> SDLLowLevelWindow::GetRequiredExtensions()
+{
+	return std::vector<const char*>();
 }

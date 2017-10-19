@@ -27,31 +27,37 @@
     <Filter Include="Game application">
       <UniqueIdentifier>{12dc8bb7-3e27-4ce7-90f4-9201680ba230}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Vulkan Structures\Window">
+    <Filter Include="Platform Independent\Rendering">
+      <UniqueIdentifier>{cc7e9991-d866-4f62-b7f8-14428903acbe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan Structures\GameData">
+      <UniqueIdentifier>{69b38e2d-3371-467e-bfa3-25c759d60d44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Imgui">
+      <UniqueIdentifier>{91f3793d-71f0-4d1c-a913-f56198bc6be7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent\Window">
       <UniqueIdentifier>{0ea5753e-435c-4920-a5b6-dcd8feda9259}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform Independent\GUI">
+      <UniqueIdentifier>{9ba11da8-5f00-4a73-8455-ccc00a521ded}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan Structures\ScenePasses">
+      <UniqueIdentifier>{1c0fa380-d667-472b-a091-796a40c11142}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vulkan Structures\ResourceManagers">
+      <UniqueIdentifier>{aaaf17d7-0433-4717-a2a2-2751fbee3687}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DescriptorPoolVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
     <ClCompile Include="RendererVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="CommandpoolVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>Platform Independent</Filter>
-    </ClCompile>
     <ClCompile Include="ModelLoader.cpp">
       <Filter>Utility</Filter>
-    </ClCompile>
-    <ClCompile Include="PipelineVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="Game.cpp">
       <Filter>Game application</Filter>
@@ -60,32 +66,71 @@
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="SDLLowLevelWindow.cpp">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClCompile>
-    <ClCompile Include="DescriptorLayoutHelper.h">
+    <ClCompile Include="FramebufferVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="RenderPassVulkan.cpp">
+    <ClCompile Include="ShaderProgramVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
-    <ClCompile Include="PhysicalResourceManager.cpp">
+    <ClCompile Include="EngineTimer.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
-    <ClCompile Include="VulkanResourceManager.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Object.cpp">
+      <Filter>Game application</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelVulkan.cpp">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="ObjectRenderingDataVulkan.cpp">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="TextureVulkan.cpp">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClCompile>
+    <ClCompile Include="GLFWLowLevelWindow.cpp">
+      <Filter>Platform Independent\Window</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_demo.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_draw.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui_impl_glfw_vulkan.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Imgui\imgui.cpp">
+      <Filter>Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="inputGlfw.cpp">
+      <Filter>Platform Independent</Filter>
+    </ClCompile>
+    <ClCompile Include="MainGUI.cpp">
+      <Filter>Platform Independent\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderScenePass.cpp">
+      <Filter>Vulkan Structures\ScenePasses</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandpoolVulkan.cpp">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorLayoutHelper.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorPoolVulkan.cpp">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="DescriptorPoolVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="RendererVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandpoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="VulkanHelper.h">
@@ -109,17 +154,11 @@
     <ClInclude Include="ConstantBuffers.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>Platform Independent</Filter>
-    </ClInclude>
     <ClInclude Include="ModelLoader.h">
       <Filter>Utility</Filter>
     </ClInclude>
     <ClInclude Include="GenericMathValueStructs.h">
       <Filter>Platform Independent</Filter>
-    </ClInclude>
-    <ClInclude Include="PipelineVulkan.h">
-      <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="Game.h">
       <Filter>Game application</Filter>
@@ -128,25 +167,94 @@
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="iLowLevelWindow.h">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClInclude>
     <ClInclude Include="SDLLowLevelWindow.h">
-      <Filter>Vulkan Structures\Window</Filter>
+      <Filter>Platform Independent\Window</Filter>
     </ClInclude>
     <ClInclude Include="NewCamera.h">
       <Filter>Platform Independent</Filter>
     </ClInclude>
-    <ClInclude Include="RenderPassVulkan.h">
+    <ClInclude Include="FramebufferVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
-    <ClInclude Include="iResourceManager.h">
+    <ClInclude Include="ShaderProgramVulkan.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="EngineTimer.h">
       <Filter>Utility</Filter>
     </ClInclude>
-    <ClInclude Include="PhysicalResourceManager.h">
-      <Filter>Utility</Filter>
+    <ClInclude Include="Object.h">
+      <Filter>Game application</Filter>
     </ClInclude>
-    <ClInclude Include="VulkanResourceManager.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="MaterialComponent.h">
+      <Filter>Game application</Filter>
+    </ClInclude>
+    <ClInclude Include="iModel.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="iTexture.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="iObjectRenderingData.h">
+      <Filter>Platform Independent\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="ObjectRenderingDataVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureVulkan.h">
+      <Filter>Vulkan Structures\GameData</Filter>
+    </ClInclude>
+    <ClInclude Include="GLFWLowLevelWindow.h">
+      <Filter>Platform Independent\Window</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui_impl_glfw_vulkan.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui_internal.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_rect_pack.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_textedit.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\stb_truetype.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imconfig.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Imgui\imgui.h">
+      <Filter>Imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="inputGlfw.h">
+      <Filter>Platform Independent</Filter>
+    </ClInclude>
+    <ClInclude Include="MainGUI.h">
+      <Filter>Platform Independent\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineCreationDump.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderScenePass.h">
+      <Filter>Vulkan Structures\ScenePasses</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandpoolVulkan.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorPoolVulkan.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -154,6 +262,27 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\FragmentShaderStart.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\FragmentShaderRed.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\VertexShaderRed.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Imgui\glsl_shader.frag">
+      <Filter>Imgui</Filter>
+    </None>
+    <None Include="Imgui\glsl_shader.vert">
+      <Filter>Imgui</Filter>
+    </None>
+    <None Include="Imgui\main.cpp">
+      <Filter>Imgui</Filter>
+    </None>
+    <None Include="Shaders\FragmentShaderPostProc.frag">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\VertexShaderPostProc.vert">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

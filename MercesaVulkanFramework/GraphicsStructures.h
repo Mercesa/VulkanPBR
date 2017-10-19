@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "GenericMathValueStructs.h"
-//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/common.hpp>
 
 enum eLightTypes
@@ -48,8 +47,10 @@ struct RawMeshData
 	std::vector<VertexData> vertices;
 	std::vector<uint32_t> indices;
 
-	std::string filepaths[3] = {""};
-	bool isValids[3] = { false };
+
+	enum FilepathIndices { eAlbedo = 0, eSpecularMetal = 1, eNormal = 2, eRough = 3, eAO = 4 };
+	std::string filepaths[5] = {""};
+	bool isValids[5] = { false };
 
 
 	VEC4f sphericalCollider;

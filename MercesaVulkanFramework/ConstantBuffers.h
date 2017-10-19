@@ -20,3 +20,12 @@ struct CBLights
 	Light lights[16];
 	uint32_t currAmountOfLights;
 };
+
+struct CBModelMatrix {
+	glm::mat4 *model = nullptr;
+};
+
+
+struct CBModelMatrixSingle {
+	glm::mat4 model;
+};

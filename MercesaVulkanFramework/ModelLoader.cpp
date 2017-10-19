@@ -269,7 +269,7 @@ std::vector<RawMeshData> ModelLoader::LoadModel(const char* aFilePath, bool aGen
 	else
 	{
 	
-		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace );
+		scene = importer.ReadFile(filePathToBeLoaded.c_str(),  aiProcessPreset_TargetRealtime_Fast | aiProcess_CalcTangentSpace | aiProcess_GenUVCoords );
 		
 		if (!scene)
 		{
