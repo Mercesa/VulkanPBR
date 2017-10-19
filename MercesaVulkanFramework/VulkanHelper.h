@@ -356,7 +356,7 @@ inline void SetupTextureImage(vk::CommandBuffer iBuffer, vk::Device iDevice, std
 }
 
 
-void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData, std::vector<BufferVulkan>& oStaging)
+inline void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oIndexBuffer, const RawMeshData& iRawMeshData, std::vector<BufferVulkan>& oStaging)
 {
 	BufferVulkan indexBufferStageT;
 
@@ -383,7 +383,7 @@ void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaA
 	oStaging.push_back(indexBufferStageT);
 }
 
-void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
+inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
 {
 	size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
 
@@ -417,7 +417,7 @@ void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, Vma
 	oStaging.push_back(stagingT);
 }
 
-vk::Framebuffer CreateFrameBuffer(
+inline vk::Framebuffer CreateFrameBuffer(
 	const vk::Device& iDevice,
 	const std::vector<vk::ImageView>& iAttachments,
 	const uint32_t iWidth, const uint32_t iHeight,

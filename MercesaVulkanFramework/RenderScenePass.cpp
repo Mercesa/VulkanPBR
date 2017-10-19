@@ -16,7 +16,7 @@ RenderScenePass::~RenderScenePass()
 
 void RenderScenePass::CreateRenderpass(const vk::Device& iDevice, vk::Format iSwapchainFormat, vk::SampleCountFlagBits iSamples)
 {
-	vk::AttachmentDescription attachments[2] = {};
+	vk::AttachmentDescription attachments[3] = {};
 	attachments[0].format = iSwapchainFormat;
 	attachments[0].samples = iSamples;
 	attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
@@ -37,8 +37,6 @@ void RenderScenePass::CreateRenderpass(const vk::Device& iDevice, vk::Format iSw
 	attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	attachments[1].flags = AttachmentDescriptionFlagBits(0);
 
-
-
 	std::vector<AttachmentReference> references;
 
 	vk::AttachmentReference color_reference = vk::AttachmentReference()
@@ -48,16 +46,16 @@ void RenderScenePass::CreateRenderpass(const vk::Device& iDevice, vk::Format iSw
 
 	references.push_back(color_reference);
 
-
 	vk::AttachmentReference depth_reference = vk::AttachmentReference()
 		.setAttachment(1)
 		.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
 
 	vk::SubpassDescription subpass = vk::SubpassDescription()
 		.setPipelineBindPoint(PipelineBindPoint::eGraphics)
 		.setFlags(vk::SubpassDescriptionFlagBits(0))
 		.setInputAttachmentCount(0)
-		.setPInputAttachments(0)
+		.setPInputAttachments(nullptr)
 		.setColorAttachmentCount(1)
 		.setPColorAttachments(references.data())
 		.setPResolveAttachments(NULL)

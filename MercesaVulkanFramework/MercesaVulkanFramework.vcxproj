@@ -175,7 +175,6 @@
     <ClCompile Include="ModelVulkan.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="ObjectRenderingDataVulkan.cpp" />
-    <ClCompile Include="QueryPoolVulkan.cpp" />
     <ClCompile Include="RendererVulkan.cpp" />
     <ClCompile Include="RenderScenePass.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
@@ -217,7 +216,6 @@
     <ClInclude Include="Object.h" />
     <ClInclude Include="ObjectRenderingDataVulkan.h" />
     <ClInclude Include="PipelineCreationDump.h" />
-    <ClInclude Include="QueryPoolVulkan.h" />
     <ClInclude Include="RendererVulkan.h" />
     <ClInclude Include="RenderingIncludes.h" />
     <ClInclude Include="RenderScenePass.h" />

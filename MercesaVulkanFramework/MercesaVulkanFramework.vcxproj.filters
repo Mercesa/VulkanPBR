@@ -45,18 +45,15 @@
     <Filter Include="Vulkan Structures\ScenePasses">
       <UniqueIdentifier>{1c0fa380-d667-472b-a091-796a40c11142}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan Structures\ResourceManagers">
+      <UniqueIdentifier>{aaaf17d7-0433-4717-a2a2-2751fbee3687}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DescriptorPoolVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
     <ClCompile Include="RendererVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
-    <ClCompile Include="CommandpoolVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="ModelLoader.cpp">
@@ -70,9 +67,6 @@
     </ClCompile>
     <ClCompile Include="SDLLowLevelWindow.cpp">
       <Filter>Platform Independent\Window</Filter>
-    </ClCompile>
-    <ClCompile Include="DescriptorLayoutHelper.h">
-      <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="FramebufferVulkan.cpp">
       <Filter>Vulkan Structures</Filter>
@@ -98,9 +92,6 @@
     <ClCompile Include="TextureVulkan.cpp">
       <Filter>Vulkan Structures\GameData</Filter>
     </ClCompile>
-    <ClCompile Include="QueryPoolVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
-    </ClCompile>
     <ClCompile Include="GLFWLowLevelWindow.cpp">
       <Filter>Platform Independent\Window</Filter>
     </ClCompile>
@@ -125,18 +116,21 @@
     <ClCompile Include="RenderScenePass.cpp">
       <Filter>Vulkan Structures\ScenePasses</Filter>
     </ClCompile>
+    <ClCompile Include="CommandpoolVulkan.cpp">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorLayoutHelper.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClCompile>
+    <ClCompile Include="DescriptorPoolVulkan.cpp">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="DescriptorPoolVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="RendererVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
-    <ClInclude Include="CommandpoolVulkan.h">
       <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="VulkanHelper.h">
@@ -220,9 +214,6 @@
     <ClInclude Include="TextureVulkan.h">
       <Filter>Vulkan Structures\GameData</Filter>
     </ClInclude>
-    <ClInclude Include="QueryPoolVulkan.h">
-      <Filter>Vulkan Structures</Filter>
-    </ClInclude>
     <ClInclude Include="GLFWLowLevelWindow.h">
       <Filter>Platform Independent\Window</Filter>
     </ClInclude>
@@ -258,6 +249,12 @@
     </ClInclude>
     <ClInclude Include="RenderScenePass.h">
       <Filter>Vulkan Structures\ScenePasses</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandpoolVulkan.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClInclude>
+    <ClInclude Include="DescriptorPoolVulkan.h">
+      <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

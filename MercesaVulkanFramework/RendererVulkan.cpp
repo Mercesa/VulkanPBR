@@ -97,6 +97,11 @@ struct ShaderResourcesPBR
 	vk::DescriptorSet textureSet;
 };
 
+struct ShaderResourcesPostProc
+{
+	vk::DescriptorSet inputAttachmentSet;
+} shaderResourcesPostProc;
+
 struct RenderingContextResources
 {
 	ShaderResourcesPBR descriptorSetPBRShader;
@@ -116,8 +121,6 @@ std::vector<vk::Framebuffer> framebuffersImgui;
 
 std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
 
-vk::PipelineLayout pipelineLayout;
-vk::PipelineLayout pipelineLayoutRenderScene;
 
 TextureData depthBuffer;
 
@@ -140,8 +143,6 @@ std::vector<ObjectRenderingDataVulkan*> objRenderingData;
 
 VmaAllocator allocator;
 
-vk::Pipeline pipelinePBR;
-vk::Pipeline pipelineRed;
 
 vk::Viewport viewPort;
 vk::Rect2D scissor;
@@ -156,14 +157,23 @@ vk::Semaphore rendererFinishedSemaphore;
 std::vector<vk::DescriptorSetLayoutBinding> bindings;
 std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
 std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
+std::vector<vk::DescriptorSetLayoutBinding> postProcBinding;
 
 vk::Fence graphicsQueueFinishedFence;
 
 std::unique_ptr<DeviceVulkan> deviceVulkan;
 
+// All we need to render seperate shaders
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
+vk::Pipeline pipelinePBR;
+vk::Pipeline pipelineRed;
+vk::PipelineLayout pipelineLayoutRenderScene;
+
+
 std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
+vk::PipelineLayout pipelineLayoutPostProc;
+vk::Pipeline pipelinePostProc;
 
 std::unique_ptr<RenderScenePass> renderPassScene;
 
@@ -638,6 +648,27 @@ void SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
 	}
+
+	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
+
+	shaderResourcesPostProc.inputAttachmentSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPostProc[0], postProcBinding)[0];
+
+	vk::DescriptorImageInfo inputView = {};
+	inputView.imageView = framebufferRenderScene->attachments[0].view;
+
+	std::array<vk::WriteDescriptorSet, 1> input_writes = {};
+
+	input_writes[0] = {};
+	input_writes[0].pNext = NULL;
+	input_writes[0].dstSet = shaderResourcesPostProc.inputAttachmentSet;
+	input_writes[0].descriptorCount = 1;
+	input_writes[0].descriptorType = vk::DescriptorType::eSampledImage;
+	input_writes[0].pImageInfo = &inputView;
+	input_writes[0].dstArrayElement = 0;
+	input_writes[0].dstBinding = 0;
+
+	deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(input_writes.size()), input_writes.data(), 0, NULL);
+
 }
 
 void SetupScenePassData()
@@ -647,7 +678,7 @@ void SetupScenePassData()
 	attchCinfo.format = Format::eR8G8B8A8Unorm;
 	attchCinfo.height = screenHeight;
 	attchCinfo.width = screenWidth;
-	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled;
+	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eInputAttachment;
 	attchCinfo.layerCount = 1;
 
 	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
@@ -662,7 +693,6 @@ void SetupScenePassData()
 	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfoDepth, allocator);
 	framebufferRenderScene->CreateRenderpass(deviceVulkan->device);
 }
-
 
 void SetupShaders()
 {
@@ -725,8 +755,6 @@ void SetupShaders()
 
 }
 
-
-
 void SetupFramebuffers()
 {
 	std::vector<vk::ImageView> attachments;
@@ -752,7 +780,7 @@ void SetupPipeline()
 		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
 		.setPSetLayouts(shaderLayoutPBR.data());
 
-	pipelineLayout = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
+	pipelineLayoutRenderScene = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
 
 	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
 	vk::VertexInputBindingDescription inputDescription;
@@ -876,7 +904,7 @@ void SetupPipeline()
 
 	// Create graphics pipeline for the first shader
 	vk::GraphicsPipelineCreateInfo gfxPipe = GraphicsPipelineCreateInfo()
-		.setLayout(pipelineLayout)
+		.setLayout(pipelineLayoutRenderScene)
 		.setBasePipelineHandle(nullptr)
 		.setBasePipelineIndex(0)
 		.setPVertexInputState(&vi)
@@ -900,7 +928,7 @@ void SetupPipeline()
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
 
 	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
-		.setLayout(pipelineLayout)
+		.setLayout(pipelineLayoutRenderScene)
 		.setBasePipelineHandle(nullptr)
 		.setBasePipelineIndex(0)
 		.setPVertexInputState(&vi)
@@ -921,8 +949,111 @@ void SetupPipeline()
 	pipelineRed = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 }
 
-void SetupScenePipeline()
+void SetupPostProcPipeline()
 {
+	auto shaderLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
+
+	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
+		.setPNext(NULL)
+		.setPushConstantRangeCount(0)
+		.setPPushConstantRanges(NULL)
+		.setSetLayoutCount(shaderLayoutPostProc.size())
+		.setPSetLayouts(shaderLayoutPostProc.data());
+
+	pipelineLayoutPostProc = deviceVulkan->device.createPipelineLayout(pPipelineLayoutCreateInfo);
+
+
+	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
+		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
+		.setPVertexBindingDescriptions(nullptr)
+		.setPVertexAttributeDescriptions(nullptr)
+		.setVertexAttributeDescriptionCount(0)
+		.setVertexBindingDescriptionCount(0);
+
+	vk::PipelineInputAssemblyStateCreateInfo ia = vk::PipelineInputAssemblyStateCreateInfo()
+		.setPrimitiveRestartEnable(VK_FALSE)
+		.setTopology(vk::PrimitiveTopology::eTriangleList);
+
+	vk::PipelineRasterizationStateCreateInfo rs = CreateStandardRasterizerState();
+
+
+	vk::PipelineColorBlendAttachmentState att_state[1] = {};
+	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
+	att_state[0].blendEnable = VK_FALSE;
+	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
+	att_state[0].colorBlendOp = vk::BlendOp::eAdd;
+	att_state[0].srcColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
+
+	vk::PipelineColorBlendStateCreateInfo cb = {};
+	cb.attachmentCount = 1;
+	cb.pAttachments = att_state;
+	cb.logicOpEnable = VK_FALSE;
+	cb.logicOp = vk::LogicOp::eNoOp;
+	cb.blendConstants[0] = 1.0f;
+	cb.blendConstants[1] = 1.0f;
+	cb.blendConstants[2] = 1.0f;
+	cb.blendConstants[3] = 1.0f;
+
+
+	vk::PipelineViewportStateCreateInfo vp = vk::PipelineViewportStateCreateInfo()
+		.setViewportCount(1)
+		.setScissorCount(1)
+		.setPScissors(NULL)
+		.setPViewports(NULL);
+
+
+	std::vector<vk::DynamicState> dynamicStateEnables;
+	dynamicStateEnables.resize(VK_DYNAMIC_STATE_RANGE_SIZE); //[VK_DYNAMIC_STATE_RANGE_SIZE];
+
+	vk::PipelineDynamicStateCreateInfo dynamicState = PipelineDynamicStateCreateInfo()
+		.setPDynamicStates(dynamicStateEnables.data())
+		.setDynamicStateCount(1);
+
+	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eViewport;
+	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eScissor;
+
+	vk::PipelineDepthStencilStateCreateInfo ds = vk::PipelineDepthStencilStateCreateInfo()
+		.setDepthTestEnable(VK_TRUE)
+		.setDepthWriteEnable(VK_TRUE)
+		.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+		.setDepthBoundsTestEnable(VK_FALSE)
+		.setMinDepthBounds(0)
+		.setMaxDepthBounds(1.0f)
+		.setStencilTestEnable(VK_FALSE);
+
+	vk::PipelineMultisampleStateCreateInfo ms = PipelineMultisampleStateCreateInfo()
+		.setRasterizationSamples(NUM_SAMPLES)
+		.setSampleShadingEnable(VK_FALSE)
+		.setAlphaToCoverageEnable(VK_FALSE)
+		.setAlphaToOneEnable(VK_FALSE)
+		.setMinSampleShading(0.0f)
+		.setPSampleMask(VK_NULL_HANDLE);
+
+	auto pipelineShaderInfo = shaderProgramPostProc->GetPipelineShaderInfo();
+
+	// Create graphics pipeline for the first shader
+	vk::GraphicsPipelineCreateInfo gfxPipe = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayoutPostProc)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(pipelineShaderInfo.data())
+		.setStageCount(pipelineShaderInfo.size())
+		.setRenderPass(renderPassScene->renderpass)
+		.setSubpass(0);
+
+	pipelinePostProc = deviceVulkan->device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
 }
 
@@ -964,7 +1095,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	cmd_begin.flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
 	iBuffer.begin(cmd_begin);
 
-	vk::ClearValue clear_values[3] = {};
+	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 0.2f;
 	clear_values[0].color.float32[1] = 0.2f;
 	clear_values[0].color.float32[2] = 0.2f;
@@ -973,18 +1104,13 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	clear_values[1].depthStencil.stencil = 0;
 
 
-	clear_values[2].color.float32[0] = 0.2f;
-	clear_values[2].color.float32[1] = 0.8f;
-	clear_values[2].color.float32[2] = 0.2f;
-	clear_values[2].color.float32[3] = 1.0f;
-
 	const vk::DeviceSize offsets[1] = { 0 };
 
 	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
 		.setRenderPass(renderPassScene->renderpass)
 		.setFramebuffer(framebuffers[index])
 		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-		.setClearValueCount(3)
+		.setClearValueCount(2)
 		.setPClearValues(clear_values);
 
 	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
@@ -1012,7 +1138,7 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 		totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
 		totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
 
-		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, totalSet.size(), totalSet.data(), 0, NULL);
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
 		iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
 		iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
 		iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
@@ -1034,12 +1160,18 @@ void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const
 	totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
 	totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
 
-	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayout, 0, totalSet.size(), totalSet.data(), 0, NULL);
+	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
 	iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
 	iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
 	iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
 
 	iBuffer.endRenderPass();
+
+	std::vector<DescriptorSet> inputSet;
+	inputSet.resize(1);
+
+	inputSet[0] = shaderResourcesPostProc.inputAttachmentSet;
+
 
 	iBuffer.end();
 
@@ -1071,8 +1203,6 @@ void SetupCommandBuffersImgui(const vk::CommandBuffer& iBuffer, uint32_t index)
 
 	iBuffer.end();
 }
-
-
 
 
 void CreateTextureSampler(vk::Device const aDevice)
@@ -1322,6 +1452,8 @@ void RendererVulkan::PrepareResources(
 	stagingBuffers.resize(0);
 
 	SetupPipeline();
+	SetupPostProcPipeline();
+
 	SetupSemaphores();
 
 	CreateTextureSampler(deviceVulkan->device);
@@ -1395,7 +1527,7 @@ void RendererVulkan::Destroy()
 
 	deviceVulkan->device.destroyPipeline(pipelinePBR);
 	deviceVulkan->device.destroyPipeline(pipelineRed);
-	deviceVulkan->device.destroyPipelineLayout(pipelineLayout);
+	deviceVulkan->device.destroyPipelineLayout(pipelineLayoutRenderScene);
 
 
 	for (auto& e : renderingContextResources)
