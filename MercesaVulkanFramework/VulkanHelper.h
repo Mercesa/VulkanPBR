@@ -383,7 +383,7 @@ inline void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffe
 	oStaging.push_back(indexBufferStageT);
 }
 
-inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
+inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
 {
 	size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
 
