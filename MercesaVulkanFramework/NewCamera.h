@@ -84,31 +84,26 @@ public:
 	void setPosition(glm::vec3 position)
 	{
 		this->position = position;
-		updateViewMatrix();
 	}
 
 	void setRotation(glm::vec3 rotation)
 	{
 		this->rotation = rotation;
-		updateViewMatrix();
 	};
 
 	void rotate(glm::vec3 delta)
 	{
 		this->rotation += delta;
-		updateViewMatrix();
 	}
 
 	void setTranslation(glm::vec3 translation)
 	{
 		this->position = translation;
-		updateViewMatrix();
 	};
 
 	void translate(glm::vec3 delta)
 	{
 		this->position += delta;
-		updateViewMatrix();
 	}
 
 	void update(float deltaTime)
@@ -134,9 +129,10 @@ public:
 				if (keys.right)
 					position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
 
-				updateViewMatrix();
 			}
 		}
+		updateViewMatrix();
+
 	};
 
 	// Update camera passing separate axis data (gamepad)
