@@ -48,13 +48,13 @@
     <Filter Include="Vulkan Structures\ResourceManagers">
       <UniqueIdentifier>{aaaf17d7-0433-4717-a2a2-2751fbee3687}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vulkan Structures\MainCode">
+      <UniqueIdentifier>{793780f7-d41d-465c-88ea-99d22cb65668}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RendererVulkan.cpp">
-      <Filter>Vulkan Structures</Filter>
     </ClCompile>
     <ClCompile Include="ModelLoader.cpp">
       <Filter>Utility</Filter>
@@ -125,13 +125,16 @@
     <ClCompile Include="DescriptorPoolVulkan.cpp">
       <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClCompile>
+    <ClCompile Include="RendererVulkan.cpp">
+      <Filter>Vulkan Structures\MainCode</Filter>
+    </ClCompile>
+    <ClCompile Include="BackendVulkan.cpp">
+      <Filter>Vulkan Structures\MainCode</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Helper.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RendererVulkan.h">
-      <Filter>Vulkan Structures</Filter>
     </ClInclude>
     <ClInclude Include="VulkanHelper.h">
       <Filter>Vulkan Structures</Filter>
@@ -255,6 +258,15 @@
     </ClInclude>
     <ClInclude Include="DescriptorPoolVulkan.h">
       <Filter>Vulkan Structures\ResourceManagers</Filter>
+    </ClInclude>
+    <ClInclude Include="RendererVulkan.h">
+      <Filter>Vulkan Structures\MainCode</Filter>
+    </ClInclude>
+    <ClInclude Include="BackendVulkan.h">
+      <Filter>Vulkan Structures\MainCode</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsParameters.h">
+      <Filter>Vulkan Structures\MainCode</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -56,7 +56,7 @@ void cursorpos_callback(GLFWwindow* window, double xpos, double ypos)
 
 void mousebutton_callback(GLFWwindow* window, int button, int action, int mods)
 {
-	ImGui_ImplGlfwVulkan_MouseButtonCallback(window, button, action, mods);
+	//ImGui_ImplGlfwVulkan_MouseButtonCallback(window, button, action, mods);
 }
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -65,7 +65,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		input->KeyboardInput(key, scancode, action, mods);
 	}
-	ImGui_ImplGlfwVulkan_KeyCallback(window, key, scancode, action, mods);
+	//ImGui_ImplGlfwVulkan_KeyCallback(window, key, scancode, action, mods);
 }
 
 void char_callback(GLFWwindow* window, unsigned int c)
@@ -75,7 +75,7 @@ void char_callback(GLFWwindow* window, unsigned int c)
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	ImGui_ImplGlfwVulkan_ScrollCallback(window, xoffset, yoffset);
+	//ImGui_ImplGlfwVulkan_ScrollCallback(window, xoffset, yoffset);
 }
 
 void processInput(GLFWwindow *window)
@@ -114,7 +114,7 @@ int main()
 	CurrentGame = std::make_unique<Game>(input.get(), resourceManager.get());
 	window->Create(1280, 720);
 	CurrentGame->Init();
-	renderer->Create(CurrentGame->gameObjects, resourceManager.get(), window.get());
+	renderer->Initialize(GFXParams(0, 0, 1280, 720, 0, 60, 1), window.get());
 	renderer->PrepareResources(
 		resourceManager->texturesToPrepare, 
 		resourceManager->modelsToPrepare, 
@@ -137,7 +137,7 @@ int main()
 		// Update timer
 		engineTimer->Update();
 
-		ImGui_ImplGlfwVulkan_NewFrame();
+		//ImGui_ImplGlfwVulkan_NewFrame();
 
 		// Process input
 		input->Update();
@@ -149,7 +149,7 @@ int main()
 
 		if (startMenu)
 		{
-			gui->Update(CurrentGame.get());
+			//gui->Update(CurrentGame.get());
 		}
 		// Render resources
 		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);
