@@ -448,6 +448,7 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 	deviceFeatures.depthBiasClamp = VK_TRUE;
 	deviceFeatures.depthBounds = VK_TRUE;
 	deviceFeatures.fillModeNonSolid = VK_TRUE;
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
 
 	vk::DeviceCreateInfo info = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(static_cast<uint32_t>(devQCreateInfo.size()))
@@ -783,7 +784,7 @@ void BackendVulkan::CreateRenderTargets()
 	physicalDevice.getImageFormatProperties(swapchainFormat, vk::ImageType::e2D, ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment, vk::ImageCreateFlagBits(0));
 
 	
-	const int samples = (int)MULTISAMPLES;
+	const int samples = (int)NUM_MULTISAMPLES;
 
 	if (samples >= 16 && (fmtProps.sampleCounts & vk::SampleCountFlagBits::e16)){
 		context.sampleCount = SampleCountFlagBits::e16;
@@ -977,6 +978,15 @@ void BackendVulkan::BeginFrame()
 
 	context.commandBuffer.begin(cmdBufferBeginInfo);
 
+
+
+	vk::ClearValue clear_values[1] = {};
+	clear_values[0].color.float32[0] = 1.0f;
+	clear_values[0].color.float32[1] = 0.0f;
+	clear_values[0].color.float32[2] = 0.0f;
+	clear_values[0].color.float32[3] = 0.0f;
+
+
 	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 		.setRenderPass(context.renderpass)
 		.setFramebuffer(framebuffers[currentSwapIndex]);
@@ -986,7 +996,7 @@ void BackendVulkan::BeginFrame()
 	context.commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 }
 
-void BackendVulkan::EndFrame()
+void BackendVulkan::EndFrame(vk::CommandBuffer iGuiBuffer)
 {
 	context.commandBuffer.endRenderPass();
 
@@ -1018,9 +1028,11 @@ void BackendVulkan::EndFrame()
 
 	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
+	vk::CommandBuffer buffers[2]{ context.commandBuffer, iGuiBuffer };
+	
 	vk::SubmitInfo subInfo = vk::SubmitInfo()
-		.setCommandBufferCount(1)
-		.setPCommandBuffers(&context.commandBuffer)
+		.setCommandBufferCount(2)
+		.setPCommandBuffers(buffers)
 		.setWaitSemaphoreCount(1)
 		.setPWaitSemaphores(acquire)
 		.setSignalSemaphoreCount(1)

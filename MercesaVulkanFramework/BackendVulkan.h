@@ -14,7 +14,7 @@ class iLowLevelWindow;
 using namespace vk;
 
 static const int32_t NUM_FRAMES = 2;
-static const vk::SampleCountFlagBits MULTISAMPLES = vk::SampleCountFlagBits::e1;
+static const vk::SampleCountFlagBits NUM_MULTISAMPLES = vk::SampleCountFlagBits::e1;
 struct GPUinfo
 {
 	vk::PhysicalDevice device;
@@ -74,11 +74,16 @@ public:
 	void Shutdown();
 
 	void BeginFrame();
-	void EndFrame();
+	void EndFrame(vk::CommandBuffer iGuiBuffer);
 	void BlockSwapBuffers();
 
 	vulkanContext context;
 	VmaAllocator allocator;
+
+	vk::Format swapchainFormat;
+	std::vector<vk::Image> swapchainImages;
+	std::vector<vk::ImageView> swapchainViews;
+	uint32_t currentSwapIndex = 0;
 
 private:
 
@@ -138,7 +143,6 @@ private:
 
 	vk::SwapchainKHR swapchain;
 	vk::PresentModeKHR presentMode;
-	vk::Format swapchainFormat;
 	vk::Extent2D swapchainExtent;
 
 	// msaa stuff
@@ -151,8 +155,6 @@ private:
 	vk::ImageView depthView;
 	VmaAllocation depthAllocation;
 
-	std::vector<vk::Image> swapchainImages;
-	std::vector<vk::ImageView> swapchainViews;
 
 	std::vector<vk::Framebuffer> framebuffers;
 
@@ -161,5 +163,4 @@ private:
 
 	VkDebugReportCallbackEXT callBack;
 
-	uint32_t currentSwapIndex = 0;
 };

@@ -137,7 +137,7 @@ int main()
 		// Update timer
 		engineTimer->Update();
 
-		//ImGui_ImplGlfwVulkan_NewFrame();
+		ImGui_ImplGlfwVulkan_NewFrame();
 
 		// Process input
 		input->Update();
@@ -149,7 +149,7 @@ int main()
 
 		if (startMenu)
 		{
-			//gui->Update(CurrentGame.get());
+			gui->Update(CurrentGame.get());
 		}
 		// Render resources
 		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);

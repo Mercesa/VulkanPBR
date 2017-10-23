@@ -36,7 +36,30 @@ class ModelVulkan;
 class TextureVulkan;
 class ObjectRenderingDataVulkan;
 
+class ShaderProgramVulkan;
+class CommandpoolVulkan;
+
+
 #include "GraphicsParameters.h"
+#include "VulkanDataObjects.h"
+
+struct ContextResources
+{
+	std::unique_ptr<CommandpoolVulkan> pool;
+	vk::CommandBuffer imguiBuffer;
+	vk::CommandBuffer baseBuffer;
+
+	UniformBufferVulkan uniformBufferMVP;
+	UniformBufferVulkan uniformBufferModelMatrix;
+	UniformBufferVulkan uniformBufferLights;
+};
+
+struct imguiData
+{
+	vk::RenderPass renderpass;
+	vk::DescriptorPool descriptorPool;
+	std::vector<vk::Framebuffer> framebuffer;
+};
 
 class RendererVulkan
 {
@@ -46,7 +69,6 @@ public:
 	
 	void Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow);
 	void Resize(const GFXParams& iParams);
-	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
 	
 	void PrepareResources(
 		std::queue<iTexture*> iTexturesToPrepare,
@@ -58,14 +80,49 @@ public:
 	void Render(const std::vector<Object>& iObjects);
 	void Destroy();
 
-	uint32_t currentBuffer = 0;
-
 private:
+	
+	// Initialization functions
+	void SetupShaders();
+	void SetupPipeline();
+	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
+	
+	void SetupSamplers();
+	void SetupCommandPoolAndBuffers();
+
+	void InitViewports(const vk::CommandBuffer& iBuffer);
+	void InitScissors(const vk::CommandBuffer& iBuffer);
+
+	// Render functions
+	void SetupCommandBuffersImgui();
+
+
 	std::unique_ptr<BackendVulkan> backend;
 
 	// Models, textures and object rendering data
 	std::vector<ModelVulkan*> models;
 	std::vector<TextureVulkan*> textures;
 	std::vector<ObjectRenderingDataVulkan*> objRenderingData;
+	
+	// Resources for every frame
+	std::vector<std::unique_ptr<ContextResources>> contextResources;
+
+	// Pipeline layout and pipelines and the corresponding shader programs
+	vk::PipelineLayout pipelineLayoutRenderScene;
+	vk::Pipeline pipelinePBR;
+	vk::Pipeline pipelineRed;
+
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
+
+	// Viewport and scissor rect
+	vk::Viewport viewPort;
+	vk::Rect2D scissor;
+
+	vk::Sampler samplerLinearRepeat;
+
+
+	imguiData imguiDataObj;
 };
 
