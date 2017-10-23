@@ -91,8 +91,6 @@ inline std::vector<const char*> getAvailableWSIExtensions()
 }
 
 
-
-
 // NOTE: Most of the functionality of this class is based on the rendering backend of the neo VK renderer of VKDoom3
 // though I will take credit for converting it to the vulkan.hpp functionality :)
 
@@ -125,6 +123,10 @@ void BackendVulkan::Init(const GFXParams& iParams, iLowLevelWindow* const iWindo
 	CreateRenderpass();
 
 	CreateFramebuffers();
+
+	CreateCommandPool();
+
+	CreateCommandBuffer();
 }
 
 void BackendVulkan::Shutdown()
@@ -133,10 +135,12 @@ void BackendVulkan::Shutdown()
 	DestroyFramebuffers();
 	DestroyDepthBuffer();
 	DestroyRenderTargets();
+	DestroySemaphores(); 
+	context.device.destroyRenderPass(context.renderpass);
 
 	vmaDestroyAllocator(allocator);
-	DestroyFramebuffers();
 	DestroySwapchain();
+	context.device.destroy();
 	instance.destroy();
 }
 
@@ -485,6 +489,16 @@ void BackendVulkan::CreateSemaphores()
 	}
 }
 
+void BackendVulkan::DestroySemaphores()
+{
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		context.device.destroySemaphore(acquireSemaphores[i]);
+		context.device.destroySemaphore(renderCompleteSemaphore[i]);
+	}
+}
+
+
 vk::SurfaceFormatKHR ChooseSurfaceFormat(std::vector<vk::SurfaceFormatKHR>& iFormats)
 {
 	vk::SurfaceFormatKHR result;
@@ -705,6 +719,8 @@ void BackendVulkan::CreateDebugCallbacks()
 	if (CreateDebugReportCallbackEXT(instance, &createInfo, nullptr, &callBack) != VK_SUCCESS) {
 		throw std::runtime_error("failed to set up debug callback!");
 	}
+
+	
 }
 
 void BackendVulkan::CreateDepthbuffer()
@@ -950,5 +966,127 @@ void BackendVulkan::CreateRenderpass()
 		.setDependencyCount(0);
 
 	context.renderpass = context.device.createRenderPass(renderpassCreateInfo);
+}
 
+void BackendVulkan::BeginFrame()
+{
+	context.commandBuffer = context.commandBuffers[context.currentFrame];
+	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
+
+	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
+
+	context.commandBuffer.begin(cmdBufferBeginInfo);
+
+	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+		.setRenderPass(context.renderpass)
+		.setFramebuffer(framebuffers[currentSwapIndex]);
+
+	renderPassBeginInfo.renderArea.extent = swapchainExtent;
+
+	context.commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+}
+
+void BackendVulkan::EndFrame()
+{
+	context.commandBuffer.endRenderPass();
+
+	vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
+		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setImage(swapchainImages[currentSwapIndex])
+		.setOldLayout(vk::ImageLayout::eGeneral)
+		.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
+		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
+		.setDstAccessMask(vk::AccessFlagBits(0));
+
+	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseArrayLayer = 0;
+	barrier.subresourceRange.layerCount = 1;
+
+	context.commandBuffer.pipelineBarrier(
+		vk::PipelineStageFlagBits::eColorAttachmentOutput, 
+		vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits(0),
+		(uint32_t)0, NULL, 0, NULL, (uint32_t)1, &barrier);
+
+	context.commandBuffer.end();
+	context.commandBufferRecorded[context.currentFrame] = true;
+
+	vk::Semaphore* acquire = &acquireSemaphores[context.currentFrame];
+	vk::Semaphore* finished = &renderCompleteSemaphore[context.currentFrame];
+
+	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+	vk::SubmitInfo subInfo = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&context.commandBuffer)
+		.setWaitSemaphoreCount(1)
+		.setPWaitSemaphores(acquire)
+		.setSignalSemaphoreCount(1)
+		.setPSignalSemaphores(finished)
+		.setPWaitDstStageMask(&dstStageMask);
+
+
+	context.graphicsQueue.submit(1, &subInfo, context.commandBufferFences[context.currentFrame]);
+}
+
+void BackendVulkan::BlockSwapBuffers()
+{
+	if (context.commandBufferRecorded[context.currentFrame] == false)
+	{
+		return;
+	}
+
+	context.device.waitForFences(context.commandBufferFences[context.currentFrame], VK_TRUE, UINT64_MAX);
+	context.device.resetFences(context.commandBufferFences[context.currentFrame]);
+	context.commandBufferRecorded[context.currentFrame] = false;
+
+	vk::Semaphore* finished = &renderCompleteSemaphore[context.currentFrame];
+
+	vk::PresentInfoKHR presentInfo = vk::PresentInfoKHR()
+		.setWaitSemaphoreCount(1)
+		.setPWaitSemaphores(finished)
+		.setSwapchainCount(1)
+		.setPSwapchains(&swapchain)
+		.setPImageIndices(&currentSwapIndex);
+
+	context.presentQueue.presentKHR(presentInfo);
+	
+	context.counter++;
+	context.currentFrame = context.counter % NUM_FRAMES;
+}
+
+void BackendVulkan::CreateCommandPool()
+{
+	vk::CommandPoolCreateInfo cmdPoolCI = vk::CommandPoolCreateInfo()
+		.setQueueFamilyIndex(context.graphicsFamilyIndex)
+		.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer);
+
+	context.cmdPool = context.device.createCommandPool(cmdPoolCI);
+}
+
+void BackendVulkan::CreateCommandBuffer()
+{
+	vk::CommandBufferAllocateInfo commandBufferAllocateInfo = vk::CommandBufferAllocateInfo()
+		.setLevel(CommandBufferLevel::ePrimary)
+		.setCommandPool(context.cmdPool)
+		.setCommandBufferCount(NUM_FRAMES);
+
+	context.commandBuffers = context.device.allocateCommandBuffers(commandBufferAllocateInfo);
+
+
+	vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo();
+
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		context.commandBufferFences.push_back(context.device.createFence(fenceCreateInfo));
+	}
+
+	context.commandBufferRecorded.resize(NUM_FRAMES);
+
+	for (auto& e : context.commandBufferRecorded)
+	{
+		e = false;
+	}
 }

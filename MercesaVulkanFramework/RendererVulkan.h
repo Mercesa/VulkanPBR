@@ -32,6 +32,10 @@ class ResourceManager;
 class iLowLevelWindow;
 class BackendVulkan;
 
+class ModelVulkan;
+class TextureVulkan;
+class ObjectRenderingDataVulkan;
+
 #include "GraphicsParameters.h"
 
 class RendererVulkan
@@ -59,5 +63,9 @@ public:
 private:
 	std::unique_ptr<BackendVulkan> backend;
 
+	// Models, textures and object rendering data
+	std::vector<ModelVulkan*> models;
+	std::vector<TextureVulkan*> textures;
+	std::vector<ObjectRenderingDataVulkan*> objRenderingData;
 };
 

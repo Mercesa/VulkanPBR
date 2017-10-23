@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "RenderingIncludes.h"
 #include "GraphicsParameters.h"
 
@@ -8,6 +10,8 @@
 
 // Backend has all the necessary data, instance, swapchain etc
 class iLowLevelWindow;
+
+using namespace vk;
 
 static const int32_t NUM_FRAMES = 2;
 static const vk::SampleCountFlagBits MULTISAMPLES = vk::SampleCountFlagBits::e1;
@@ -28,6 +32,18 @@ struct vulkanContext
 public:
 	vulkanContext() {};
 	~vulkanContext() {};
+
+	vk::CommandBuffer commandBuffer;
+
+	std::vector<CommandBuffer> commandBuffers;
+	std::vector<Fence> commandBufferFences;
+	std::vector<bool> commandBufferRecorded;
+
+
+	vk::CommandPool cmdPool;
+
+	int64_t currentFrame = 0;
+	int64_t counter = 0;
 
 	GPUinfo* gpu;
 	std::vector<GPUinfo> gpus;
@@ -57,6 +73,13 @@ public:
 	void Init(const GFXParams& iParams, iLowLevelWindow* const iWindow);
 	void Shutdown();
 
+	void BeginFrame();
+	void EndFrame();
+	void BlockSwapBuffers();
+
+	vulkanContext context;
+	VmaAllocator allocator;
+
 private:
 
 	void CreateInstance(iLowLevelWindow* const iWindow);
@@ -69,6 +92,7 @@ private:
 	void CreateMemoryAllocator();
 
 	void CreateSemaphores();
+	void DestroySemaphores();
 
 	void CreateSwapChain();
 	void DestroySwapchain();
@@ -83,7 +107,11 @@ private:
 	void DestroyDepthBuffer();
 
 	void CreateRenderpass();
-	void DestroyRenderpass();
+
+	void CreateCommandBuffer();
+	void CreateCommandPool();
+
+
 
 	// Two functions which are used to get the instance layers we want
 	void GetInstanceLayers(std::vector<const char*>& iResult);
@@ -99,7 +127,6 @@ private:
 	vk::PhysicalDeviceFeatures physicalDeviceFeatures;
 	vk::SurfaceKHR surface;
 
-	VmaAllocator allocator;
 
 	std::vector<const char*> instanceExtensions;
 	std::vector<const char*> instanceLayers;
@@ -108,7 +135,6 @@ private:
 
 	bool fullscreen = false;
 
-	vulkanContext context;
 
 	vk::SwapchainKHR swapchain;
 	vk::PresentModeKHR presentMode;
@@ -135,5 +161,5 @@ private:
 
 	VkDebugReportCallbackEXT callBack;
 
-
+	uint32_t currentSwapIndex = 0;
 };

@@ -1586,8 +1586,11 @@
 #include "RendererVulkan.h"
 #include "BackendVulkan.h"
 #include "Object.h"
-
-
+#include "VulkanHelper.h"
+#include "VulkanDataObjects.h"
+#include "TextureVulkan.h"
+#include "ModelVulkan.h"
+#include "ObjectRenderingDataVulkan.h"
 
 #include "GLFWLowLevelWindow.h"
 
@@ -1608,6 +1611,7 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 	backend->Init(iParams, iWindow);
 }
 
+
 void RendererVulkan::Resize(const GFXParams& iParams)
 {
 
@@ -1620,7 +1624,76 @@ void RendererVulkan::PrepareResources(
 	std::queue<iObjectRenderingData*> iObjsToPrepare,
 	const std::vector<Object>& iObjects)
 {
-
+	//std::vector<BufferVulkan> stagingBuffers;
+	//vk::CommandBuffer cmdBufferResources = BeginSingleTimeCommands(backend->context.device, cmdPool->GetPool());
+	//
+	//// Prepare the texture resources
+	//while (!iTexturesToPrepare.empty())
+	//{
+	//	iTexture* textureToWorkOn = iTexturesToPrepare.front();
+	//	iTexturesToPrepare.pop();
+	//	TextureVulkan* diffuseTexture = dynamic_cast<TextureVulkan*>(textureToWorkOn);
+	//
+	//	SetupTextureImage(cmdBufferResources, backend->context.device, diffuseTexture->GetFilepath(), diffuseTexture->data.image, backend->allocator, diffuseTexture->data.allocation, stagingBuffers);
+	//	diffuseTexture->data.view = CreateImageView(backend->context.device, diffuseTexture->data.image, Format::eR8G8B8A8Unorm);
+	//	diffuseTexture->isPrepared = true;
+	//	textures.push_back(diffuseTexture);
+	//}
+	//
+	//// Prepare the models
+	//while (!iModelsToPrepare.empty())
+	//{
+	//	iModel* modelToWorkOn = iModelsToPrepare.front();
+	//	iModelsToPrepare.pop();
+	//
+	//	if (!modelToWorkOn->isPrepared)
+	//	{
+	//		auto e = dynamic_cast<ModelVulkan*>(modelToWorkOn);
+	//
+	//		SetupVertexBuffer(backend->context.device, cmdBufferResources, backend->allocator, e->vertexBuffer, e->data, stagingBuffers);
+	//		SetupIndexBuffer(backend->context.device, cmdBufferResources, backend->allocator, e->indexBuffer, e->data, stagingBuffers);
+	//
+	//
+	//		e->indiceCount = e->data.indices.size();
+	//
+	//		e->isPrepared = true;
+	//		models.push_back(e);
+	//	}
+	//}
+	
+		// Prepare the objects
+		//while (!iObjsToPrepare.empty())
+		//{
+		//	iObjectRenderingData* objectToWorkOn = iObjsToPrepare.front();
+		//	iObjsToPrepare.pop();
+		//
+		//	if (!objectToWorkOn->isPrepared)
+		//	{
+		//		auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
+		//
+		//		UniformBufferVulkan tUniformBuff;
+		//
+		//		CreateSimpleBuffer(allocator,
+		//			tUniformBuff.allocation,
+		//			VMA_MEMORY_USAGE_CPU_TO_GPU,
+		//			tUniformBuff.buffer,
+		//			vk::BufferUsageFlagBits::eUniformBuffer,
+		//			sizeof(CBMatrix));
+		//
+		//		//singleModelmatrixData.model = iObjects[i].modelMatrix;
+		//		CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, nullptr, sizeof(CBModelMatrixSingle));
+		//
+		//
+		//		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		//		tUniformBuff.descriptorInfo.offset = 0;
+		//		tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
+		//
+		//		e->positionUniformBuffer = tUniformBuff;
+		//		e->isPrepared = true;
+		//		objRenderingData.push_back(e);
+		//
+		//	}
+		//}
 }
 
 
@@ -1631,7 +1704,9 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 
 void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
-
+	backend->BeginFrame();
+	backend->EndFrame();
+	backend->BlockSwapBuffers();
 }
 
 void RendererVulkan::Destroy()
