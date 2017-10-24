@@ -76,6 +76,7 @@ public:
 	void BeginFrame();
 	void EndFrame(vk::CommandBuffer iGuiBuffer);
 	void BlockSwapBuffers();
+	void AcquireImage();
 
 	vulkanContext context;
 	VmaAllocator allocator;

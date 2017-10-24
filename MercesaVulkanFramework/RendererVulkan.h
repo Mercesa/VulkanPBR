@@ -80,6 +80,7 @@ public:
 	void Render(const std::vector<Object>& iObjects);
 	void Destroy();
 
+
 private:
 	
 	// Initialization functions

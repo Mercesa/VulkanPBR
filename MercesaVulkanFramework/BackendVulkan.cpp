@@ -150,7 +150,7 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");
@@ -909,7 +909,7 @@ void BackendVulkan::CreateRenderpass()
 	vk::AttachmentDescription colorAttachment;
 	colorAttachment.format = swapchainFormat;
 	colorAttachment.samples = vk::SampleCountFlagBits::e1;
-	colorAttachment.loadOp = vk::AttachmentLoadOp::eDontCare;
+	colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
 	colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 	colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
 	colorAttachment.finalLayout = vk::ImageLayout::eGeneral;
@@ -969,10 +969,15 @@ void BackendVulkan::CreateRenderpass()
 	context.renderpass = context.device.createRenderPass(renderpassCreateInfo);
 }
 
+
+void BackendVulkan::AcquireImage()
+{
+	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
+}
+
 void BackendVulkan::BeginFrame()
 {
 	context.commandBuffer = context.commandBuffers[context.currentFrame];
-	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
 
 	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
 
@@ -989,7 +994,9 @@ void BackendVulkan::BeginFrame()
 
 	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 		.setRenderPass(context.renderpass)
-		.setFramebuffer(framebuffers[currentSwapIndex]);
+		.setFramebuffer(framebuffers[currentSwapIndex])
+		.setClearValueCount(1)
+		.setPClearValues(clear_values);
 
 	renderPassBeginInfo.renderArea.extent = swapchainExtent;
 

@@ -966,7 +966,7 @@ void RendererVulkan::SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow)
 	attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachment.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
 	attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	VkAttachmentReference color_attachment = {};
 	color_attachment.attachment = 0;
@@ -1471,6 +1471,7 @@ void RendererVulkan::SetupCommandBuffersImgui()
 
 void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
+	backend->AcquireImage();
 	SetupCommandBuffersImgui();
 	backend->BeginFrame();
 	backend->EndFrame(contextResources[backend->context.currentFrame]->imguiBuffer);
