@@ -143,5 +143,13 @@ private:
 	CBMatrix matrixConstantBufferData;
 	CBLights lightConstantBufferData;
 	CBModelMatrixSingle matrixSingleData;
+
+
+	//  these bindings will be useful in the future, they do nothing now
+	// But they should be inputted to the descriptor pool for resource management
+	std::vector<vk::DescriptorSetLayoutBinding> bindings;
+	std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
+	std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
+	std::vector<vk::DescriptorSetLayoutBinding> postProcBinding;
 };
 

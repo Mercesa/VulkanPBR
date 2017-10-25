@@ -89,13 +89,13 @@
 //using namespace vk;
 //
 //
-//struct ShaderResourcesPBR
-//{
-//	vk::DescriptorSet samplerSet;
-//	vk::DescriptorSet perFrameUniformBufferSet;
-//	vk::DescriptorSet perObjectUniformBufferSet;
-//	vk::DescriptorSet textureSet;
-//};
+//
+//
+//
+//
+//
+//
+//
 //
 //struct ShaderResourcesPostProc
 //{
@@ -154,21 +154,15 @@
 //vk::Semaphore imageAcquiredSemaphore;
 //vk::Semaphore rendererFinishedSemaphore;
 //
-//std::vector<vk::DescriptorSetLayoutBinding> bindings;
-//std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
-//std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
-//std::vector<vk::DescriptorSetLayoutBinding> postProcBinding;
+//
+//
+//
+//
 //
 //vk::Fence graphicsQueueFinishedFence;
 //
 //std::unique_ptr<DeviceVulkan> deviceVulkan;
 //
-//// All we need to render seperate shaders
-//std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
-//std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
-//vk::Pipeline pipelinePBR;
-//vk::Pipeline pipelineRed;
-//vk::PipelineLayout pipelineLayoutRenderScene;
 //
 //
 //std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
@@ -176,95 +170,7 @@
 //vk::Pipeline pipelinePostProc;
 //
 //std::unique_ptr<RenderScenePass> renderPassScene;
-//
-//
-//
-//
-//
-//
-//
 
-
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//	
-//	
-//
 //	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferLights.allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
 //}
 //
@@ -554,33 +460,7 @@
 //	iBuffer.end();
 //
 //}
-//void SetupCommandBuffersImgui(const vk::CommandBuffer& iBuffer, uint32_t index)
-//{
-//
-//	vk::ClearValue clear_values[1] = {};
-//	clear_values[0].color.float32[0] = 0.0f;
-//	clear_values[0].color.float32[1] = 0.0f;
-//	clear_values[0].color.float32[2] = 0.0f;
-//	clear_values[0].color.float32[3] = 0.0f;
-//
-//	vk::CommandBufferBeginInfo begin_info = vk::CommandBufferBeginInfo()
-//		.setFlags(vk::CommandBufferUsageFlagBits::eSimultaneousUse);
-//
-//	iBuffer.begin(begin_info);
-//	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
-//		.setRenderPass(imguiDataObj.renderpass)
-//		.setFramebuffer(framebuffersImgui[index])
-//		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-//		.setClearValueCount(3)
-//		.setPClearValues(clear_values);
-//
-//	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
-//
-//	ImGui_ImplGlfwVulkan_Render(iBuffer);
-//	iBuffer.endRenderPass();
-//
-//	iBuffer.end();
-//}
+// 
 //
 //
 //bool firstFrame = true;
@@ -609,31 +489,31 @@
 //	vmaSetCurrentFrameIndex(allocator, currentBuffer);
 //
 //
-//	vk::PipelineStageFlags pipe_stage_flags = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+//	
 //
-//	vk::SubmitInfo submit_info[1] = {};
-//	vk::CommandBuffer commandBuffers[2] = { renderingContextResources[currentBuffer]->commandBuffer, renderingContextResources[currentBuffer]->commandBufferIMGUI };
+//	
+//	
 //
 //
-//	submit_info[0].waitSemaphoreCount = 1;
-//	submit_info[0].pWaitSemaphores = &imageAcquiredSemaphore;
-//	submit_info[0].pWaitDstStageMask = &pipe_stage_flags;
-//	submit_info[0].commandBufferCount = 2;
-//	submit_info[0].pCommandBuffers = commandBuffers;
-//	submit_info[0].signalSemaphoreCount = 1;
-//	submit_info[0].pSignalSemaphores = &rendererFinishedSemaphore;
+//	
+//	
+//	
+//	
+//	
+//	
+//	
 //
-//	deviceVulkan->graphicsQueue.submit(1, submit_info, graphicsQueueFinishedFence);
+//	
 //
-//	vk::PresentInfoKHR present;
-//	present.swapchainCount = 1;
-//	present.pSwapchains = &deviceVulkan->swapchain.swapchain;
-//	present.pImageIndices = &currentBuffer;
-//	present.pWaitSemaphores = &rendererFinishedSemaphore;	//
-//	present.waitSemaphoreCount = 1;
-//	present.pResults = 0;
+//	
+//	
+//	
+//	
+//	
+//	
+//	
 //
-//	deviceVulkan->presentQueue.presentKHR(&present);
+//	
 //
 //}
 //
