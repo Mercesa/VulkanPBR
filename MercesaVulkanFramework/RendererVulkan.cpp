@@ -175,183 +175,183 @@
 //}
 //
 //
-//void SetupDescriptorSet(const std::vector<Object>& iObjects)
-//{
-//	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
-//
-//	descriptorPool->Create(deviceVulkan->device, PoolData(10, 10, 10, 400, 2, 100));
-//
-//	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
-//
-//	for (int i = 0; i < 2; ++i)
-//	{
-//		renderingContextResources[i]->descriptorSetPBRShader.samplerSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[0], bindings)[0];
-//		renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[1], uniformBinding)[0];
-//	}
-//
-//	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
-//	std::array<vk::WriteDescriptorSet, 1> uniformModelWrite = {};
-//
-//	for (auto& e : iObjects)
-//	{
-//		
-//		ModelVulkan* tModel = dynamic_cast<ModelVulkan*>(e.model);
-//		ObjectRenderingDataVulkan* tRenderingData = dynamic_cast<ObjectRenderingDataVulkan*>(e.renderingData);
-//
-//		TextureVulkan* albedoTexture = dynamic_cast<TextureVulkan*>(e.material.diffuseTexture);
-//		TextureVulkan* specularTexture = dynamic_cast<TextureVulkan*>(e.material.specularTexture);
-//		TextureVulkan* normalTexture = dynamic_cast<TextureVulkan*>(e.material.normalTexture);
-//		TextureVulkan* roughnessTexture = dynamic_cast<TextureVulkan*>(e.material.roughnessTexture);
-//		TextureVulkan* aoTexture = dynamic_cast<TextureVulkan*>(e.material.aoTexture);
-//
-//		tModel->textureSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[2], textureBinding)[0];
-//		tRenderingData->positionBufferSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPBR[3], uniformBinding)[0];
 //
 //
-//		vk::DescriptorImageInfo albedoImageInfo = {};
-//		albedoImageInfo.imageView = albedoTexture->data.view;
-//
-//		textureWrites[0] = {};
-//		textureWrites[0].pNext = NULL;
-//		textureWrites[0].dstSet = tModel->textureSet;
-//		textureWrites[0].descriptorCount = 1;
-//		textureWrites[0].descriptorType = vk::DescriptorType::eSampledImage;
-//		textureWrites[0].pImageInfo = &albedoImageInfo;
-//		textureWrites[0].dstArrayElement = 0;
-//		textureWrites[0].dstBinding = 0;
-//
-//		vk::DescriptorImageInfo specularImageInfo = {};
-//		specularImageInfo.imageView = specularTexture->data.view;
-//
-//		textureWrites[1] = {};
-//		textureWrites[1].pNext = NULL;
-//		textureWrites[1].dstSet = tModel->textureSet;
-//		textureWrites[1].descriptorCount = 1;
-//		textureWrites[1].descriptorType = vk::DescriptorType::eSampledImage;
-//		textureWrites[1].pImageInfo = &specularImageInfo;
-//		textureWrites[1].dstArrayElement = 0;
-//		textureWrites[1].dstBinding = 1;
-//
-//		vk::DescriptorImageInfo normalmapImageInfo = {};
-//		normalmapImageInfo.imageView = normalTexture->data.view;
-//
-//		textureWrites[2] = {};
-//		textureWrites[2].pNext = NULL;
-//		textureWrites[2].dstSet = tModel->textureSet;
-//		textureWrites[2].descriptorCount = 1;
-//		textureWrites[2].descriptorType = vk::DescriptorType::eSampledImage;
-//		textureWrites[2].pImageInfo = &normalmapImageInfo;
-//		textureWrites[2].dstArrayElement = 0;
-//		textureWrites[2].dstBinding = 2;
-//
-//		vk::DescriptorImageInfo roughnessInfo = {};
-//		roughnessInfo.imageView = roughnessTexture->data.view;
-//
-//		textureWrites[3] = {};
-//		textureWrites[3].pNext = NULL;
-//		textureWrites[3].dstSet = tModel->textureSet;
-//		textureWrites[3].descriptorCount = 1;
-//		textureWrites[3].descriptorType = vk::DescriptorType::eSampledImage;
-//		textureWrites[3].pImageInfo = &roughnessInfo;
-//		textureWrites[3].dstArrayElement = 0;
-//		textureWrites[3].dstBinding = 3;
-//
-//		vk::DescriptorImageInfo AOInfo = {};
-//		AOInfo.imageView = aoTexture->data.view;
-//
-//		textureWrites[4] = {};
-//		textureWrites[4].pNext = NULL;
-//		textureWrites[4].dstSet = tModel->textureSet;
-//		textureWrites[4].descriptorCount = 1;
-//		textureWrites[4].descriptorType = vk::DescriptorType::eSampledImage;
-//		textureWrites[4].pImageInfo = &AOInfo;
-//		textureWrites[4].dstArrayElement = 0;
-//		textureWrites[4].dstBinding = 4;
-//
-//		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
 //
 //
-//		uniformModelWrite[0] = {};
-//		uniformModelWrite[0].pNext = NULL;
-//		uniformModelWrite[0].dstSet = tRenderingData->positionBufferSet;
-//		uniformModelWrite[0].descriptorCount = 1;
-//		uniformModelWrite[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-//		uniformModelWrite[0].pBufferInfo = &tRenderingData->positionUniformBuffer.descriptorInfo;
-//		uniformModelWrite[0].dstArrayElement = 0;
-//		uniformModelWrite[0].dstBinding = 0;
-//
-//		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniformModelWrite.size()), uniformModelWrite.data(), 0, NULL);
-//
-//	}
-//
-//	for (int i = 0; i < renderingContextResources.size(); ++i)
-//	{
-//		std::array<vk::WriteDescriptorSet, 1> writes = {};
 //
 //
-//		// Create image info for the image descriptor
-//		vk::DescriptorImageInfo pureSamplerInfo = {};
-//
-//		pureSamplerInfo.imageView = vk::ImageView(nullptr);
-//		pureSamplerInfo.sampler = testSampler;
-//
-//		writes[0] = {};
-//		writes[0].pNext = NULL;
-//		writes[0].dstSet = renderingContextResources[i]->descriptorSetPBRShader.samplerSet;
-//		writes[0].descriptorCount = 1;
-//		writes[0].descriptorType = vk::DescriptorType::eSampler;
-//		writes[0].pImageInfo = &pureSamplerInfo;
-//		writes[0].dstArrayElement = 0;
-//		writes[0].dstBinding = 0;
 //
 //
-//		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
-//
-//		std::array<vk::WriteDescriptorSet, 2> uniform_writes = {};
-//
-//		uniform_writes[0] = {};
-//		uniform_writes[0].pNext = NULL;
-//		uniform_writes[0].dstSet = renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
-//		uniform_writes[0].descriptorCount = 1;
-//		uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-//		uniform_writes[0].pBufferInfo = &renderingContextResources[i]->uniformBufferMVP.descriptorInfo;
-//		uniform_writes[0].dstArrayElement = 0;
-//		uniform_writes[0].dstBinding = 0;
-//
-//		uniform_writes[1] = {};
-//		uniform_writes[1].pNext = NULL;
-//		uniform_writes[1].dstSet = renderingContextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
-//		uniform_writes[1].descriptorCount = 1;
-//		uniform_writes[1].descriptorType = vk::DescriptorType::eUniformBuffer;
-//		uniform_writes[1].pBufferInfo = &renderingContextResources[i]->uniformBufferLights.descriptorInfo;
-//		uniform_writes[1].dstArrayElement = 0;
-//		uniform_writes[1].dstBinding = 1;
 //
 //
-//		deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
-//	}
+//bindings)[0];
+//LayoutPBR[1], uniformBinding)[0];
 //
-//	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
 //
-//	shaderResourcesPostProc.inputAttachmentSet = descriptorPool->AllocateDescriptorSet(deviceVulkan->device, 1, shaderDescriptorLayoutPostProc[0], postProcBinding)[0];
 //
-//	vk::DescriptorImageInfo inputView = {};
-//	inputView.imageView = framebufferRenderScene->attachments[0].view;
 //
-//	std::array<vk::WriteDescriptorSet, 1> input_writes = {};
 //
-//	input_writes[0] = {};
-//	input_writes[0].pNext = NULL;
-//	input_writes[0].dstSet = shaderResourcesPostProc.inputAttachmentSet;
-//	input_writes[0].descriptorCount = 1;
-//	input_writes[0].descriptorType = vk::DescriptorType::eSampledImage;
-//	input_writes[0].pImageInfo = &inputView;
-//	input_writes[0].dstArrayElement = 0;
-//	input_writes[0].dstBinding = 0;
 //
-//	deviceVulkan->device.updateDescriptorSets(static_cast<uint32_t>(input_writes.size()), input_writes.data(), 0, NULL);
 //
-//}
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 //
 //
@@ -1058,6 +1058,8 @@ void RendererVulkan::SetupPipeline()
 
 	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 }
+
+
 
 void RendererVulkan::SetupCommandPoolAndBuffers()
 {
