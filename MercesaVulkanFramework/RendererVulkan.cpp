@@ -71,9 +71,9 @@
 //
 //#include <imgui_impl_glfw_vulkan.h>
 //
-//CBMatrix matrixConstantBufferData;
-//CBLights lightConstantBufferData;
-//CBModelMatrixSingle matrixSingleData;
+//
+//
+//
 //
 //
 //#define NUM_SAMPLES vk::SampleCountFlagBits::e1
@@ -185,85 +185,85 @@
 //
 
 
-// void SetupUniformbuffer()
-//{
-//	for (int i = 0; i < NUM_FRAMES; ++i)
-//	{
-//		UniformBufferVulkan tUniformBuff;
-//
-//		CreateSimpleBuffer(allocator,
-//			tUniformBuff.allocation,
-//			VMA_MEMORY_USAGE_CPU_TO_GPU,
-//			tUniformBuff.buffer,
-//			vk::BufferUsageFlagBits::eUniformBuffer,
-//			sizeof(CBMatrix));
-//
-//		CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
 //
 //
-//		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-//		tUniformBuff.descriptorInfo.offset = 0;
-//		tUniformBuff.descriptorInfo.range = sizeof(matrixConstantBufferData);
-//
-//		renderingContextResources[i]->uniformBufferMVP = tUniformBuff;
-//	}
-//
-//	for (int i = 0; i < NUM_FRAMES; ++i)
-//	{
-//		UniformBufferVulkan tUniformBuff;
-//
-//		CreateSimpleBuffer(allocator,
-//			tUniformBuff.allocation,
-//			VMA_MEMORY_USAGE_CPU_TO_GPU,
-//			tUniformBuff.buffer,
-//			vk::BufferUsageFlagBits::eUniformBuffer,
-//			sizeof(CBLights));
-//
-//		CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&lightConstantBufferData, sizeof(CBLights));
 //
 //
-//		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-//		tUniformBuff.descriptorInfo.offset = 0;
-//		tUniformBuff.descriptorInfo.range = sizeof(CBLights);
 //
-//		renderingContextResources[i]->uniformBufferLights = tUniformBuff;
-//	}
-//}
 //
-//void UpdateUniformbufferFrame(int32_t iCurrentBuff, const NewCamera& iCam, const std::vector<Light>& iLights)
-//{
-//	static float derp = 1.0f;
-//	derp += 0.01f;
-//	float derp2 = (sinf(derp) + 1.0f) / 2.0f;
 //
-//	glm::mat4 projectionMatrix = iCam.matrices.perspective;
-//	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-//	glm::mat4 modelMatrix = glm::scale(glm::vec3(1.0f, 1.0f, 1.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f));
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 //	
-//	glm::mat4 clipMatrix = glm::mat4(
-//		1.0f, 0.0f, 0.0f, 0.0f,
-//		0.0f, -1.0f, 0.0f, 0.0f,
-//		0.0f, 0.0f, 1.0f, 0.0f,
-//		0.0f, 0.0f, 0.0f, 1.0f);
-//
-//
-//	matrixConstantBufferData.modelMatrix = modelMatrix;
-//	matrixConstantBufferData.viewMatrix = viewMatrix;
-//	matrixConstantBufferData.projectionMatrix = projectionMatrix;
-//	matrixConstantBufferData.viewProjectMatrix = clipMatrix * projectionMatrix * viewMatrix;
-//	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
-//
-//	matrixConstantBufferData.viewPos = iCam.position;
-//
-//	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
-//
-//	lightConstantBufferData.currAmountOfLights = std::min(static_cast<uint32_t>(iLights.size()), (uint32_t)16);
-//
-//	for (int i = 0; i < lightConstantBufferData.currAmountOfLights; ++i)
-//	{
-//		lightConstantBufferData.lights[i] = iLights[i];
-//	}
+//	
 //
 //	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferLights.allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
 //}
@@ -447,28 +447,6 @@
 //
 //}
 //
-//void SetupScenePassData()
-//{
-//	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
-//	AttachmentCreateInfo attchCinfo;
-//	attchCinfo.format = Format::eR8G8B8A8Unorm;
-//	attchCinfo.height = screenHeight;
-//	attchCinfo.width = screenWidth;
-//	attchCinfo.usage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eInputAttachment;
-//	attchCinfo.layerCount = 1;
-//
-//	framebufferRenderScene = std::make_unique<FramebufferVulkan>(screenWidth, screenHeight);
-//	AttachmentCreateInfo attchCinfoDepth;
-//	attchCinfoDepth.format = Format::eD24UnormS8Uint;
-//	attchCinfoDepth.height = screenHeight;
-//	attchCinfoDepth.width = screenWidth;
-//	attchCinfoDepth.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-//	attchCinfoDepth.layerCount = 1;
-//
-//	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfo, allocator);
-//	framebufferRenderScene->AddAttachment(deviceVulkan->device, attchCinfoDepth, allocator);
-//	framebufferRenderScene->CreateRenderpass(deviceVulkan->device);
-//}
 //
 //
 //
@@ -667,17 +645,6 @@
 //void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
 //
 //
-//void SetupQuerypool(const vk::Device& iDevice)
-//{
-//	for (auto& e : renderingContextResources)
-//	{
-//		vk::QueryPoolCreateInfo poolCI = vk::QueryPoolCreateInfo()
-//			.setQueryType(QueryType::eTimestamp)
-//			.setQueryCount(2);
-//
-//		e->queryPool = iDevice.createQueryPool(poolCI);
-//	}
-//}
 //
 //
 //// Will screw up if the GPU is already running, should fence it
@@ -709,40 +676,40 @@
 //	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
 //	TransitionImageLayout(cmdBufferTextures, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 //
-//	for (int i = 0; i < iObjects.size(); ++i)
-//	{
-//		iObjectRenderingData* objectToWorkOn = iObjects[i].renderingData;
-//		//iObjsToPrepare.pop();
+//	
+//	
+//	
+//	
 //
-//		if (!objectToWorkOn->isPrepared)
-//		{
-//			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
+//	
+//	
+//	
 //
-//			UniformBufferVulkan tUniformBuff;
+//	
 //
-//			CreateSimpleBuffer(allocator,
-//				tUniformBuff.allocation,
-//				VMA_MEMORY_USAGE_CPU_TO_GPU,
-//				tUniformBuff.buffer,
-//				vk::BufferUsageFlagBits::eUniformBuffer,
-//				sizeof(CBMatrix));
-//
-//
-//
-//			matrixSingleData.model = iObjects[i].modelMatrix;
-//			CopyDataToBuffer(VkDevice(deviceVulkan->device), tUniformBuff.allocation, (void*)&matrixSingleData, sizeof(matrixSingleData));
+//	
+//	
+//	
+//	
+//	
+//	
 //
 //
-//			tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-//			tUniformBuff.descriptorInfo.offset = 0;
-//			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
 //
-//			e->positionUniformBuffer = tUniformBuff;
-//			e->isPrepared = true;
-//			objRenderingData.push_back(e);
+//	
+//	
 //
-//		}
-//	}
+//
+//	
+//	
+//	
+//
+//	
+//	
+//	
+//
+//	
+//	
 //
 //	EndSingleTimeCommands(deviceVulkan->device, cmdBufferTextures, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
 //	for (auto& e : stagingBuffers)
@@ -808,8 +775,8 @@
 #include "CommandpoolVulkan.h"
 
 #include "GLFWLowLevelWindow.h"
-
-
+#include "ConstantBuffers.h"
+#include "NewCamera.h"
 RendererVulkan::RendererVulkan()
 {
 
@@ -1226,29 +1193,6 @@ void RendererVulkan::SetupCommandPoolAndBuffers()
 	}
 }
 
-void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow)
-{
-	backend = std::make_unique<BackendVulkan>();
-	backend->Init(iParams, iWindow);
-
-	// Ready our context resources for filling in
-	for (int i = 0; i < NUM_FRAMES; ++i)
-	{
-		auto tContextResources = std::make_unique<ContextResources>();
-
-		contextResources.push_back(std::move(tContextResources));
-	}
-
-	// Setup and load the shaders and corresponding pipelines
-	SetupShaders();
-	SetupPipeline();
-
-	SetupSamplers();
-
-	SetupCommandPoolAndBuffers();
-	SetupIMGUI(iWindow);
-}
-
 void RendererVulkan::Resize(const GFXParams& iParams)
 {
 
@@ -1306,12 +1250,125 @@ void RendererVulkan::PrepareResources(
 
 	stagingBuffers.clear();
 	stagingBuffers.resize(0);
+
+	// Setup the uniform buffers for the objects
+	for (int i = 0; i < iObjects.size(); ++i)
+	{
+		iObjectRenderingData* objectToWorkOn = iObjects[i].renderingData;
+		//iObjsToPrepare.pop();
+
+		if (!objectToWorkOn->isPrepared)
+		{
+			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
+
+			UniformBufferVulkan tUniformBuff;
+
+			CreateSimpleBuffer(backend->allocator,
+				tUniformBuff.allocation,
+				VMA_MEMORY_USAGE_CPU_TO_GPU,
+				tUniformBuff.buffer,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				sizeof(CBMatrix));
+
+			matrixSingleData.model = iObjects[i].modelMatrix;
+			CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuff.allocation, (void*)&matrixSingleData, sizeof(matrixSingleData));
+
+			tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+			tUniformBuff.descriptorInfo.offset = 0;
+			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
+
+			e->positionUniformBuffer = tUniformBuff;
+			e->isPrepared = true;
+			objRenderingData.push_back(e);
+
+		}
+	}
 }
 
+void RendererVulkan::SetupUniformBuffers()
+{
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		UniformBufferVulkan tUniformBuff;
+
+		CreateSimpleBuffer(backend->allocator,
+			tUniformBuff.allocation,
+			VMA_MEMORY_USAGE_CPU_TO_GPU,
+			tUniformBuff.buffer,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			sizeof(CBMatrix));
+
+		CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuff.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+
+
+		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		tUniformBuff.descriptorInfo.offset = 0;
+		tUniformBuff.descriptorInfo.range = sizeof(matrixConstantBufferData);
+
+		contextResources[i]->uniformBufferMVP = tUniformBuff;
+	}
+
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		UniformBufferVulkan tUniformBuff;
+
+		CreateSimpleBuffer(backend->allocator,
+			tUniformBuff.allocation,
+			VMA_MEMORY_USAGE_CPU_TO_GPU,
+			tUniformBuff.buffer,
+			vk::BufferUsageFlagBits::eUniformBuffer,
+			sizeof(CBLights));
+
+		CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuff.allocation, (void*)&lightConstantBufferData, sizeof(CBLights));
+
+
+		tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
+		tUniformBuff.descriptorInfo.offset = 0;
+		tUniformBuff.descriptorInfo.range = sizeof(CBLights);
+
+		contextResources[i]->uniformBufferLights = tUniformBuff;
+	}
+}
+
+void RendererVulkan::UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights)
+{
+
+	glm::mat4 projectionMatrix = iCam.matrices.perspective;
+	glm::mat4 viewMatrix = iCam.matrices.view;//glm::lookAt(glm::vec3(1.0f, 2.0f, 0.0f), glm::vec3(0.0f, 2.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 modelMatrix = glm::scale(glm::vec3(1.0f, 1.0f, 1.0f)) * glm::translate(glm::vec3(0.0f, 0.0f, 2.0f));
+
+
+	glm::mat4 clipMatrix = glm::mat4(
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, -1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f);
+
+
+	matrixConstantBufferData.modelMatrix = modelMatrix;
+	matrixConstantBufferData.viewMatrix = viewMatrix;
+	matrixConstantBufferData.projectionMatrix = projectionMatrix;
+	matrixConstantBufferData.viewProjectMatrix = clipMatrix * projectionMatrix * viewMatrix;
+	matrixConstantBufferData.mvpMatrix = clipMatrix * projectionMatrix * viewMatrix * modelMatrix;
+
+	matrixConstantBufferData.viewPos = iCam.position;
+
+	CopyDataToBuffer(VkDevice(backend->context.device), contextResources[backend->context.currentFrame]->uniformBufferMVP.allocation, (void*)&matrixConstantBufferData, sizeof(matrixConstantBufferData));
+
+	lightConstantBufferData.currAmountOfLights = std::min(static_cast<uint32_t>(iLights.size()), (uint32_t)16);
+
+	for (int i = 0; i < lightConstantBufferData.currAmountOfLights; ++i)
+	{
+		lightConstantBufferData.lights[i] = iLights[i];
+	}
+	
+	CopyDataToBuffer(VkDevice(backend->context.device), contextResources[backend->context.currentFrame]->uniformBufferLights.allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
+
+}
 
 void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& iLights)
 {
-
+	UpdateUniformBufferFrame(iCamera, iLights);
 }
 
 void RendererVulkan::SetupCommandBuffersImgui()
@@ -1375,5 +1432,41 @@ void RendererVulkan::Destroy()
 		vmaDestroyBuffer(backend->allocator, e->positionUniformBuffer.buffer, e->positionUniformBuffer.allocation);
 	}
 
+
+	for (auto& e : contextResources)
+	{
+		vmaDestroyBuffer(backend->allocator, e->uniformBufferLights.buffer, e->uniformBufferLights.allocation);
+		vmaDestroyBuffer(backend->allocator, e->uniformBufferModelMatrix.buffer, e->uniformBufferModelMatrix.allocation);
+		vmaDestroyBuffer(backend->allocator, e->uniformBufferMVP.buffer, e->uniformBufferMVP.allocation);
+
+		e->pool->Destroy(backend->context.device);
+	}
 	backend->Shutdown();
+}
+
+void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow)
+{
+	backend = std::make_unique<BackendVulkan>();
+	backend->Init(iParams, iWindow);
+
+	// Ready our context resources for filling in
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		auto tContextResources = std::make_unique<ContextResources>();
+
+		contextResources.push_back(std::move(tContextResources));
+	}
+
+	// Setup and load the shaders and corresponding pipelines
+	SetupShaders();
+	SetupPipeline();
+
+	// Setup samplers
+	SetupSamplers();
+
+	// Setup command pool and buffers, afterwards use a buffer to setup Imgui
+	SetupCommandPoolAndBuffers();
+	SetupIMGUI(iWindow);
+
+	SetupUniformBuffers();
 }

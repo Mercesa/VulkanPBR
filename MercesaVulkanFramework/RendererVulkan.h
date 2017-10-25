@@ -42,6 +42,7 @@ class CommandpoolVulkan;
 
 #include "GraphicsParameters.h"
 #include "VulkanDataObjects.h"
+#include "ConstantBuffers.h"
 
 struct ContextResources
 {
@@ -61,6 +62,14 @@ struct imguiData
 	std::vector<vk::Framebuffer> framebuffer;
 };
 
+struct ShaderResourcesPBR
+{
+	vk::DescriptorSet samplerSet;
+	vk::DescriptorSet perFrameUniformBufferSet;
+	vk::DescriptorSet perObjectUniformBufferSet;
+	vk::DescriptorSet textureSet;
+};
+
 class RendererVulkan
 {
 public:
@@ -68,6 +77,7 @@ public:
 	~RendererVulkan();
 	
 	void Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow);
+
 	void Resize(const GFXParams& iParams);
 	
 	void PrepareResources(
@@ -83,6 +93,8 @@ public:
 
 private:
 	
+	void SetupUniformBuffers();
+
 	// Initialization functions
 	void SetupShaders();
 	void SetupPipeline();
@@ -96,6 +108,8 @@ private:
 
 	// Render functions
 	void SetupCommandBuffersImgui();
+
+	void UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights);
 
 
 	std::unique_ptr<BackendVulkan> backend;
@@ -123,7 +137,11 @@ private:
 
 	vk::Sampler samplerLinearRepeat;
 
-
 	imguiData imguiDataObj;
+
+	// Data containers used to transfer data to
+	CBMatrix matrixConstantBufferData;
+	CBLights lightConstantBufferData;
+	CBModelMatrixSingle matrixSingleData;
 };
 

@@ -116,13 +116,17 @@ int main()
 	CurrentGame = std::make_unique<Game>(input.get(), resourceManager.get());
 	window->Create(1280, 720);
 	CurrentGame->Init();
+	
+	// Initialize the 
 	renderer->Initialize(GFXParams(0, 0, 1280, 720, 0, 60, 1), window.get());
+
 	renderer->PrepareResources(
 		resourceManager->texturesToPrepare, 
 		resourceManager->modelsToPrepare, 
 		resourceManager->objsToPrepare, 
 		CurrentGame->gameObjects);
 
+	// Initialize glfw stuff
 	glfwSetInputMode(glfwWindow->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwMakeContextCurrent(glfwWindow->window);
 	

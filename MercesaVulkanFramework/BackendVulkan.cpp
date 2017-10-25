@@ -1057,6 +1057,7 @@ void BackendVulkan::BlockSwapBuffers()
 	
 	context.counter++;
 	context.currentFrame = context.counter % NUM_FRAMES;
+	vmaSetCurrentFrameIndex(allocator, context.currentFrame);
 }
 
 void BackendVulkan::CreateCommandPool()
