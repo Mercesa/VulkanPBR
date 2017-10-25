@@ -38,11 +38,24 @@ class ObjectRenderingDataVulkan;
 
 class ShaderProgramVulkan;
 class CommandpoolVulkan;
-
+class DescriptorPoolVulkan;
 
 #include "GraphicsParameters.h"
 #include "VulkanDataObjects.h"
 #include "ConstantBuffers.h"
+
+struct ShaderResourcesPBR
+{
+	vk::DescriptorSet samplerSet;
+	vk::DescriptorSet perFrameUniformBufferSet;
+	vk::DescriptorSet perObjectUniformBufferSet;
+	vk::DescriptorSet textureSet;
+};
+
+struct ShaderResourcesPostProc
+{
+	vk::DescriptorSet inputTextureSet;
+};
 
 struct ContextResources
 {
@@ -53,6 +66,10 @@ struct ContextResources
 	UniformBufferVulkan uniformBufferMVP;
 	UniformBufferVulkan uniformBufferModelMatrix;
 	UniformBufferVulkan uniformBufferLights;
+
+	ShaderResourcesPBR descriptorSetPBRShader;
+	ShaderResourcesPostProc descriptorSetPostProc;
+
 };
 
 struct imguiData
@@ -62,13 +79,9 @@ struct imguiData
 	std::vector<vk::Framebuffer> framebuffer;
 };
 
-struct ShaderResourcesPBR
-{
-	vk::DescriptorSet samplerSet;
-	vk::DescriptorSet perFrameUniformBufferSet;
-	vk::DescriptorSet perObjectUniformBufferSet;
-	vk::DescriptorSet textureSet;
-};
+
+
+
 
 class RendererVulkan
 {
@@ -97,7 +110,10 @@ private:
 
 	// Initialization functions
 	void SetupShaders();
+	
 	void SetupPipeline();
+	void SetupPipelinePostProc();
+
 	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
 	
 	void SetupSamplers();
@@ -109,8 +125,11 @@ private:
 	// Render functions
 	void SetupCommandBuffersImgui();
 
+	void SetupDescriptorSet(const std::vector<Object>& iObjects);
+
 	void UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights);
 
+	void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
 
 	std::unique_ptr<BackendVulkan> backend;
 
@@ -151,5 +170,8 @@ private:
 	std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
 	std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
 	std::vector<vk::DescriptorSetLayoutBinding> postProcBinding;
+
+	// Descriptor resource management
+	std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 };
 

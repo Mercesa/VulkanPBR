@@ -372,118 +372,118 @@
 //
 //
 //
-//void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects)
-//{
-//	vk::CommandBufferBeginInfo cmd_begin = vk::CommandBufferBeginInfo();
-//
-//	cmd_begin.flags = vk::CommandBufferUsageFlagBits::eSimultaneousUse;
-//	iBuffer.begin(cmd_begin);
-//
-//	vk::ClearValue clear_values[2] = {};
-//	clear_values[0].color.float32[0] = 0.2f;
-//	clear_values[0].color.float32[1] = 0.2f;
-//	clear_values[0].color.float32[2] = 0.2f;
-//	clear_values[0].color.float32[3] = 0.2f;
-//	clear_values[1].depthStencil.depth = 1.0f;
-//	clear_values[1].depthStencil.stencil = 0;
 //
 //
-//	const vk::DeviceSize offsets[1] = { 0 };
-//
-//	vk::RenderPassBeginInfo rp_begin = vk::RenderPassBeginInfo()
-//		.setRenderPass(renderPassScene->renderpass)
-//		.setFramebuffer(framebuffers[index])
-//		.setRenderArea(vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(screenWidth, screenHeight)))
-//		.setClearValueCount(2)
-//		.setPClearValues(clear_values);
-//
-//	iBuffer.beginRenderPass(&rp_begin, SubpassContents::eInline);
-//	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelinePBR);
-//
-//	
-//	InitViewports(iBuffer);
-//	InitScissors(iBuffer);
 //
 //
-//	std::vector<DescriptorSet> totalSet;
-//	// Add our descriptor data to this set, and use this set
-//	totalSet.resize(4);
-//	for (int j = 0; j < (iObjects.size() - 1); ++j)
-//	{
-//		ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[j].model);
-//		ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[j].renderingData);
-//
-//		renderingContextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
-//		renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
 //
 //
-//		totalSet[0] = (renderingContextResources[index]->descriptorSetPBRShader.samplerSet);
-//		totalSet[1] = (renderingContextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
-//		totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
-//		totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
-//
-//		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
-//		iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
-//		iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
-//		iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
-//	}
-//
-//	ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[iObjects.size() - 1].model);
-//	ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[iObjects.size() - 1].renderingData);
-//
-//	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRed);
-//	InitViewports(iBuffer);
-//	InitScissors(iBuffer);
-//
-//	renderingContextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
-//	renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
 //
 //
-//	totalSet[0] = (renderingContextResources[index]->descriptorSetPBRShader.samplerSet);
-//	totalSet[1] = (renderingContextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
-//	totalSet[2] = (renderingContextResources[index]->descriptorSetPBRShader.textureSet);
-//	totalSet[3] = (renderingContextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
-//
-//	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
-//	iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
-//	iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
-//	iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
-//
-//	iBuffer.endRenderPass();
-//
-//	std::vector<DescriptorSet> inputSet;
-//	inputSet.resize(1);
-//
-//	inputSet[0] = shaderResourcesPostProc.inputAttachmentSet;
 //
 //
-//	iBuffer.end();
-//
-//}
-// 
 //
 //
-//bool firstFrame = true;
-//void RendererVulkan::Render(const std::vector<Object>& iObjects)
-//{
-//	if (firstFrame)
-//	{
-//		SetupCommandBuffers(renderingContextResources[currentBuffer]->commandBuffer, currentBuffer, iObjects);
-//		SetupCommandBuffersImgui(renderingContextResources[currentBuffer]->commandBufferIMGUI, currentBuffer);
-//		firstFrame = false;
-//	}
 //
-//	else
-//	{
-//		//std::thread CommandSetup = std::thread(SetupCommandBuffers, commandBuffers[(currentBuffer + 1) % 2], (currentBuffer + 1) % 2);
-//		int32_t nextBuffer = (currentBuffer + 1) % 2;
-//		SetupCommandBuffers(renderingContextResources[nextBuffer]->commandBuffer, nextBuffer, iObjects);
-//		SetupCommandBuffersImgui(renderingContextResources[nextBuffer]->commandBufferIMGUI, nextBuffer);
 //
-//		deviceVulkan->device.waitForFences(1, &graphicsQueueFinishedFence, vk::Bool32(true), FENCE_TIMEOUT);
-//		deviceVulkan->device.resetFences(graphicsQueueFinishedFence);
-//		//CommandSetup.join();
-//	}
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 //
 //	deviceVulkan->device.acquireNextImageKHR(deviceVulkan->swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
 //	vmaSetCurrentFrameIndex(allocator, currentBuffer);
@@ -653,7 +653,7 @@
 #include "ObjectRenderingDataVulkan.h"
 #include "PipelineCreationDump.h"
 #include "CommandpoolVulkan.h"
-
+#include "DescriptorPoolVulkan.h"
 #include "GLFWLowLevelWindow.h"
 #include "ConstantBuffers.h"
 #include "NewCamera.h"
@@ -1059,7 +1059,344 @@ void RendererVulkan::SetupPipeline()
 	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 }
 
+void RendererVulkan::SetupPipelinePostProc()
+{
+	auto shaderLayout = shaderProgramPostProc->GetShaderProgramLayout();
 
+	vk::PipelineLayoutCreateInfo pPipelineLayoutCreateInfo = vk::PipelineLayoutCreateInfo()
+		.setPNext(NULL)
+		.setPushConstantRangeCount(0)
+		.setPPushConstantRanges(NULL)
+		.setSetLayoutCount(1)
+		.setPSetLayouts(shaderLayout.data());
+
+	pipelineLayoutRenderScene = backend->context.device.createPipelineLayout(pPipelineLayoutCreateInfo);
+
+	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+	vk::VertexInputBindingDescription inputDescription;
+
+
+	inputDescription.binding = 0;
+	inputDescription.inputRate = vk::VertexInputRate::eVertex;
+	inputDescription.stride = sizeof(VertexData);
+
+	// 12 bits 
+	// 8  bits 
+	// 12 bits
+	// 12 bits
+	// 12 bits
+	vk::VertexInputAttributeDescription att1;
+	att1.binding = 0;
+	att1.location = 0;
+	att1.format = vk::Format::eR32G32B32Sfloat;
+
+	vk::VertexInputAttributeDescription att2;
+	att2.binding = 0;
+	att2.location = 1;
+	att2.format = vk::Format::eR32G32Sfloat;
+	att2.offset = 12;
+
+	vk::VertexInputAttributeDescription att3;
+	att3.binding = 0;
+	att3.location = 2;
+	att3.format = vk::Format::eR32G32B32Sfloat;
+	att3.offset = 20;
+
+	vk::VertexInputAttributeDescription att4;
+	att4.binding = 0;
+	att4.location = 3;
+	att4.format = vk::Format::eR32G32B32Sfloat;
+	att4.offset = 32;
+
+	vk::VertexInputAttributeDescription att5;
+	att5.binding = 0;
+	att5.location = 4;
+	att5.format = vk::Format::eR32G32B32Sfloat;
+	att5.offset = 44;
+
+
+	inputAttributes.push_back(att1);
+	inputAttributes.push_back(att2);
+	inputAttributes.push_back(att3);
+	inputAttributes.push_back(att4);
+	inputAttributes.push_back(att5);
+
+	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
+		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
+		.setPVertexBindingDescriptions(&inputDescription)
+		.setPVertexAttributeDescriptions(inputAttributes.data())
+		.setVertexAttributeDescriptionCount(5)
+		.setVertexBindingDescriptionCount(1);
+
+	vk::PipelineInputAssemblyStateCreateInfo ia = vk::PipelineInputAssemblyStateCreateInfo()
+		.setPrimitiveRestartEnable(VK_FALSE)
+		.setTopology(vk::PrimitiveTopology::eTriangleList);
+
+	vk::PipelineRasterizationStateCreateInfo rs = CreateStandardRasterizerState();
+
+
+	vk::PipelineColorBlendAttachmentState att_state[1] = {};
+	att_state[0].colorWriteMask = vk::ColorComponentFlagBits(0xF);
+	att_state[0].blendEnable = VK_FALSE;
+	att_state[0].alphaBlendOp = vk::BlendOp::eAdd;
+	att_state[0].colorBlendOp = vk::BlendOp::eAdd;
+	att_state[0].srcColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstColorBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].srcAlphaBlendFactor = vk::BlendFactor::eZero;
+	att_state[0].dstAlphaBlendFactor = vk::BlendFactor::eZero;
+
+	vk::PipelineColorBlendStateCreateInfo cb = {};
+	cb.attachmentCount = 1;
+	cb.pAttachments = att_state;
+	cb.logicOpEnable = VK_FALSE;
+	cb.logicOp = vk::LogicOp::eNoOp;
+	cb.blendConstants[0] = 1.0f;
+	cb.blendConstants[1] = 1.0f;
+	cb.blendConstants[2] = 1.0f;
+	cb.blendConstants[3] = 1.0f;
+
+
+	vk::PipelineViewportStateCreateInfo vp = vk::PipelineViewportStateCreateInfo()
+		.setViewportCount(1)
+		.setScissorCount(1)
+		.setPScissors(NULL)
+		.setPViewports(NULL);
+
+
+	std::vector<vk::DynamicState> dynamicStateEnables;
+	dynamicStateEnables.resize(VK_DYNAMIC_STATE_RANGE_SIZE); //[VK_DYNAMIC_STATE_RANGE_SIZE];
+
+	vk::PipelineDynamicStateCreateInfo dynamicState = PipelineDynamicStateCreateInfo()
+		.setPDynamicStates(dynamicStateEnables.data())
+		.setDynamicStateCount(1);
+
+	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eViewport;
+	dynamicStateEnables[dynamicState.dynamicStateCount++] = vk::DynamicState::eScissor;
+
+	vk::PipelineDepthStencilStateCreateInfo ds = vk::PipelineDepthStencilStateCreateInfo()
+		.setDepthTestEnable(VK_TRUE)
+		.setDepthWriteEnable(VK_TRUE)
+		.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+		.setDepthBoundsTestEnable(VK_FALSE)
+		.setMinDepthBounds(0)
+		.setMaxDepthBounds(1.0f)
+		.setStencilTestEnable(VK_FALSE);
+
+	vk::PipelineMultisampleStateCreateInfo ms = PipelineMultisampleStateCreateInfo()
+		.setRasterizationSamples(NUM_MULTISAMPLES)
+		.setSampleShadingEnable(VK_FALSE)
+		.setAlphaToCoverageEnable(VK_FALSE)
+		.setAlphaToOneEnable(VK_FALSE)
+		.setMinSampleShading(0.0f)
+		.setPSampleMask(VK_NULL_HANDLE);
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfo = shaderProgramPBR->GetPipelineShaderInfo();
+
+	// Create graphics pipeline for the first shader
+	vk::GraphicsPipelineCreateInfo gfxPipe = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayoutRenderScene)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(shaderPipelineInfo.data())
+		.setStageCount(shaderPipelineInfo.size())
+		.setRenderPass(backend->context.renderpass)
+		.setSubpass(0);
+
+	pipelinePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
+
+
+	// Create graphics pipeline for the second shader
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
+
+	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayoutRenderScene)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(shaderPipelineInfoRed.data())
+		.setStageCount(shaderPipelineInfoRed.size())
+		.setRenderPass(backend->context.renderpass)
+		.setSubpass(0);
+
+
+	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+}
+
+
+void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
+{
+	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
+
+	descriptorPool->Create(backend->context.device, PoolData(10, 10, 10, 400, 2, 100));
+
+	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
+
+	for (int i = 0; i < NUM_FRAMES; ++i)
+	{
+		contextResources[i]->descriptorSetPBRShader.samplerSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[0], bindings)[0];
+		contextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[1], uniformBinding)[0];
+		
+	}
+
+	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
+	std::array<vk::WriteDescriptorSet, 1> uniformModelWrite = {};
+
+	for (auto& e : iObjects)
+	{
+
+		ModelVulkan* tModel = dynamic_cast<ModelVulkan*>(e.model);
+		ObjectRenderingDataVulkan* tRenderingData = dynamic_cast<ObjectRenderingDataVulkan*>(e.renderingData);
+
+		TextureVulkan* albedoTexture = dynamic_cast<TextureVulkan*>(e.material.diffuseTexture);
+		TextureVulkan* specularTexture = dynamic_cast<TextureVulkan*>(e.material.specularTexture);
+		TextureVulkan* normalTexture = dynamic_cast<TextureVulkan*>(e.material.normalTexture);
+		TextureVulkan* roughnessTexture = dynamic_cast<TextureVulkan*>(e.material.roughnessTexture);
+		TextureVulkan* aoTexture = dynamic_cast<TextureVulkan*>(e.material.aoTexture);
+
+		tModel->textureSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[2], textureBinding)[0];
+		tRenderingData->positionBufferSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[3], uniformBinding)[0];
+
+
+		vk::DescriptorImageInfo albedoImageInfo = {};
+		albedoImageInfo.imageView = albedoTexture->data.view;
+
+		textureWrites[0] = {};
+		textureWrites[0].pNext = NULL;
+		textureWrites[0].dstSet = tModel->textureSet;
+		textureWrites[0].descriptorCount = 1;
+		textureWrites[0].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[0].pImageInfo = &albedoImageInfo;
+		textureWrites[0].dstArrayElement = 0;
+		textureWrites[0].dstBinding = 0;
+
+		vk::DescriptorImageInfo specularImageInfo = {};
+		specularImageInfo.imageView = specularTexture->data.view;
+
+		textureWrites[1] = {};
+		textureWrites[1].pNext = NULL;
+		textureWrites[1].dstSet = tModel->textureSet;
+		textureWrites[1].descriptorCount = 1;
+		textureWrites[1].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[1].pImageInfo = &specularImageInfo;
+		textureWrites[1].dstArrayElement = 0;
+		textureWrites[1].dstBinding = 1;
+
+		vk::DescriptorImageInfo normalmapImageInfo = {};
+		normalmapImageInfo.imageView = normalTexture->data.view;
+
+		textureWrites[2] = {};
+		textureWrites[2].pNext = NULL;
+		textureWrites[2].dstSet = tModel->textureSet;
+		textureWrites[2].descriptorCount = 1;
+		textureWrites[2].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[2].pImageInfo = &normalmapImageInfo;
+		textureWrites[2].dstArrayElement = 0;
+		textureWrites[2].dstBinding = 2;
+
+		vk::DescriptorImageInfo roughnessInfo = {};
+		roughnessInfo.imageView = roughnessTexture->data.view;
+
+		textureWrites[3] = {};
+		textureWrites[3].pNext = NULL;
+		textureWrites[3].dstSet = tModel->textureSet;
+		textureWrites[3].descriptorCount = 1;
+		textureWrites[3].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[3].pImageInfo = &roughnessInfo;
+		textureWrites[3].dstArrayElement = 0;
+		textureWrites[3].dstBinding = 3;
+
+		vk::DescriptorImageInfo AOInfo = {};
+		AOInfo.imageView = aoTexture->data.view;
+
+		textureWrites[4] = {};
+		textureWrites[4].pNext = NULL;
+		textureWrites[4].dstSet = tModel->textureSet;
+		textureWrites[4].descriptorCount = 1;
+		textureWrites[4].descriptorType = vk::DescriptorType::eSampledImage;
+		textureWrites[4].pImageInfo = &AOInfo;
+		textureWrites[4].dstArrayElement = 0;
+		textureWrites[4].dstBinding = 4;
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(textureWrites.size()), textureWrites.data(), 0, NULL);
+
+
+		uniformModelWrite[0] = {};
+		uniformModelWrite[0].pNext = NULL;
+		uniformModelWrite[0].dstSet = tRenderingData->positionBufferSet;
+		uniformModelWrite[0].descriptorCount = 1;
+		uniformModelWrite[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniformModelWrite[0].pBufferInfo = &tRenderingData->positionUniformBuffer.descriptorInfo;
+		uniformModelWrite[0].dstArrayElement = 0;
+		uniformModelWrite[0].dstBinding = 0;
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(uniformModelWrite.size()), uniformModelWrite.data(), 0, NULL);
+
+	}
+
+	for (int i = 0; i < contextResources.size(); ++i)
+	{
+		std::array<vk::WriteDescriptorSet, 1> writes = {};
+
+
+		// Create image info for the image descriptor
+		vk::DescriptorImageInfo pureSamplerInfo = {};
+
+		pureSamplerInfo.imageView = vk::ImageView(nullptr);
+		pureSamplerInfo.sampler = samplerLinearRepeat;
+
+		writes[0] = {};
+		writes[0].pNext = NULL;
+		writes[0].dstSet = contextResources[i]->descriptorSetPBRShader.samplerSet;
+		writes[0].descriptorCount = 1;
+		writes[0].descriptorType = vk::DescriptorType::eSampler;
+		writes[0].pImageInfo = &pureSamplerInfo;
+		writes[0].dstArrayElement = 0;
+		writes[0].dstBinding = 0;
+
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+
+		std::array<vk::WriteDescriptorSet, 2> uniform_writes = {};
+
+		uniform_writes[0] = {};
+		uniform_writes[0].pNext = NULL;
+		uniform_writes[0].dstSet = contextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
+		uniform_writes[0].descriptorCount = 1;
+		uniform_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniform_writes[0].pBufferInfo = &contextResources[i]->uniformBufferMVP.descriptorInfo;
+		uniform_writes[0].dstArrayElement = 0;
+		uniform_writes[0].dstBinding = 0;
+
+		uniform_writes[1] = {};
+		uniform_writes[1].pNext = NULL;
+		uniform_writes[1].dstSet = contextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet;
+		uniform_writes[1].descriptorCount = 1;
+		uniform_writes[1].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniform_writes[1].pBufferInfo = &contextResources[i]->uniformBufferLights.descriptorInfo;
+		uniform_writes[1].dstArrayElement = 0;
+		uniform_writes[1].dstBinding = 1;
+
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
+	}	
+}
 
 void RendererVulkan::SetupCommandPoolAndBuffers()
 {
@@ -1165,6 +1502,8 @@ void RendererVulkan::PrepareResources(
 
 		}
 	}
+	
+	SetupDescriptorSet(iObjects);
 }
 
 void RendererVulkan::SetupUniformBuffers()
@@ -1282,11 +1621,79 @@ void RendererVulkan::SetupCommandBuffersImgui()
 	contextResources[backend->context.currentFrame]->imguiBuffer.end();
 }
 
+
+void RendererVulkan::SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects)
+{
+	vk::ClearValue clear_values[2] = {};
+	clear_values[0].color.float32[0] = 0.2f;
+	clear_values[0].color.float32[1] = 0.2f;
+	clear_values[0].color.float32[2] = 0.2f;
+	clear_values[0].color.float32[3] = 0.2f;
+	clear_values[1].depthStencil.depth = 1.0f;
+	clear_values[1].depthStencil.stencil = 0;
+
+
+	const vk::DeviceSize offsets[1] = { 0 };
+
+	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelinePBR);
+
+
+	InitViewports(iBuffer);
+	InitScissors(iBuffer);
+
+
+	std::vector<DescriptorSet> totalSet;
+	// Add our descriptor data to this set, and use this set
+	totalSet.resize(4);
+	for (int j = 0; j < (iObjects.size() - 1); ++j)
+	{
+		ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[j].model);
+		ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[j].renderingData);
+
+		contextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
+		contextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
+
+
+		totalSet[0] = (contextResources[index]->descriptorSetPBRShader.samplerSet);
+		totalSet[1] = (contextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
+		totalSet[2] = (contextResources[index]->descriptorSetPBRShader.textureSet);
+		totalSet[3] = (contextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
+
+		iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
+		iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
+		iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
+		iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
+	}
+
+	ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[iObjects.size() - 1].model);
+	ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[iObjects.size() - 1].renderingData);
+
+	iBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRed);
+	InitViewports(iBuffer);
+	InitScissors(iBuffer);
+
+	contextResources[index]->descriptorSetPBRShader.textureSet = model->textureSet;
+	contextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
+
+
+	totalSet[0] = (contextResources[index]->descriptorSetPBRShader.samplerSet);
+	totalSet[1] = (contextResources[index]->descriptorSetPBRShader.perFrameUniformBufferSet);
+	totalSet[2] = (contextResources[index]->descriptorSetPBRShader.textureSet);
+	totalSet[3] = (contextResources[index]->descriptorSetPBRShader.perObjectUniformBufferSet);
+
+	iBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
+	iBuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
+	iBuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
+	iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
+}
+
+
 void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
 	backend->AcquireImage();
 	SetupCommandBuffersImgui();
 	backend->BeginFrame();
+	SetupCommandBuffers(backend->context.commandBuffer, backend->context.currentFrame, iObjects);
 	// Render objects here into the final pass
 	backend->BlockUntilGpuIdle();
 	backend->EndFrame(contextResources[backend->context.currentFrame]->imguiBuffer);
@@ -1295,7 +1702,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 void RendererVulkan::Destroy()
 {
-
+	// Idle everything
 	backend->context.device.waitIdle();
 	backend->context.graphicsQueue.waitIdle();
 	backend->context.presentQueue.waitIdle();

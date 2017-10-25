@@ -118,15 +118,15 @@ void BackendVulkan::Init(const GFXParams& iParams, iLowLevelWindow* const iWindo
 	
 	CreateRenderTargets();
 	
+	CreateCommandPool();
+
+	CreateCommandBuffer();
+
 	CreateDepthbuffer();
 
 	CreateRenderpass();
 
 	CreateFramebuffers();
-
-	CreateCommandPool();
-
-	CreateCommandBuffer();
 }
 
 void BackendVulkan::Shutdown()
@@ -724,6 +724,95 @@ void BackendVulkan::CreateDebugCallbacks()
 	
 }
 
+inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+
+	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
+		.setOldLayout(oldLayout)
+		.setNewLayout(newLayout)
+		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setImage(aImage)
+		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
+		.setSrcAccessMask(vk::AccessFlagBits(0))
+		.setDstAccessMask(vk::AccessFlagBits(0));
+
+	vk::PipelineStageFlagBits sourceStage;
+	vk::PipelineStageFlagBits destinationStage;
+
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else if (oldLayout == ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits(0);
+		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+
+
+	else
+	{
+		LOG(ERROR) << "Unsupported layout transition";
+	}
+
+	iBuffer.pipelineBarrier(
+		sourceStage,
+		destinationStage,
+		vk::DependencyFlagBits(0),
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+}
+
+inline vk::CommandBuffer BeginSingleTimeCommands(vk::Device aDevice, vk::CommandPool aPoolToUse)
+{
+	vk::CommandBufferAllocateInfo alloc_info = vk::CommandBufferAllocateInfo()
+		.setCommandPool(aPoolToUse)
+		.setCommandBufferCount(1);
+
+	vk::CommandBuffer commandBuffer = aDevice.allocateCommandBuffers(alloc_info)[0];
+
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+		.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+	commandBuffer.begin(beginInfo);
+
+	return commandBuffer;
+}
+
+inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer, vk::CommandPool aPool, vk::Queue aQueue)
+{
+	aBuffer.end();
+
+	vk::SubmitInfo submitInfo = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&aBuffer);
+
+	aQueue.submit(submitInfo, vk::Fence(nullptr));
+	aQueue.waitIdle();
+
+	aDevice.freeCommandBuffers(aPool, aBuffer);
+	aDevice.waitIdle();
+}
+
 void BackendVulkan::CreateDepthbuffer()
 {
 	vk::ImageCreateInfo image_Info = {};
@@ -769,6 +858,10 @@ void BackendVulkan::CreateDepthbuffer()
 	context.depthFormat= Format::eD24UnormS8Uint;
 	
 	depthView = context.device.createImageView(view_info);
+
+	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(context.device, context.cmdPool);
+	TransitionImageLayout(cmdBufferTextures, depthImage, depth_format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	EndSingleTimeCommands(context.device, cmdBufferTextures, context.cmdPool, context.graphicsQueue);
 }
 
 void BackendVulkan::DestroyDepthBuffer()
@@ -919,8 +1012,8 @@ void BackendVulkan::CreateRenderpass()
 	vk::AttachmentDescription depthAttachment;
 	depthAttachment.format = context.depthFormat;
 	depthAttachment.samples = context.sampleCount;
-	depthAttachment.loadOp = vk::AttachmentLoadOp::eDontCare;
-	depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+	depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+	depthAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 	depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
 	depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
@@ -994,17 +1087,17 @@ void BackendVulkan::BeginFrame()
 
 
 
-	vk::ClearValue clear_values[1] = {};
+	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 1.0f;
 	clear_values[0].color.float32[1] = 0.0f;
 	clear_values[0].color.float32[2] = 0.0f;
-	clear_values[0].color.float32[3] = 0.0f;
-
-
+	clear_values[0].color.float32[3] = 1.0f;
+	clear_values[1].depthStencil.depth = 1.0f;
+	clear_values[1].depthStencil.stencil = 0.0f;
 	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 		.setRenderPass(context.renderpass)
 		.setFramebuffer(framebuffers[currentSwapIndex])
-		.setClearValueCount(1)
+		.setClearValueCount(2)
 		.setPClearValues(clear_values);
 
 	renderPassBeginInfo.renderArea.extent = swapchainExtent;
