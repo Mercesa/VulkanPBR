@@ -970,6 +970,15 @@ void BackendVulkan::CreateRenderpass()
 }
 
 
+void BackendVulkan::BlockUntilGpuIdle()
+{
+	if (context.commandBufferRecorded[context.lastFrame] != false)
+	{
+		context.device.waitForFences(context.commandBufferFences[context.lastFrame], VK_TRUE, UINT64_MAX);
+		context.device.resetFences(context.commandBufferFences[context.lastFrame]);
+		context.commandBufferRecorded[context.lastFrame] = false;
+	}
+}
 void BackendVulkan::AcquireImage()
 {
 	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
@@ -1040,9 +1049,12 @@ void BackendVulkan::BlockSwapBuffers()
 		return;
 	}
 
-	context.device.waitForFences(context.commandBufferFences[context.currentFrame], VK_TRUE, UINT64_MAX);
-	context.device.resetFences(context.commandBufferFences[context.currentFrame]);
-	context.commandBufferRecorded[context.currentFrame] = false;
+	if (NUM_FRAMES == 1)
+	{
+		context.device.waitForFences(context.commandBufferFences[context.currentFrame], VK_TRUE, UINT64_MAX);
+		context.device.resetFences(context.commandBufferFences[context.currentFrame]);
+		context.commandBufferRecorded[context.currentFrame] = false;
+	}
 
 	vk::Semaphore* finished = &renderCompleteSemaphore[context.currentFrame];
 
@@ -1055,6 +1067,7 @@ void BackendVulkan::BlockSwapBuffers()
 
 	context.presentQueue.presentKHR(presentInfo);
 	
+	context.lastFrame = context.currentFrame;
 	context.counter++;
 	context.currentFrame = context.counter % NUM_FRAMES;
 	vmaSetCurrentFrameIndex(allocator, context.currentFrame);

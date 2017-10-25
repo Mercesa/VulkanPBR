@@ -43,6 +43,7 @@ public:
 	vk::CommandPool cmdPool;
 
 	int64_t currentFrame = 0;
+	int64_t lastFrame = 0;
 	int64_t counter = 0;
 
 	GPUinfo* gpu;
@@ -77,6 +78,7 @@ public:
 	void EndFrame(vk::CommandBuffer iGuiBuffer);
 	void BlockSwapBuffers();
 	void AcquireImage();
+	void BlockUntilGpuIdle();
 
 	vulkanContext context;
 	VmaAllocator allocator;

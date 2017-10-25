@@ -1135,7 +1135,7 @@ void RendererVulkan::PrepareResources(
 	for (int i = 0; i < iObjects.size(); ++i)
 	{
 		iObjectRenderingData* objectToWorkOn = iObjects[i].renderingData;
-		//iObjsToPrepare.pop();
+		iObjsToPrepare.pop();
 
 		if (!objectToWorkOn->isPrepared)
 		{
@@ -1285,12 +1285,19 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	backend->AcquireImage();
 	SetupCommandBuffersImgui();
 	backend->BeginFrame();
+	// Render objects here into the final pass
+	backend->BlockUntilGpuIdle();
 	backend->EndFrame(contextResources[backend->context.currentFrame]->imguiBuffer);
 	backend->BlockSwapBuffers();
 }
 
 void RendererVulkan::Destroy()
 {
+
+	backend->context.device.waitIdle();
+	backend->context.graphicsQueue.waitIdle();
+	backend->context.presentQueue.waitIdle();
+
 	shaderProgramPBR->Destroy(backend->context.device);
 	shaderProgramRed->Destroy(backend->context.device);
 	shaderProgramPostProc->Destroy(backend->context.device);
