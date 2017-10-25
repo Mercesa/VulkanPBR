@@ -65,6 +65,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		input->KeyboardInput(key, scancode, action, mods);
 	}
+
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		startMenu = !startMenu;
+	}
 	//ImGui_ImplGlfwVulkan_KeyCallback(window, key, scancode, action, mods);
 }
 
@@ -83,10 +88,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-	{
-		startMenu = !startMenu;
-	}
+
 }
 
 int main()

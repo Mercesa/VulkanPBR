@@ -150,7 +150,7 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");
@@ -1007,25 +1007,6 @@ void BackendVulkan::EndFrame(vk::CommandBuffer iGuiBuffer)
 {
 	context.commandBuffer.endRenderPass();
 
-	vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
-		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setImage(swapchainImages[currentSwapIndex])
-		.setOldLayout(vk::ImageLayout::eGeneral)
-		.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-		.setDstAccessMask(vk::AccessFlagBits(0));
-
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	context.commandBuffer.pipelineBarrier(
-		vk::PipelineStageFlagBits::eColorAttachmentOutput, 
-		vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits(0),
-		(uint32_t)0, NULL, 0, NULL, (uint32_t)1, &barrier);
 
 	context.commandBuffer.end();
 	context.commandBufferRecorded[context.currentFrame] = true;
@@ -1047,6 +1028,8 @@ void BackendVulkan::EndFrame(vk::CommandBuffer iGuiBuffer)
 		.setPWaitDstStageMask(&dstStageMask);
 
 
+
+	// Very important! the imgui renderpass implicitly sets the swapchain view to present
 	context.graphicsQueue.submit(1, &subInfo, context.commandBufferFences[context.currentFrame]);
 }
 

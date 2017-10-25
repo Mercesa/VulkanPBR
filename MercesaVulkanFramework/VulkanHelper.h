@@ -4,6 +4,7 @@
 #include "vk_mem_alloc.h"
 
 #include "RenderingIncludes.h"
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "Helper.h"
 #include "easylogging++.h"
