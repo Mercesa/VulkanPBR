@@ -1,31 +1,17 @@
 #pragma once
 
 #include <cassert>
+#include "vk_mem_alloc.h"
 
 #include "RenderingIncludes.h"
 #include "stb_image.h"
 #include "Helper.h"
 #include "easylogging++.h"
 #include "VulkanDataObjects.h"
+#include "GraphicsStructures.h"
 
 using namespace vk;
 
-
-inline bool memory_type_from_properties(PhysicalDeviceMemoryProperties memProps, uint32_t typeBits, vk::MemoryPropertyFlags requirements_mask, uint32_t *typeIndex) {
-	// Search memtypes to find first index with those properties
-	for (uint32_t i = 0; i < memProps.memoryTypeCount; i++) {
-		if ((typeBits & 1) == 1) {
-			// Type is available, does it match user properties?
-			if ((memProps.memoryTypes[i].propertyFlags & requirements_mask) == requirements_mask) {
-				*typeIndex = i;
-				return true;
-			}
-		}
-		typeBits >>= 1;
-	}
-	// No memory types matched, return failure
-	return false;
-}
 
 inline bool CreateSimpleBuffer(
 	VmaAllocator iAllocator, 
@@ -292,7 +278,7 @@ inline void CopyBufferToImage(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, v
 }
 
 
-void CopyBufferMemory(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
+inline void CopyBufferMemory(vk::CommandBuffer iBuffer, vk::Buffer srcBuffer, vk::Buffer destBuffer, int32_t aSize)
 {
 
 	vk::BufferCopy copyRegion = vk::BufferCopy()
@@ -383,7 +369,7 @@ inline void SetupIndexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffe
 	oStaging.push_back(indexBufferStageT);
 }
 
-inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, VertexBufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
+inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oVertexBuffer, const RawMeshData& iRawMeshdata, std::vector<BufferVulkan>& oStaging)
 {
 	size_t dataSize = sizeof(VertexData) * iRawMeshdata.vertices.size();
 

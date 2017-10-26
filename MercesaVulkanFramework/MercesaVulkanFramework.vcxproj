@@ -155,6 +155,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BackendVulkan.cpp" />
     <ClCompile Include="CommandpoolVulkan.cpp" />
     <ClCompile Include="DescriptorLayoutHelper.h" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
@@ -183,6 +184,7 @@
     <ClCompile Include="TextureVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BackendVulkan.h" />
     <ClInclude Include="CommandpoolVulkan.h" />
     <ClInclude Include="ConstantBuffers.h" />
     <ClInclude Include="DescriptorPoolVulkan.h" />
@@ -193,6 +195,7 @@
     <ClInclude Include="Game.h" />
     <ClInclude Include="GenericMathValueStructs.h" />
     <ClInclude Include="GLFWLowLevelWindow.h" />
+    <ClInclude Include="GraphicsParameters.h" />
     <ClInclude Include="GraphicsStructures.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="iLowLevelWindow.h" />

@@ -370,68 +370,6 @@ void DeviceVulkan::CreateInstance(const std::string& iApplicationName, const uin
 }
 
 
-
-
-
-static VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
-	size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
-	void *pUserData) {
-	std::ostringstream message;
-
-	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-		message << "ERROR: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-		message << "WARNING: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-		message << "PERFORMANCE WARNING: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-		message << "INFO: ";
-	}
-	else if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-		message << "DEBUG: ";
-	}
-	message << "[" << pLayerPrefix << "] Code " << msgCode << " : " << pMsg;
-
-	std::cout << message.str() << std::endl;
-
-	/*
-	* false indicates that layer should not bail-out of an
-	* API call that had validation failures. This may mean that the
-	* app dies inside the driver due to invalid parameter(s).
-	* That's what would happen without validation layers, so we'll
-	* keep that behavior here.
-	*/
-	return false;
-}
-
-VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pCallback);
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-VkDebugReportCallbackEXT callBack;
-VkDebugReportCallbackEXT callBack2;
-
-void DeviceVulkan::CreateDebugCallbacks()
-{
-	VkDebugReportCallbackCreateInfoEXT createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-	createInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-	createInfo.pfnCallback = dbgFunc;
-
-	if (CreateDebugReportCallbackEXT(instance, &createInfo, nullptr, &callBack) != VK_SUCCESS) {
-		throw std::runtime_error("failed to set up debug callback!");
-	}
-}
-
 void DeviceVulkan::SetupDeviceQueue()
 {
 	graphicsQueue = device.getQueue(familyIndexGraphics, 0);
