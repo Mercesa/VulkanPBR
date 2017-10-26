@@ -1,640 +1,3 @@
-//#include "RendererVulkan.h"
-//
-//
-//#include <stdio.h>
-//#include <stdlib.h>
-//// Enable the WSI extensions
-//#if defined(__ANDROID__)
-//#define VK_USE_PLATFORM_ANDROID_KHR
-//#elif defined(__linux__)
-//#define VK_USE_PLATFORM_XLIB_KHR
-//#elif defined(_WIN32)
-//#define VK_USE_PLATFORM_WIN32_KHR
-//#endif
-//
-//#define NOMINMAX
-////#define WIN32_MEAN_AND_LEAN
-//
-//#define VMA_IMPLEMENTATION
-//#include "vk_mem_alloc.h"
-//
-//#include "RenderingIncludes.h"
-//
-//#include <iostream>
-//#include <math.h>
-//#include <algorithm>
-//#include <utility>
-//#include <future>
-//#include <map>
-//
-//#include "VulkanDataObjects.h"
-//#include "GraphicsStructures.h"
-//#include "DescriptorPoolVulkan.h"
-//
-//#include "VulkanHelper.h"
-//#include "Helper.h"
-//#include "ModelLoader.h"
-//
-//#define STB_IMAGE_IMPLEMENTATION
-//#include "stb_image.h"
-//
-//#include "Camera.h"
-//
-//#include <ostream>
-//#include <sstream>
-//#include <string.h>
-//#include <iterator>
-//#include "ConstantBuffers.h"
-//
-//#include "DescriptorPoolVulkan.h"
-//#include "CommandpoolVulkan.h"
-//#include "DeviceVulkan.h"
-//
-//#include "easylogging++.h"
-//#include "SDLLowLevelWindow.h"
-//
-//#include "libs/Spir-v cross/spirv_glsl.hpp"
-//#include "DescriptorLayoutHelper.h"
-//#include "NewCamera.h"
-//#include "Helper.h"
-//#include "Game.h"
-//#include "FramebufferVulkan.h"
-//#include "ShaderProgramVulkan.h"
-//#include "ModelVulkan.h"
-//#include "TextureVulkan.h"
-//#include "ObjectRenderingDataVulkan.h"
-//#include "GLFWLowLevelWindow.h"
-//#include "PipelineCreationDump.h"
-//
-//#include "RenderScenePass.h"
-//#include <imgui.h>
-//
-//#include <imgui_impl_glfw_vulkan.h>
-//
-//
-//
-//
-//
-//
-//#define NUM_SAMPLES vk::SampleCountFlagBits::e1
-//#define NUM_DESCRIPTOR_SETS 4
-//#define FENCE_TIMEOUT 100000000
-//#define NUM_FRAMES 2
-//
-//vk::SurfaceKHR createVulkanSurface(const vk::Instance& instance, iLowLevelWindow* window);
-//
-//static const int screenWidth = 1280;
-//static const int screenHeight = 720;
-//
-//using namespace vk;
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//struct ShaderResourcesPostProc
-//{
-//	vk::DescriptorSet inputAttachmentSet;
-//} shaderResourcesPostProc;
-//
-//struct RenderingContextResources
-//{
-//	ShaderResourcesPBR descriptorSetPBRShader;
-//
-//	UniformBufferVulkan uniformBufferMVP;
-//	UniformBufferVulkan uniformBufferModelMatrix;
-//	UniformBufferVulkan uniformBufferLights;
-//
-//	vk::QueryPool queryPool;
-//	vk::CommandBuffer commandBuffer;
-//	vk::CommandBuffer commandBufferIMGUI;
-//};
-//
-//
-//std::vector<vk::Framebuffer> framebuffers;
-//std::vector<vk::Framebuffer> framebuffersImgui;
-//
-//std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
-//
-//
-//TextureData depthBuffer;
-//
-//
-//std::vector<std::unique_ptr<RenderingContextResources>> renderingContextResources;
-//
-//
-//// Device and instance
-//vk::Instance instance;
-//
-//std::unique_ptr<CommandpoolVulkan> cmdPool;
-//
-//// Information about our device its memory and family properties
-//
-//std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
-//
-//std::vector<ModelVulkan*> models;
-//std::vector<TextureVulkan*> textures;
-//std::vector<ObjectRenderingDataVulkan*> objRenderingData;
-//
-//VmaAllocator allocator;
-//
-//
-//vk::Viewport viewPort;
-//vk::Rect2D scissor;
-//
-//
-//vk::Sampler testImageSampler;
-//vk::Sampler testSampler;
-//
-//vk::Semaphore imageAcquiredSemaphore;
-//vk::Semaphore rendererFinishedSemaphore;
-//
-//
-//
-//
-//
-//
-//vk::Fence graphicsQueueFinishedFence;
-//
-//std::unique_ptr<DeviceVulkan> deviceVulkan;
-//
-//
-//
-//std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
-//vk::PipelineLayout pipelineLayoutPostProc;
-//vk::Pipeline pipelinePostProc;
-//
-//std::unique_ptr<RenderScenePass> renderPassScene;
-
-//	CopyDataToBuffer(VkDevice(deviceVulkan->device), renderingContextResources[iCurrentBuff]->uniformBufferLights.allocation, (void*)&lightConstantBufferData, sizeof(lightConstantBufferData));
-//}
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//bindings)[0];
-//LayoutPBR[1], uniformBinding)[0];
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//	deviceVulkan->device.acquireNextImageKHR(deviceVulkan->swapchain.swapchain, UINT64_MAX, imageAcquiredSemaphore, vk::Fence(nullptr), &currentBuffer);
-//	vmaSetCurrentFrameIndex(allocator, currentBuffer);
-//
-//
-//	
-//
-//	
-//	
-//
-//
-//	
-//	
-//	
-//	
-//	
-//	
-//	
-//
-//	
-//
-//	
-//	
-//	
-//	
-//	
-//	
-//	
-//
-//	
-//
-//}
-//
-//void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Light>& lights)
-//{
-//	UpdateUniformbufferFrame((currentBuffer + 1) % 2, iCamera, lights);
-//}
-//
-//void SetupTexturesForObject(Material& material, std::vector<BufferVulkan>& iStagingBuffers, vk::CommandBuffer iBuffer);
-//
-//
-//
-//
-//// Will screw up if the GPU is already running, should fence it
-
-//
-//	EndSingleTimeCommands(deviceVulkan->device, cmdBufferResources, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
-//
-//	
-//	
-//	
-//	
-//
-//	stagingBuffers.clear();
-//	stagingBuffers.resize(0);
-//	renderPassScene = std::make_unique<RenderScenePass>();
-//	renderPassScene->CreateRenderpass(deviceVulkan->device, deviceVulkan->swapchain.format, NUM_SAMPLES);
-//
-//	SetupUniformbuffer();
-//	SetupShaders();
-//
-//	SetupDepthbuffer();
-//
-//	SetupScenePassData();
-//
-//	SetupFramebuffers();
-//	SetupQuerypool(deviceVulkan->device);
-//
-//
-//	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(deviceVulkan->device, cmdPool->GetPool());
-//	TransitionImageLayout(cmdBufferTextures, depthBuffer.image, depthBuffer.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
-//
-//	
-//	
-//	
-//	
-//
-//	
-//	
-//	
-//
-//	
-//
-//	
-//	
-//	
-//	
-//	
-//	
-//
-//
-//
-//	
-//	
-//
-//
-//	
-//	
-//	
-//
-//	
-//	
-//	
-//
-//	
-//	
-//
-//	EndSingleTimeCommands(deviceVulkan->device, cmdBufferTextures, cmdPool->GetPool(), deviceVulkan->graphicsQueue);
-//	for (auto& e : stagingBuffers)
-//	{
-//		vmaDestroyBuffer(allocator, e.buffer, e.allocation);
-//	}
-//	stagingBuffers.clear();
-//	stagingBuffers.resize(0);
-//
-//	SetupPipeline();
-//	SetupPostProcPipeline();
-//
-//	SetupSemaphores();
-//
-//	CreateTextureSampler(deviceVulkan->device);
-//
-//	SetupDescriptorSet(iObjects);
-//}
-//
-//
-//void RendererVulkan::Create(std::vector<Object>& iObjects, 
-//	ResourceManager* const iResourceManager,
-//	iLowLevelWindow* const iIlowLevelWindow)
-//{
-//
-//	SetupApplication(iIlowLevelWindow);
-//
-//	SetupDevice();
-//
-//	for (int i = 0; i < NUM_FRAMES; ++i)
-//	{
-//		auto contextResources = std::make_unique<RenderingContextResources>();
-//		renderingContextResources.push_back(std::move(contextResources));
-//	}
-//
-//	SetupSwapchain();
-//	deviceVulkan->SetupDeviceQueue();
-//	SetupCommandBuffer();
-//
-//	SetupIMGUI(iIlowLevelWindow);
-//
-//}
-//
-
-
 #define NUM_DESCRIPTOR_SETS 4
 
 #define VMA_IMPLEMENTATION
@@ -657,6 +20,8 @@
 #include "GLFWLowLevelWindow.h"
 #include "ConstantBuffers.h"
 #include "NewCamera.h"
+#include "FramebufferVulkan.h"
+
 RendererVulkan::RendererVulkan()
 {
 
@@ -1033,6 +398,9 @@ void RendererVulkan::SetupPipeline()
 
 	pipelinePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
+	gfxPipe.setRenderPass(framebufferRenderScene->renderpass);
+
+	pipelineRenderScenePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
 	// Create graphics pipeline for the second shader
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
@@ -1057,6 +425,12 @@ void RendererVulkan::SetupPipeline()
 
 
 	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+
+	gfxPipe2.setRenderPass(framebufferRenderScene->renderpass);
+
+	pipelineRenderSceneRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+
+	
 }
 
 void RendererVulkan::SetupPipelinePostProc()
@@ -1238,7 +612,6 @@ void RendererVulkan::SetupPipelinePostProc()
 
 	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 }
-
 
 void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 {
@@ -1594,7 +967,6 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 
 void RendererVulkan::SetupCommandBuffersImgui()
 {
-
 	vk::ClearValue clear_values[1] = {};
 	clear_values[0].color.float32[0] = 1.0f;
 	clear_values[0].color.float32[1] = 0.0f;
@@ -1621,8 +993,7 @@ void RendererVulkan::SetupCommandBuffersImgui()
 	contextResources[backend->context.currentFrame]->imguiBuffer.end();
 }
 
-
-void RendererVulkan::SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects)
+void RendererVulkan::RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects)
 {
 	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 0.2f;
@@ -1687,16 +1058,129 @@ void RendererVulkan::SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint3
 	iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
 }
 
+void RendererVulkan::SetupFramebuffers()
+{
+	framebufferRenderScene = std::make_unique<FramebufferVulkan>(backend->context.currentParameters.width, backend->context.currentParameters.height);
+
+	AttachmentCreateInfo attachmentCI = {};
+	attachmentCI.format = vk::Format::eR8G8B8A8Unorm;
+	attachmentCI.usage = vk::ImageUsageFlagBits::eColorAttachment  | vk::ImageUsageFlagBits::eSampled;
+	attachmentCI.width = backend->context.currentParameters.width;
+	attachmentCI.height = backend->context.currentParameters.height;
+	attachmentCI.layerCount = 1;
+
+	// Add color attachment
+	framebufferRenderScene->AddAttachment(backend->context.device, attachmentCI, backend->allocator);
+
+	attachmentCI = {};
+	attachmentCI.format = vk::Format::eD24UnormS8Uint;
+	attachmentCI.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+	attachmentCI.width = backend->context.currentParameters.width;
+	attachmentCI.height = backend->context.currentParameters.height;
+	attachmentCI.layerCount = 1;
+
+	// Add depth attachment
+	framebufferRenderScene->AddAttachment(backend->context.device, attachmentCI, backend->allocator);
+
+	framebufferRenderScene->CreateRenderpass(backend->context.device);
+}
 
 void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
 	backend->AcquireImage();
 	SetupCommandBuffersImgui();
+
+
+	// Render to scene
+	vk::CommandBuffer sceneRenderbuffer = this->contextResources[backend->context.currentFrame]->baseBuffer;
+	
+
+	vk::ClearValue clear_values[2] = {};
+	clear_values[0].color.float32[0] = 1.0f;
+	clear_values[0].color.float32[1] = 0.0f;
+	clear_values[0].color.float32[2] = 0.0f;
+	clear_values[0].color.float32[3] = 1.0f;
+	clear_values[1].depthStencil.depth = 1.0f;
+	clear_values[1].depthStencil.stencil = 0.0f;
+
+	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
+		.setRenderPass(framebufferRenderScene->renderpass)
+		.setFramebuffer(framebufferRenderScene->framebuffer)
+		.setClearValueCount(2)
+		.setPClearValues(clear_values);
+
+	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
+	sceneRenderbuffer.begin(cmdBufferBeginInfo);
+
+	
+	sceneRenderbuffer.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
+
+	const vk::DeviceSize offsets[1] = { 0 };
+
+	sceneRenderbuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRenderScenePBR);
+
+
+	InitViewports(sceneRenderbuffer);
+	InitScissors(sceneRenderbuffer);
+
+
+	std::vector<DescriptorSet> totalSet;
+	// Add our descriptor data to this set, and use this set
+	totalSet.resize(4);
+	for (int j = 0; j < (iObjects.size() - 1); ++j)
+	{
+		ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[j].model);
+		ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[j].renderingData);
+
+		contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet = model->textureSet;
+		contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
+
+
+		totalSet[0] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.samplerSet);
+		totalSet[1] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perFrameUniformBufferSet);
+		totalSet[2] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet);
+		totalSet[3] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perObjectUniformBufferSet);
+
+		sceneRenderbuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
+		sceneRenderbuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
+		sceneRenderbuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
+		sceneRenderbuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
+	}
+
+	ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[iObjects.size() - 1].model);
+	ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[iObjects.size() - 1].renderingData);
+
+	sceneRenderbuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRenderSceneRed);
+	InitViewports(sceneRenderbuffer);
+	InitScissors(sceneRenderbuffer);
+
+	contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet = model->textureSet;
+	contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
+
+
+	totalSet[0] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.samplerSet);
+	totalSet[1] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perFrameUniformBufferSet);
+	totalSet[2] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet);
+	totalSet[3] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perObjectUniformBufferSet);
+
+	sceneRenderbuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutRenderScene, 0, totalSet.size(), totalSet.data(), 0, NULL);
+	sceneRenderbuffer.bindVertexBuffers(0, 1, &model->vertexBuffer.buffer, offsets);
+	sceneRenderbuffer.bindIndexBuffer(model->indexBuffer.buffer, 0, IndexType::eUint32);
+	sceneRenderbuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
+
+	//nderObjsToBuffer(sceneRenderbuffer, backend->context.currentFrame, iObjects);
+
+	sceneRenderbuffer.endRenderPass();
+	sceneRenderbuffer.end();
+	// End render to scene
+
+
+	
 	backend->BeginFrame();
-	SetupCommandBuffers(backend->context.commandBuffer, backend->context.currentFrame, iObjects);
+	RenderObjsToBuffer(backend->context.commandBuffer, backend->context.currentFrame, iObjects);
 	// Render objects here into the final pass
 	backend->BlockUntilGpuIdle();
-	backend->EndFrame(contextResources[backend->context.currentFrame]->imguiBuffer);
+	backend->EndFrame(contextResources[backend->context.currentFrame]->baseBuffer,contextResources[backend->context.currentFrame]->imguiBuffer);
 	backend->BlockSwapBuffers();
 }
 
@@ -1723,7 +1207,7 @@ void RendererVulkan::Destroy()
 		backend->context.device.destroyImageView(e->data.view);
 	}
 
-	for (auto& e : objRenderingData)
+	for (auto& e : objRenderingData)	
 	{
 		vmaDestroyBuffer(backend->allocator, e->positionUniformBuffer.buffer, e->positionUniformBuffer.allocation);
 	}
@@ -1739,7 +1223,7 @@ void RendererVulkan::Destroy()
 	}
 	backend->Shutdown();
 }
-
+	
 void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow)
 {
 	backend = std::make_unique<BackendVulkan>();
@@ -1755,6 +1239,7 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 
 	// Setup and load the shaders and corresponding pipelines
 	SetupShaders();
+	SetupFramebuffers();
 	SetupPipeline();
 
 	// Setup samplers

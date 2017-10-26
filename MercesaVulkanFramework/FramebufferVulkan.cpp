@@ -94,12 +94,14 @@ void FramebufferVulkan::AddAttachment(
 	if (attachment.hasDepth() || attachment.hasStencil())
 	{
 		attachment.description.finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
+		attachment.description.setStencilLoadOp(AttachmentLoadOp::eClear);
 	}
 	else
 	{
 		attachment.description.finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 	}
 
+	attachment.description.finalLayout = vk::ImageLayout::eGeneral;
 
 	attachments.push_back(attachment);
 }
@@ -165,6 +167,7 @@ void FramebufferVulkan::CreateRenderpass(const vk::Device& iDevice)
 	dependencies[0].dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
 	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
+
 	dependencies[1].srcSubpass = 0;
 	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -179,8 +182,8 @@ void FramebufferVulkan::CreateRenderpass(const vk::Device& iDevice)
 		.setAttachmentCount(static_cast<uint32_t>(attachmentDescription.size()))
 		.setSubpassCount(1)
 		.setPSubpasses(&subpass)
-		.setDependencyCount(2)
-		.setPDependencies(dependencies.data());
+		.setDependencyCount(0)
+		.setPDependencies(nullptr);
 
 	renderpass = iDevice.createRenderPass(renderPassInfo);
 

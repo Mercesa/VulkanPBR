@@ -75,7 +75,7 @@ public:
 	void Shutdown();
 
 	void BeginFrame();
-	void EndFrame(vk::CommandBuffer iGuiBuffer);
+	void EndFrame(vk::CommandBuffer iSceneRenderBuffer, vk::CommandBuffer iGuiBuffer);
 	void BlockSwapBuffers();
 	void AcquireImage();
 	void BlockUntilGpuIdle();

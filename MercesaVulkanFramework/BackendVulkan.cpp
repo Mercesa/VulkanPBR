@@ -150,7 +150,7 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");
@@ -1105,7 +1105,7 @@ void BackendVulkan::BeginFrame()
 	context.commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 }
 
-void BackendVulkan::EndFrame(vk::CommandBuffer iGuiBuffer)
+void BackendVulkan::EndFrame(vk::CommandBuffer iSceneRenderBuffer, vk::CommandBuffer iGuiBuffer)
 {
 	context.commandBuffer.endRenderPass();
 
@@ -1118,10 +1118,10 @@ void BackendVulkan::EndFrame(vk::CommandBuffer iGuiBuffer)
 
 	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
-	vk::CommandBuffer buffers[2]{ context.commandBuffer, iGuiBuffer };
+	vk::CommandBuffer buffers[3]{ context.commandBuffer, iSceneRenderBuffer, iGuiBuffer };
 	
 	vk::SubmitInfo subInfo = vk::SubmitInfo()
-		.setCommandBufferCount(2)
+		.setCommandBufferCount(3)
 		.setPCommandBuffers(buffers)
 		.setWaitSemaphoreCount(1)
 		.setPWaitSemaphores(acquire)

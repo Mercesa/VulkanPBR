@@ -40,6 +40,8 @@ class ShaderProgramVulkan;
 class CommandpoolVulkan;
 class DescriptorPoolVulkan;
 
+class FramebufferVulkan;
+
 #include "GraphicsParameters.h"
 #include "VulkanDataObjects.h"
 #include "ConstantBuffers.h"
@@ -114,6 +116,8 @@ private:
 	void SetupPipeline();
 	void SetupPipelinePostProc();
 
+	void SetupFramebuffers();
+
 	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
 	
 	void SetupSamplers();
@@ -129,7 +133,7 @@ private:
 
 	void UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights);
 
-	void SetupCommandBuffers(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
+	void RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
 
 	std::unique_ptr<BackendVulkan> backend;
 
@@ -145,9 +149,12 @@ private:
 	vk::PipelineLayout pipelineLayoutRenderScene;
 	vk::Pipeline pipelinePBR;
 	vk::Pipeline pipelineRed;
+	vk::Pipeline pipelineRenderScenePBR;
+	vk::Pipeline pipelineRenderSceneRed;
 
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
+
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
 
 	// Viewport and scissor rect
@@ -173,5 +180,7 @@ private:
 
 	// Descriptor resource management
 	std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
+
+	std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
 };
 
