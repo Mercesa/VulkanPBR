@@ -493,26 +493,6 @@ void RendererVulkan::SetupPipelinePostProc()
 	// 8  bits 
 	// 12 bits
 
-	vk::VertexInputAttributeDescription att1;
-	att1.binding = 0;
-	att1.location = 0;
-	att1.format = vk::Format::eR32G32B32Sfloat;
-
-	vk::VertexInputAttributeDescription att2;
-	att2.binding = 0;
-	att2.location = 1;
-	att2.format = vk::Format::eR32G32Sfloat;
-	att2.offset = 12;
-
-	vk::VertexInputAttributeDescription att3;
-	att3.binding = 0;
-	att3.location = 2;
-	att3.format = vk::Format::eR32G32B32Sfloat;
-	att3.offset = 20;
-
-	inputAttributes.push_back(att1);
-	inputAttributes.push_back(att2);
-	inputAttributes.push_back(att3);
 
 
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
@@ -520,13 +500,26 @@ void RendererVulkan::SetupPipelinePostProc()
 		.setPVertexBindingDescriptions(&inputDescription)
 		.setPVertexAttributeDescriptions(inputAttributes.data())
 		.setVertexAttributeDescriptionCount(inputAttributes.size())
-		.setVertexBindingDescriptionCount(1);
+		.setVertexBindingDescriptionCount(0);
 
 	vk::PipelineInputAssemblyStateCreateInfo ia = vk::PipelineInputAssemblyStateCreateInfo()
 		.setPrimitiveRestartEnable(VK_FALSE)
 		.setTopology(vk::PrimitiveTopology::eTriangleList);
 
-	vk::PipelineRasterizationStateCreateInfo rs = CreateStandardRasterizerState();
+
+		vk::PipelineRasterizationStateCreateInfo rs = vk::PipelineRasterizationStateCreateInfo()
+			.setPolygonMode(vk::PolygonMode::eFill)
+			.setCullMode(vk::CullModeFlagBits::eFront)
+			.setFrontFace(vk::FrontFace::eCounterClockwise)
+			.setDepthClampEnable(VK_FALSE)
+			.setRasterizerDiscardEnable(VK_FALSE)
+			.setDepthBiasEnable(VK_FALSE)
+			.setDepthBiasConstantFactor(0)
+			.setDepthBiasClamp(0)
+			.setDepthBiasSlopeFactor(0)
+			.setLineWidth(1.0f);
+
+
 
 
 	vk::PipelineColorBlendAttachmentState att_state[1] = {};
@@ -616,12 +609,16 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 	descriptorPool->Create(backend->context.device, PoolData(10, 10, 10, 400, 2, 100));
 
 	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
+	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
 		contextResources[i]->descriptorSetPBRShader.samplerSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[0], bindings)[0];
 		contextResources[i]->descriptorSetPBRShader.perFrameUniformBufferSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPBR[1], uniformBinding)[0];
-		
+
+		// Setup descriptor set for this shader
+		contextResources[i]->descriptorSetPostProc.inputTextureSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPostProc[0], postProcBinding)[0];
+
 	}
 
 	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
@@ -719,6 +716,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 	}
 
+	// Setup descriptors for the render scene shaders
 	for (int i = 0; i < contextResources.size(); ++i)
 	{
 		std::array<vk::WriteDescriptorSet, 1> writes = {};
@@ -764,7 +762,26 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 
 		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(uniform_writes.size()), uniform_writes.data(), 0, NULL);
-	}	
+	}
+
+	// Setup descriptors for the post proc scene
+	for (int i = 0; i < contextResources.size(); ++i)
+	{
+		std::array<vk::WriteDescriptorSet, 1> writes = {};
+
+		writes[0] = {};
+		writes[0].pNext = NULL;
+		writes[0].dstSet = contextResources[i]->descriptorSetPostProc.inputTextureSet;
+		writes[0].descriptorCount = 1;
+		writes[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes[0].pImageInfo = &offscreenTest->descriptor;
+		writes[0].dstArrayElement = 0;
+		writes[0].dstBinding = 0;
+
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+
+	}
 }
 
 void RendererVulkan::SetupCommandPoolAndBuffers()
@@ -1177,8 +1194,20 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	// End render to scene
 
 	
+
+	std::vector<DescriptorSet> postProcSets = { contextResources[backend->context.currentFrame]->descriptorSetPostProc.inputTextureSet };
+
+	// begin rendering to our framebuffer
 	backend->BeginFrame();
-	RenderObjsToBuffer(backend->context.commandBuffer, backend->context.currentFrame, iObjects);
+
+	InitViewports(backend->context.commandBuffer);
+	InitScissors(backend->context.commandBuffer);
+	backend->context.commandBuffer.bindDescriptorSets(PipelineBindPoint::eGraphics, pipelineLayoutPostProc, 0, postProcSets.size(), postProcSets.data(), 0, NULL);
+	backend->context.commandBuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelinePostProc);
+	backend->context.commandBuffer.draw(3, 1, 0, 0);
+
+
+	//RenderObjsToBuffer(backend->context.commandBuffer, backend->context.currentFrame, iObjects);
 	// Render objects here into the final pass
 	backend->BlockUntilGpuIdle();
 	backend->EndFrame(contextResources[backend->context.currentFrame]->baseBuffer,contextResources[backend->context.currentFrame]->imguiBuffer);

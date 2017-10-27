@@ -56,6 +56,7 @@ struct ShaderResourcesPBR
 	vk::DescriptorSet textureSet;
 };
 
+
 struct ShaderResourcesPostProc
 {
 	vk::DescriptorSet inputTextureSet;
