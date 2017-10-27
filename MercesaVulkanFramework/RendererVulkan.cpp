@@ -22,6 +22,7 @@
 #include "NewCamera.h"
 #include "FramebufferVulkan.h"
 
+
 RendererVulkan::RendererVulkan()
 {
 
@@ -475,10 +476,10 @@ void RendererVulkan::SetupPipelinePostProc()
 		.setPNext(NULL)
 		.setPushConstantRangeCount(0)
 		.setPPushConstantRanges(NULL)
-		.setSetLayoutCount(1)
+		.setSetLayoutCount(shaderLayout.size())
 		.setPSetLayouts(shaderLayout.data());
 
-	pipelineLayoutRenderScene = backend->context.device.createPipelineLayout(pPipelineLayoutCreateInfo);
+	pipelineLayoutPostProc = backend->context.device.createPipelineLayout(pPipelineLayoutCreateInfo);
 
 	std::vector<vk::VertexInputAttributeDescription> inputAttributes;
 	vk::VertexInputBindingDescription inputDescription;
@@ -491,8 +492,7 @@ void RendererVulkan::SetupPipelinePostProc()
 	// 12 bits 
 	// 8  bits 
 	// 12 bits
-	// 12 bits
-	// 12 bits
+
 	vk::VertexInputAttributeDescription att1;
 	att1.binding = 0;
 	att1.location = 0;
@@ -510,30 +510,16 @@ void RendererVulkan::SetupPipelinePostProc()
 	att3.format = vk::Format::eR32G32B32Sfloat;
 	att3.offset = 20;
 
-	vk::VertexInputAttributeDescription att4;
-	att4.binding = 0;
-	att4.location = 3;
-	att4.format = vk::Format::eR32G32B32Sfloat;
-	att4.offset = 32;
-
-	vk::VertexInputAttributeDescription att5;
-	att5.binding = 0;
-	att5.location = 4;
-	att5.format = vk::Format::eR32G32B32Sfloat;
-	att5.offset = 44;
-
-
 	inputAttributes.push_back(att1);
 	inputAttributes.push_back(att2);
 	inputAttributes.push_back(att3);
-	inputAttributes.push_back(att4);
-	inputAttributes.push_back(att5);
+
 
 	vk::PipelineVertexInputStateCreateInfo vi = vk::PipelineVertexInputStateCreateInfo()
 		.setFlags(PipelineVertexInputStateCreateFlagBits(0))
 		.setPVertexBindingDescriptions(&inputDescription)
 		.setPVertexAttributeDescriptions(inputAttributes.data())
-		.setVertexAttributeDescriptionCount(5)
+		.setVertexAttributeDescriptionCount(inputAttributes.size())
 		.setVertexBindingDescriptionCount(1);
 
 	vk::PipelineInputAssemblyStateCreateInfo ia = vk::PipelineInputAssemblyStateCreateInfo()
@@ -598,11 +584,11 @@ void RendererVulkan::SetupPipelinePostProc()
 		.setMinSampleShading(0.0f)
 		.setPSampleMask(VK_NULL_HANDLE);
 
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfo = shaderProgramPBR->GetPipelineShaderInfo();
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfo = shaderProgramPostProc->GetPipelineShaderInfo();
 
 	// Create graphics pipeline for the first shader
 	vk::GraphicsPipelineCreateInfo gfxPipe = GraphicsPipelineCreateInfo()
-		.setLayout(pipelineLayoutRenderScene)
+		.setLayout(pipelineLayoutPostProc)
 		.setBasePipelineHandle(nullptr)
 		.setBasePipelineIndex(0)
 		.setPVertexInputState(&vi)
@@ -619,32 +605,8 @@ void RendererVulkan::SetupPipelinePostProc()
 		.setRenderPass(backend->context.renderpass)
 		.setSubpass(0);
 
-	pipelinePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
+	pipelinePostProc = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
-
-	// Create graphics pipeline for the second shader
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
-
-	vk::GraphicsPipelineCreateInfo gfxPipe2 = GraphicsPipelineCreateInfo()
-		.setLayout(pipelineLayoutRenderScene)
-		.setBasePipelineHandle(nullptr)
-		.setBasePipelineIndex(0)
-		.setPVertexInputState(&vi)
-		.setPInputAssemblyState(&ia)
-		.setPRasterizationState(&rs)
-		.setPColorBlendState(&cb)
-		.setPTessellationState(VK_NULL_HANDLE)
-		.setPMultisampleState(&ms)
-		.setPDynamicState(&dynamicState)
-		.setPViewportState(&vp)
-		.setPDepthStencilState(&ds)
-		.setPStages(shaderPipelineInfoRed.data())
-		.setStageCount(shaderPipelineInfoRed.size())
-		.setRenderPass(backend->context.renderpass)
-		.setSubpass(0);
-
-
-	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 }
 
 void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
@@ -999,7 +961,7 @@ void RendererVulkan::BeginFrame(const NewCamera& iCamera, const std::vector<Ligh
 	UpdateUniformBufferFrame(iCamera, iLights);
 }
 
-void RendererVulkan::SetupCommandBuffersImgui()
+void RendererVulkan::RecordCommandBuffersImgui()
 {
 	vk::ClearValue clear_values[1] = {};
 	clear_values[0].color.float32[0] = 1.0f;
@@ -1092,37 +1054,46 @@ void RendererVulkan::RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32
 	iBuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
 }
 
-void RendererVulkan::SetupFramebuffers()
+void RendererVulkan::GenerateQuad()
 {
-	framebufferRenderScene = std::make_unique<FramebufferVulkan>(backend->context.currentParameters.width, backend->context.currentParameters.height);
+	quadModel = std::make_unique<ModelVulkan>();
 
-	AttachmentCreateInfo attachmentCI = {};
-	attachmentCI.format = vk::Format::eR8G8B8A8Unorm;
-	attachmentCI.usage = vk::ImageUsageFlagBits::eColorAttachment  | vk::ImageUsageFlagBits::eSampled;
-	attachmentCI.width = backend->context.currentParameters.width;
-	attachmentCI.height = backend->context.currentParameters.height;
-	attachmentCI.layerCount = 1;
+	struct VertexData
+	{
+		float pos[3];
+		float uv[2];
+		float normal[3];
+	};
 
-	// Add color attachment
-	framebufferRenderScene->AddAttachment(backend->context.device, attachmentCI, backend->allocator);
+	std::vector<VertexData> vertexBuffer = 
+	{
+		{ { 1.0f, 1.0f, 0.0f },{ 1.0f, 1.0f },{ 0.0f, 0.0f, 1.0f } },
+		{ { 0.0f, 1.0f, 0.0f },{ 0.0f, 1.0f },{ 0.0f, 0.0f, 1.0f } },
+		{ { 0.0f, 0.0f, 0.0f },{ 0.0f, 0.0f },{ 0.0f, 0.0f, 1.0f } },
+		{ { 1.0f, 0.0f, 0.0f },{ 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0f } }
+	};
 
-	attachmentCI = {};
-	attachmentCI.format = vk::Format::eD24UnormS8Uint;
-	attachmentCI.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
-	attachmentCI.width = backend->context.currentParameters.width;
-	attachmentCI.height = backend->context.currentParameters.height;
-	attachmentCI.layerCount = 1;
+	std::vector<BufferVulkan> stagingBuffers;
 
-	// Add depth attachment
-	framebufferRenderScene->AddAttachment(backend->context.device, attachmentCI, backend->allocator);
+	std::vector<uint32_t> indexBuffer = { 0,1,2, 2,3,0 };
+	quadModel->indiceCount = indexBuffer.size();
 
-	framebufferRenderScene->CreateRenderpass(backend->context.device);
+	// Stage and upload 
+	vk::CommandBuffer tBuffer = BeginSingleTimeCommands(backend->context.device, contextResources[0]->pool->GetPool());
+	SetupBufferStaged(backend->context.device, tBuffer, backend->allocator, quadModel->vertexBuffer, stagingBuffers, sizeof(VertexData) * vertexBuffer.size(), vertexBuffer.data(), vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+	SetupBufferStaged(backend->context.device, tBuffer, backend->allocator, quadModel->indexBuffer, stagingBuffers, sizeof(uint32_t) * indexBuffer.size(), indexBuffer.data(), vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+	EndSingleTimeCommands(backend->context.device, tBuffer, contextResources[0]->pool->GetPool(), backend->context.graphicsQueue);;
+
+	for (auto& e : stagingBuffers)
+	{
+		vmaDestroyBuffer(backend->allocator, e.buffer, e.allocation);
+	}
 }
 
 void RendererVulkan::Render(const std::vector<Object>& iObjects)
 {
 	backend->AcquireImage();
-	SetupCommandBuffersImgui();
+	RecordCommandBuffersImgui();
 
 
 	// Render to scene
@@ -1143,22 +1114,18 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 		.setClearValueCount(2)
 		.setPClearValues(clear_values);
 
-	renderPassBeginInfo.renderArea.extent = vk::Extent2D(backend->context.currentParameters.width, backend->context.currentParameters.height);
+	renderPassBeginInfo.renderArea.extent = vk::Extent2D(offscreenTest->width, offscreenTest->height);
 
 	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
 	sceneRenderbuffer.begin(cmdBufferBeginInfo);
-
-	
 	sceneRenderbuffer.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
 
 	const vk::DeviceSize offsets[1] = { 0 };
 
 	sceneRenderbuffer.bindPipeline(PipelineBindPoint::eGraphics, pipelineRenderScenePBR);
 
-
 	InitViewports(sceneRenderbuffer);
 	InitScissors(sceneRenderbuffer);
-
 
 	std::vector<DescriptorSet> totalSet;
 	// Add our descriptor data to this set, and use this set
@@ -1193,7 +1160,6 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet = model->textureSet;
 	contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perObjectUniformBufferSet = renderingData->positionBufferSet;
 
-
 	totalSet[0] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.samplerSet);
 	totalSet[1] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.perFrameUniformBufferSet);
 	totalSet[2] = (contextResources[backend->context.currentFrame]->descriptorSetPBRShader.textureSet);
@@ -1209,7 +1175,6 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	sceneRenderbuffer.endRenderPass();
 	sceneRenderbuffer.end();
 	// End render to scene
-
 
 	
 	backend->BeginFrame();
@@ -1426,19 +1391,22 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 		contextResources.push_back(std::move(tContextResources));
 	}
 
+	SetupCommandPoolAndBuffers();
+
 	// Setup and load the shaders and corresponding pipelines
 	SetupShaders();
-	SetupFramebuffers();
 	CreateOffscreenData();
 	SetupPipeline();
+	SetupPipelinePostProc();
 
 	// Setup samplers
 	SetupSamplers();
 
 	// Setup command pool and buffers, afterwards use a buffer to setup Imgui
-	SetupCommandPoolAndBuffers();
 	SetupIMGUI(iWindow);
 
 	SetupUniformBuffers();
+
+	GenerateQuad();
 
 }

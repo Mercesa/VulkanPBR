@@ -84,7 +84,6 @@ std::vector<vk::PipelineShaderStageCreateInfo> ShaderProgramVulkan::GetPipelineS
 	}
 
 	return tPipelineShadersInfo;
-	//for(auto& e :)
 }
 
 std::vector<vk::DescriptorSetLayout> ShaderProgramVulkan::GetShaderProgramLayout()

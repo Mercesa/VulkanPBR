@@ -85,11 +85,14 @@ public:
 		std::vector<descriptorLayoutIntermediate> uniformBuffersIntermediate
 			= ParseResources(resourcesShader.uniform_buffers, compilerShader, DescriptorType::eUniformBuffer, iTypeOfShader);
 
+		std::vector<descriptorLayoutIntermediate> combinedImageSamplersIntermediate
+			= ParseResources(resourcesShader.sampled_images, compilerShader, DescriptorType::eCombinedImageSampler, iTypeOfShader);
 
 		// Put resources in a single 
 		intermediateLayout.insert(intermediateLayout.end(), sampledImagesIntermediate.begin(), sampledImagesIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), samplersIntermediate.begin(), samplersIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), uniformBuffersIntermediate.begin(), uniformBuffersIntermediate.end());
+		intermediateLayout.insert(intermediateLayout.end(), combinedImageSamplersIntermediate.begin(), combinedImageSamplersIntermediate.end());
 
 
 		return intermediateLayout;

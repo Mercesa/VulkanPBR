@@ -150,7 +150,7 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");

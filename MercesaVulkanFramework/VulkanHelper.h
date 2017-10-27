@@ -404,6 +404,40 @@ inline void SetupVertexBuffer(const vk::Device& iDevice, vk::CommandBuffer iBuff
 	oStaging.push_back(stagingT);
 }
 
+inline void SetupBufferStaged(const vk::Device& iDevice, vk::CommandBuffer iBuffer, VmaAllocator iAllocator, BufferVulkan& oVertexBuffer, std::vector<BufferVulkan>& oStaging, size_t iDataSize, void* iData, BufferUsageFlags iFlags)
+{
+	size_t dataSize = iDataSize;
+
+	BufferVulkan stagingT;
+
+	CreateSimpleBuffer(iAllocator,
+		stagingT.allocation,
+		VMA_MEMORY_USAGE_CPU_ONLY,
+		stagingT.buffer,
+		BufferUsageFlagBits::eTransferSrc,
+		dataSize);
+
+
+	CopyDataToBuffer(iDevice,
+		stagingT.allocation,
+		iData,
+		dataSize);
+
+
+	CreateSimpleBuffer(iAllocator,
+		oVertexBuffer.allocation,
+		VMA_MEMORY_USAGE_GPU_ONLY,
+		oVertexBuffer.buffer,
+		BufferUsageFlagBits::eVertexBuffer | BufferUsageFlagBits::eTransferDst,
+		dataSize);
+
+
+	// Create staging buffer
+
+	CopyBufferMemory(iBuffer, stagingT.buffer, oVertexBuffer.buffer, oVertexBuffer.allocation->GetSize());
+	oStaging.push_back(stagingT);
+}
+
 inline vk::Framebuffer CreateFrameBuffer(
 	const vk::Device& iDevice,
 	const std::vector<vk::ImageView>& iAttachments,

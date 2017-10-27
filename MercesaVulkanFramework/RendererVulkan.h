@@ -41,6 +41,7 @@ class CommandpoolVulkan;
 class DescriptorPoolVulkan;
 
 class FramebufferVulkan;
+class ModelVulkan;
 
 #include "GraphicsParameters.h"
 #include "VulkanDataObjects.h"
@@ -113,37 +114,31 @@ public:
 	void Render(const std::vector<Object>& iObjects);
 	void Destroy();
 
-
 private:
-	
 	void SetupUniformBuffers();
 
-	// Initialization functions
+	// Setup functions
 	void SetupShaders();
-	
 	void SetupPipeline();
 	void SetupPipelinePostProc();
-
-	void SetupFramebuffers();
-
 	void SetupIMGUI(iLowLevelWindow* const iIlowLevelWindow);
-	
 	void SetupSamplers();
 	void SetupCommandPoolAndBuffers();
+	void SetupDescriptorSet(const std::vector<Object>& iObjects);
+	void CreateOffscreenData();
+
 
 	void InitViewports(const vk::CommandBuffer& iBuffer);
 	void InitScissors(const vk::CommandBuffer& iBuffer);
 
 	// Render functions
-	void SetupCommandBuffersImgui();
-
-	void SetupDescriptorSet(const std::vector<Object>& iObjects);
+	void RecordCommandBuffersImgui();
 
 	void UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights);
 
 	void RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
 
-	void CreateOffscreenData();
+	void GenerateQuad();
 
 private:
 
@@ -159,10 +154,14 @@ private:
 
 	// Pipeline layout and pipelines and the corresponding shader programs
 	vk::PipelineLayout pipelineLayoutRenderScene;
+
 	vk::Pipeline pipelinePBR;
 	vk::Pipeline pipelineRed;
 	vk::Pipeline pipelineRenderScenePBR;
 	vk::Pipeline pipelineRenderSceneRed;
+
+	vk::Pipeline pipelinePostProc;
+	vk::PipelineLayout pipelineLayoutPostProc;
 
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
@@ -196,6 +195,8 @@ private:
 	std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
 
 	std::unique_ptr<Offscreenpass> offscreenTest;
+
+	std::unique_ptr<ModelVulkan> quadModel;
 
 };
 
