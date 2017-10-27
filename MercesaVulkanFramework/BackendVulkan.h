@@ -64,6 +64,7 @@ public:
 	GFXParams currentParameters;
 };
 
+
 class BackendVulkan
 {
 
@@ -120,7 +121,6 @@ private:
 	void CreateCommandPool();
 
 
-
 	// Two functions which are used to get the instance layers we want
 	void GetInstanceLayers(std::vector<const char*>& iResult);
 	void GetInstanceExtensions(std::vector<const char*>& iResult);
@@ -165,5 +165,6 @@ private:
 	std::vector<vk::Semaphore> renderCompleteSemaphore;
 
 	VkDebugReportCallbackEXT callBack;
+
 
 };

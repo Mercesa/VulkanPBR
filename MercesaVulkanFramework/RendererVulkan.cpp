@@ -398,9 +398,26 @@ void RendererVulkan::SetupPipeline()
 
 	pipelinePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
-	gfxPipe.setRenderPass(framebufferRenderScene->renderpass);
+	vk::GraphicsPipelineCreateInfo gfxPipeFirst = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayoutRenderScene)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(shaderPipelineInfo.data())
+		.setStageCount(shaderPipelineInfo.size())
+		.setRenderPass(offscreenTest->renderpass)
+		.setSubpass(0);
 
-	pipelineRenderScenePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
+
+	pipelineRenderScenePBR = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipeFirst);
 
 	// Create graphics pipeline for the second shader
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoRed = shaderProgramRed->GetPipelineShaderInfo();
@@ -426,9 +443,26 @@ void RendererVulkan::SetupPipeline()
 
 	pipelineRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
 
-	gfxPipe2.setRenderPass(framebufferRenderScene->renderpass);
+	vk::GraphicsPipelineCreateInfo gfxPipeSecond = GraphicsPipelineCreateInfo()
+		.setLayout(pipelineLayoutRenderScene)
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0)
+		.setPVertexInputState(&vi)
+		.setPInputAssemblyState(&ia)
+		.setPRasterizationState(&rs)
+		.setPColorBlendState(&cb)
+		.setPTessellationState(VK_NULL_HANDLE)
+		.setPMultisampleState(&ms)
+		.setPDynamicState(&dynamicState)
+		.setPViewportState(&vp)
+		.setPDepthStencilState(&ds)
+		.setPStages(shaderPipelineInfoRed.data())
+		.setStageCount(shaderPipelineInfoRed.size())
+		.setRenderPass(offscreenTest->renderpass)
+		.setSubpass(0);
 
-	pipelineRenderSceneRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe2);
+
+	pipelineRenderSceneRed = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipeSecond);
 
 	
 }
@@ -1104,10 +1138,12 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	clear_values[1].depthStencil.stencil = 0.0f;
 
 	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
-		.setRenderPass(framebufferRenderScene->renderpass)
-		.setFramebuffer(framebufferRenderScene->framebuffer)
+		.setRenderPass(offscreenTest->renderpass)
+		.setFramebuffer(offscreenTest->framebuffer)
 		.setClearValueCount(2)
 		.setPClearValues(clear_values);
+
+	renderPassBeginInfo.renderArea.extent = vk::Extent2D(backend->context.currentParameters.width, backend->context.currentParameters.height);
 
 	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
 	sceneRenderbuffer.begin(cmdBufferBeginInfo);
@@ -1223,7 +1259,160 @@ void RendererVulkan::Destroy()
 	}
 	backend->Shutdown();
 }
-	
+
+void RendererVulkan::CreateOffscreenData()
+{
+	offscreenTest = std::make_unique<Offscreenpass>();
+
+	offscreenTest->width = backend->context.currentParameters.width;
+	offscreenTest->height = backend->context.currentParameters.height;
+
+	vk::Format depthFormat = vk::Format::eD24UnormS8Uint;
+
+	// Create image and view for colour buffer
+	CreateSimpleImage(backend->allocator, 
+		offscreenTest->colorTexture.allocation,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY, 
+		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
+		vk::Format::eR8G8B8A8Unorm, ImageLayout::eUndefined, 
+		offscreenTest->colorTexture.image, 
+		offscreenTest->width, offscreenTest->height);
+
+	vk::ImageViewCreateInfo colorImageView;
+	colorImageView.format = vk::Format::eR8G8B8A8Unorm;
+	colorImageView.subresourceRange = {};
+	colorImageView.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	colorImageView.subresourceRange.baseMipLevel = 0;
+	colorImageView.subresourceRange.levelCount = 1;
+	colorImageView.subresourceRange.baseArrayLayer = 0;
+	colorImageView.subresourceRange.layerCount = 1;
+	colorImageView.viewType = ImageViewType::e2D;
+	colorImageView.image = offscreenTest->colorTexture.image;
+
+	offscreenTest->colorTexture.view = backend->context.device.createImageView(colorImageView);
+
+	// create image and view for depth buffer
+	CreateSimpleImage(backend->allocator,
+		offscreenTest->depthTexture.allocation,
+		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
+		vk::Format::eD24UnormS8Uint, ImageLayout::eUndefined,
+		offscreenTest->depthTexture.image,
+		offscreenTest->width, offscreenTest->height);
+
+
+	vk::ImageViewCreateInfo depthImageView;
+	depthImageView.format = vk::Format::eD24UnormS8Uint;
+	depthImageView.subresourceRange = {};
+	depthImageView.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+	depthImageView.subresourceRange.baseMipLevel = 0;
+	depthImageView.subresourceRange.levelCount = 1;
+	depthImageView.subresourceRange.baseArrayLayer = 0;
+	depthImageView.subresourceRange.layerCount = 1;
+	depthImageView.image = offscreenTest->depthTexture.image;
+	depthImageView.viewType = ImageViewType::e2D;
+
+	offscreenTest->depthTexture.view = backend->context.device.createImageView(depthImageView);
+
+	// Create renderpass
+	LOG(INFO) << "Created offscreen data";
+
+
+	vk::SamplerCreateInfo samplerInfo = vk::SamplerCreateInfo()
+		.setMagFilter(Filter::eLinear)
+		.setMinFilter(Filter::eLinear)
+		.setMipmapMode(SamplerMipmapMode::eLinear)
+		.setAddressModeU(SamplerAddressMode::eClampToEdge)
+		.setAddressModeV(SamplerAddressMode::eClampToEdge)
+		.setAddressModeW(SamplerAddressMode::eClampToEdge)
+		.setMipLodBias(1.0f)
+		.setMaxAnisotropy(1.0f)
+		.setMinLod(0.0f)
+		.setMaxLod(1.0f)
+		.setBorderColor(BorderColor::eFloatOpaqueWhite);
+
+	offscreenTest->sampler = backend->context.device.createSampler(samplerInfo);
+
+	std::array<vk::AttachmentDescription, 2> attachmentDescriptions = {};
+
+	attachmentDescriptions[0].format = vk::Format::eR8G8B8A8Unorm;
+	attachmentDescriptions[0].samples = vk::SampleCountFlagBits::e1;
+	attachmentDescriptions[0].loadOp = vk::AttachmentLoadOp::eClear;
+	attachmentDescriptions[0].storeOp = vk::AttachmentStoreOp::eStore;
+	attachmentDescriptions[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachmentDescriptions[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachmentDescriptions[0].initialLayout = vk::ImageLayout::eUndefined;
+	attachmentDescriptions[0].finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+	attachmentDescriptions[1].format = vk::Format::eD24UnormS8Uint;
+	attachmentDescriptions[1].samples = vk::SampleCountFlagBits::e1;
+	attachmentDescriptions[1].loadOp = vk::AttachmentLoadOp::eClear;
+	attachmentDescriptions[1].storeOp = vk::AttachmentStoreOp::eStore;
+	attachmentDescriptions[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	attachmentDescriptions[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+	attachmentDescriptions[1].initialLayout = vk::ImageLayout::eUndefined;
+	attachmentDescriptions[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+	vk::AttachmentReference colorReference = { 0, vk::ImageLayout::eColorAttachmentOptimal };
+	vk::AttachmentReference depthReference = { 1, vk::ImageLayout::eDepthStencilAttachmentOptimal };
+
+	vk::SubpassDescription subpassDescription = {};
+	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &colorReference;
+	subpassDescription.pDepthStencilAttachment = &depthReference;
+
+	std::array<vk::SubpassDependency, 2> dependencies;
+
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+	dependencies[0].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies[0].srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+	dependencies[0].dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+	dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependencies[1].dstSubpass = 0;
+	dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+	dependencies[1].srcAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+	dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+	vk::RenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachmentDescriptions.size());
+	renderPassInfo.pAttachments = attachmentDescriptions.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpassDescription;
+	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+	renderPassInfo.pDependencies = dependencies.data();
+
+	offscreenTest->renderpass = backend->context.device.createRenderPass(renderPassInfo);
+	LOG(INFO) << "Created offscreen renderpass";
+
+	vk::ImageView attachments[2];
+	attachments[0] = offscreenTest->colorTexture.view;
+	attachments[1] = offscreenTest->depthTexture.view;
+
+	vk::FramebufferCreateInfo fbCreateInfo;
+	fbCreateInfo.renderPass = offscreenTest->renderpass;
+	fbCreateInfo.attachmentCount = 2;
+	fbCreateInfo.pAttachments = attachments;
+	fbCreateInfo.width = offscreenTest->width;
+	fbCreateInfo.height = offscreenTest->height;
+	fbCreateInfo.layers = 1;
+
+	offscreenTest->framebuffer = backend->context.device.createFramebuffer(fbCreateInfo);
+	LOG(INFO) << "Created offscreen framebuffer";
+
+	offscreenTest->descriptor.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	offscreenTest->descriptor.imageView = offscreenTest->colorTexture.view;
+	offscreenTest->descriptor.sampler = offscreenTest->sampler;
+
+
+}
+
 void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const iWindow)
 {
 	backend = std::make_unique<BackendVulkan>();
@@ -1240,6 +1429,7 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 	// Setup and load the shaders and corresponding pipelines
 	SetupShaders();
 	SetupFramebuffers();
+	CreateOffscreenData();
 	SetupPipeline();
 
 	// Setup samplers
@@ -1250,4 +1440,5 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 	SetupIMGUI(iWindow);
 
 	SetupUniformBuffers();
+
 }

@@ -1086,7 +1086,6 @@ void BackendVulkan::BeginFrame()
 	context.commandBuffer.begin(cmdBufferBeginInfo);
 
 
-
 	vk::ClearValue clear_values[2] = {};
 	clear_values[0].color.float32[0] = 1.0f;
 	clear_values[0].color.float32[1] = 0.0f;

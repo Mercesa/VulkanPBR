@@ -45,6 +45,7 @@ class FramebufferVulkan;
 #include "GraphicsParameters.h"
 #include "VulkanDataObjects.h"
 #include "ConstantBuffers.h"
+#include "TextureVulkan.h"
 
 struct ShaderResourcesPBR
 {
@@ -81,9 +82,16 @@ struct imguiData
 	std::vector<vk::Framebuffer> framebuffer;
 };
 
+struct Offscreenpass
+{
+	int32_t width, height;
+	vk::Framebuffer framebuffer;
+	TextureData colorTexture, depthTexture;
+	vk::RenderPass renderpass;
 
-
-
+	vk::Sampler sampler;
+	vk::DescriptorImageInfo descriptor;
+};
 
 class RendererVulkan
 {
@@ -135,6 +143,10 @@ private:
 
 	void RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
 
+	void CreateOffscreenData();
+
+private:
+
 	std::unique_ptr<BackendVulkan> backend;
 
 	// Models, textures and object rendering data
@@ -182,5 +194,8 @@ private:
 	std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
 	std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
+
+	std::unique_ptr<Offscreenpass> offscreenTest;
+
 };
 
