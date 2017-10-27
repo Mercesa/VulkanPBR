@@ -140,14 +140,8 @@ void main() {
 	
 	vec3 color = ambient + Lo;
 	
-	color = color / (color + vec3(1.0));
-	color = pow(color, vec3(1.0/2.2));
+	//color = color / (color + vec3(1.0));
+	//color = pow(color, vec3(1.0/2.2));
 	outColor = vec4(color.rgb, 1.0f);
 	
-	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv);
-	
-	//vec3 lightCol = vec3(myLightVals.lights[0].color);
-	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
-	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv) + vec4(col.rgb, 1.0f);
-	//outSecond = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }

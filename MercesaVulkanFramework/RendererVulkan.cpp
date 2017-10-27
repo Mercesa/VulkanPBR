@@ -1268,12 +1268,12 @@ void RendererVulkan::CreateOffscreenData()
 		offscreenTest->colorTexture.allocation,
 		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY, 
 		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled, 
-		vk::Format::eR8G8B8A8Unorm, ImageLayout::eUndefined, 
+		vk::Format::eR32G32B32A32Sfloat, ImageLayout::eUndefined, 
 		offscreenTest->colorTexture.image, 
 		offscreenTest->width, offscreenTest->height);
 
 	vk::ImageViewCreateInfo colorImageView;
-	colorImageView.format = vk::Format::eR8G8B8A8Unorm;
+	colorImageView.format = vk::Format::eR32G32B32A32Sfloat;
 	colorImageView.subresourceRange = {};
 	colorImageView.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
 	colorImageView.subresourceRange.baseMipLevel = 0;
@@ -1329,7 +1329,7 @@ void RendererVulkan::CreateOffscreenData()
 
 	std::array<vk::AttachmentDescription, 2> attachmentDescriptions = {};
 
-	attachmentDescriptions[0].format = vk::Format::eR8G8B8A8Unorm;
+	attachmentDescriptions[0].format = vk::Format::eR32G32B32A32Sfloat;
 	attachmentDescriptions[0].samples = vk::SampleCountFlagBits::e1;
 	attachmentDescriptions[0].loadOp = vk::AttachmentLoadOp::eClear;
 	attachmentDescriptions[0].storeOp = vk::AttachmentStoreOp::eStore;
