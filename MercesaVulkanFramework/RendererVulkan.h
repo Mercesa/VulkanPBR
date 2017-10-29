@@ -68,6 +68,8 @@ struct ContextResources
 	vk::CommandBuffer imguiBuffer;
 	vk::CommandBuffer baseBuffer;
 
+	vk::Fence renderSceneFence;
+
 	std::unique_ptr<CommandpoolVulkan> cmdPoolCompute;
 	vk::CommandBuffer bloomBufferCompute;
 
@@ -157,7 +159,7 @@ private:
 
 	void UpdateUniformBufferFrame(const NewCamera& iCam, const std::vector<Light>& iLights);
 
-	void RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
+	void RenderScene(const std::vector<Object>& iObjects);
 
 
 private:

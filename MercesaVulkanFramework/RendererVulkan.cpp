@@ -772,10 +772,13 @@ void RendererVulkan::SetupCommandPoolAndBuffers()
 
 
 		resources->cmdPoolCompute = std::make_unique<CommandpoolVulkan>();
-		resources->cmdPoolGfx->Create(backend->context.device, backend->context.computeFamilyIndex, CommandPoolCreateFlagBits::eResetCommandBuffer);
+		resources->cmdPoolCompute->Create(backend->context.device, backend->context.computeFamilyIndex, CommandPoolCreateFlagBits::eResetCommandBuffer);
 
-		resources->bloomBufferCompute = resources->cmdPoolGfx->AllocateBuffer(backend->context.device, CommandBufferLevel::ePrimary, 1)[0];
+		resources->bloomBufferCompute = resources->cmdPoolCompute->AllocateBuffer(backend->context.device, CommandBufferLevel::ePrimary, 1)[0];
 
+
+		vk::FenceCreateInfo fenceCreateInfo = vk::FenceCreateInfo();
+		resources->renderSceneFence = backend->context.device.createFence(fenceCreateInfo);
 	}
 }
 
@@ -987,21 +990,12 @@ void RendererVulkan::RecordCommandBuffersImgui()
 	contextResources[backend->context.currentFrame]->imguiBuffer.end();
 }
 
-void RendererVulkan::RenderScene()
+void RendererVulkan::RenderScene(const std::vector<Object>& iObjects)
 {
-
-}
-
-void RendererVulkan::Render(const std::vector<Object>& iObjects)
-{
-	backend->AcquireImage();
-	RecordCommandBuffersImgui();
-
-
 	// Render to scene
 	vk::CommandBuffer sceneRenderbuffer = this->contextResources[backend->context.currentFrame]->baseBuffer;
-	
 
+	// Clear our render targets at start frame
 	vk::ClearValue clear_values[3] = {};
 	clear_values[0].color.float32[0] = 1.0f;
 	clear_values[0].color.float32[1] = 0.0f;
@@ -1023,6 +1017,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 	renderPassBeginInfo.renderArea.extent = vk::Extent2D(offscreenTest->width, offscreenTest->height);
 
+	// begin buffer and render pass
 	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
 	sceneRenderbuffer.begin(cmdBufferBeginInfo);
 	sceneRenderbuffer.beginRenderPass(renderPassBeginInfo, SubpassContents::eInline);
@@ -1037,6 +1032,8 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	std::vector<DescriptorSet> totalSet;
 	// Add our descriptor data to this set, and use this set
 	totalSet.resize(4);
+
+	// render all the objects except the last first (multiple shader test)
 	for (int j = 0; j < (iObjects.size() - 1); ++j)
 	{
 		ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[j].model);
@@ -1057,6 +1054,7 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 		sceneRenderbuffer.drawIndexed(model->GetIndiceCount(), 1, 0, 0, 0);
 	}
 
+	// Render last object with different shader
 	ModelVulkan* model = dynamic_cast<ModelVulkan*>(iObjects[iObjects.size() - 1].model);
 	ObjectRenderingDataVulkan* renderingData = dynamic_cast<ObjectRenderingDataVulkan*>(iObjects[iObjects.size() - 1].renderingData);
 
@@ -1080,10 +1078,43 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 	sceneRenderbuffer.endRenderPass();
 	sceneRenderbuffer.end();
-	// End render to scene
+}
+
+void RendererVulkan::Render(const std::vector<Object>& iObjects)
+{
+	// Wait until last frame is done rendering
+	backend->BlockUntilGpuIdle();
+
+	backend->AcquireImage();
+	
+	// prepare command buffer
+	RenderScene(iObjects);
+
+	// submit command buffer to graphics queue
+	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+	vk::CommandBuffer buffers[1]{ contextResources[backend->context.currentFrame]->baseBuffer };
+
+	vk::SubmitInfo subInfo = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&contextResources[backend->context.currentFrame]->baseBuffer)
+		.setWaitSemaphoreCount(0)
+		.setPWaitSemaphores(VK_NULL_HANDLE)
+		.setSignalSemaphoreCount(0)
+		.setPSignalSemaphores(VK_NULL_HANDLE)
+		.setPWaitDstStageMask(&dstStageMask);
 
 
-	// Let the GPU wait here
+
+	// Very important! the imgui renderpass implicitly sets the swapchain view to present
+	backend->context.graphicsQueue.submit(1, &subInfo, contextResources[backend->context.currentFrame]->renderSceneFence);
+
+	// wait and reset fence
+	backend->context.device.waitForFences(contextResources[backend->context.currentFrame]->renderSceneFence, VK_TRUE, UINT64_MAX);
+	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
+
+
+	RecordCommandBuffersImgui();
 
 	std::vector<DescriptorSet> postProcSets = { contextResources[backend->context.currentFrame]->descriptorSetPostProc.inputTextureSet };
 
@@ -1097,7 +1128,6 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	backend->context.commandBuffer.draw(3, 1, 0, 0);
 
 	// Render objects here into the final pass
-	backend->BlockUntilGpuIdle();
 	backend->EndFrame(contextResources[backend->context.currentFrame]->baseBuffer,contextResources[backend->context.currentFrame]->imguiBuffer);
 	backend->BlockSwapBuffers();
 }

@@ -9,5 +9,5 @@ C:/VulkanSDK/1.0.57.0/Bin32/glslangValidator.exe  -V -o bin/redFragmentShader.sp
 C:/VulkanSDK/1.0.57.0/Bin32/glslangValidator.exe  -V -o bin/postProcVertexShader.spv VertexShaderPostProc.vert
 C:/VulkanSDK/1.0.57.0/Bin32/glslangValidator.exe  -V -o bin/postProcFragmentShader.spv FragmentShaderPostProc.frag
 
-
+C:/VulkanSDK/1.0.57.0/Bin32/glslangValidator.exe  -V -o bin/gaussianComputeShader GuassianBlur.comp
 pause

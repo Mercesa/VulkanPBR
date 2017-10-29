@@ -131,8 +131,6 @@ private:
 	void CreateDebugCallbacks();
 
 
-	void RenderScene();
-
 private:
 	vk::Instance instance;
 	vk::PhysicalDevice physicalDevice;

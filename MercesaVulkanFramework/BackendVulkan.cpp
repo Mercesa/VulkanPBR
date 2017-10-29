@@ -1146,10 +1146,10 @@ void BackendVulkan::EndFrame(vk::CommandBuffer iSceneRenderBuffer, vk::CommandBu
 
 	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
-	vk::CommandBuffer buffers[3]{ iSceneRenderBuffer, context.commandBuffer, iGuiBuffer };
+	vk::CommandBuffer buffers[2]{ context.commandBuffer, iGuiBuffer };
 	
 	vk::SubmitInfo subInfo = vk::SubmitInfo()
-		.setCommandBufferCount(3)
+		.setCommandBufferCount(2)
 		.setPCommandBuffers(buffers)
 		.setWaitSemaphoreCount(1)
 		.setPWaitSemaphores(acquire)
