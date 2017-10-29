@@ -64,9 +64,13 @@ struct ShaderResourcesPostProc
 
 struct ContextResources
 {
-	std::unique_ptr<CommandpoolVulkan> pool;
+	std::unique_ptr<CommandpoolVulkan> cmdPoolGfx;
 	vk::CommandBuffer imguiBuffer;
 	vk::CommandBuffer baseBuffer;
+
+	std::unique_ptr<CommandpoolVulkan> cmdPoolCompute;
+	vk::CommandBuffer bloomBufferCompute;
+
 
 	UniformBufferVulkan uniformBufferMVP;
 	UniformBufferVulkan uniformBufferModelMatrix;
@@ -92,8 +96,24 @@ struct Offscreenpass
 	vk::RenderPass renderpass;
 
 	vk::Sampler sampler;
-	vk::DescriptorImageInfo descriptor;
+	vk::DescriptorImageInfo descriptorColorTexture;
+
 };
+
+struct BloomData
+{
+	TextureData texture1, texture2;
+	vk::RenderPass renderpass;
+	vk::Sampler sampler;
+
+	vk::Framebuffer texture1Fb;
+	vk::Framebuffer texture2Fb;
+
+	vk::DescriptorImageInfo descriptorTexture1;
+	vk::DescriptorImageInfo descriptorTexture2;
+
+};
+
 
 class RendererVulkan
 {
@@ -127,7 +147,7 @@ private:
 	void SetupCommandPoolAndBuffers();
 	void SetupDescriptorSet(const std::vector<Object>& iObjects);
 	void CreateOffscreenData();
-
+	void CreateBloomRenderData();
 
 	void InitViewports(const vk::CommandBuffer& iBuffer);
 	void InitScissors(const vk::CommandBuffer& iBuffer);
@@ -139,7 +159,6 @@ private:
 
 	void RenderObjsToBuffer(const vk::CommandBuffer& iBuffer, uint32_t index, const std::vector<Object>& iObjects);
 
-	void GenerateQuad();
 
 private:
 
@@ -155,19 +174,17 @@ private:
 
 	// Pipeline layout and pipelines and the corresponding shader programs
 	vk::PipelineLayout pipelineLayoutRenderScene;
-
-	vk::Pipeline pipelinePBR;
-	vk::Pipeline pipelineRed;
 	vk::Pipeline pipelineRenderScenePBR;
 	vk::Pipeline pipelineRenderSceneRed;
 
-	vk::Pipeline pipelinePostProc;
 	vk::PipelineLayout pipelineLayoutPostProc;
+	vk::Pipeline pipelinePostProc;
+	
 
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
-
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
+
 
 	// Viewport and scissor rect
 	vk::Viewport viewPort;
@@ -193,9 +210,8 @@ private:
 	// Descriptor resource management
 	std::unique_ptr<DescriptorPoolVulkan> descriptorPool;
 
-	std::unique_ptr<FramebufferVulkan> framebufferRenderScene;
-
 	std::unique_ptr<Offscreenpass> offscreenTest;
+	std::unique_ptr<BloomData> bloomData;
 
 	std::unique_ptr<ModelVulkan> quadModel;
 

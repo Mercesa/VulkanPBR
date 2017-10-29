@@ -52,8 +52,10 @@ public:
 	vk::Device device;
 	int graphicsFamilyIndex;
 	int presentFamilyIndex;
+	int computeFamilyIndex;
 	vk::Queue graphicsQueue;
 	vk::Queue presentQueue;
+	vk::Queue computeQueue;
 
 	vk::Format depthFormat;
 	vk::RenderPass renderpass;
@@ -119,7 +121,7 @@ private:
 
 	void CreateCommandBuffer();
 	void CreateCommandPool();
-
+	void DestroyCmdPoolAndBuffers();
 
 	// Two functions which are used to get the instance layers we want
 	void GetInstanceLayers(std::vector<const char*>& iResult);
@@ -128,6 +130,8 @@ private:
 
 	void CreateDebugCallbacks();
 
+
+	void RenderScene();
 
 private:
 	vk::Instance instance;

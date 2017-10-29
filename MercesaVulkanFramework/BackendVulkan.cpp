@@ -136,6 +136,13 @@ void BackendVulkan::Shutdown()
 	DestroyDepthBuffer();
 	DestroyRenderTargets();
 	DestroySemaphores(); 
+	DestroyCmdPoolAndBuffers();
+	
+	for (auto& e : context.commandBufferFences)
+	{
+		context.device.destroyFence(e);
+	}
+
 	context.device.destroyRenderPass(context.renderpass);
 
 	vmaDestroyAllocator(allocator);
@@ -150,7 +157,7 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");
@@ -350,7 +357,7 @@ void BackendVulkan::SelectPhysicalDevice()
 
 		int graphicsID = -1;
 		int presentID = -1;
-
+		int computeID = -1;
 		if (!CheckPhysicalDeviceExtensionSupport(gpu, deviceExtensions)) 
 		{
 			continue;
@@ -366,6 +373,7 @@ void BackendVulkan::SelectPhysicalDevice()
 			continue;
 		}
 	
+		// Find graphics queue
 		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
 		{
 			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
@@ -382,6 +390,24 @@ void BackendVulkan::SelectPhysicalDevice()
 			}
 		}
 
+		// Find compute queue
+		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
+		{
+			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
+
+			if (props.queueCount == 0)
+			{
+				continue;
+			}
+
+			if (props.queueFlags & vk::QueueFlagBits::eCompute)
+			{
+				computeID = j;
+				break;
+			}
+		}
+
+		// find present queue
 		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
 		{
 			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
@@ -400,10 +426,11 @@ void BackendVulkan::SelectPhysicalDevice()
 			}
 		}
 
-		if (graphicsID >= 0 && presentID >= 0)
+		if (graphicsID >= 0 && presentID >= 0 && computeID >= 0)
 		{
 			context.graphicsFamilyIndex = graphicsID;
 			context.presentFamilyIndex = presentID;
+			context.computeFamilyIndex = computeID;
 			physicalDevice = gpu.device;
 			context.gpu = &gpu;
 			physicalDeviceFeatures = physicalDevice.getFeatures();
@@ -426,6 +453,7 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 
 	uniqueFamilyIDS[context.graphicsFamilyIndex] += 1;
 	uniqueFamilyIDS[context.presentFamilyIndex] += 1;
+	uniqueFamilyIDS[context.computeFamilyIndex] += 1;
 
 	std::vector<vk::DeviceQueueCreateInfo> devQCreateInfo;
 
@@ -449,6 +477,8 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 	deviceFeatures.depthBounds = VK_TRUE;
 	deviceFeatures.fillModeNonSolid = VK_TRUE;
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
+	deviceFeatures.shaderFloat64 = VK_TRUE;
+
 
 	vk::DeviceCreateInfo info = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(static_cast<uint32_t>(devQCreateInfo.size()))
@@ -456,11 +486,12 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 		.setPEnabledFeatures(&deviceFeatures)
 		.setEnabledExtensionCount(static_cast<uint32_t>(deviceExtensions.size()))
 		.setPpEnabledExtensionNames(deviceExtensions.data())
-		.setEnabledLayerCount(0); // Device layers are deprecated and need to be enabled if the user wants backwards compatibilit. Me, being the user. Does not care about backwards compatibility in this project
+		.setEnabledLayerCount(0); // Device layers are deprecated and need to be enabled if the user wants backwards compatibility. Me, being the user. Does not care about backwards compatibility in this project
 
 	context.device = physicalDevice.createDevice(info);
 
 	context.graphicsQueue	= context.device.getQueue(context.graphicsFamilyIndex, 0);
+	context.computeQueue = context.device.getQueue(context.computeFamilyIndex, 0);
 	context.presentQueue	= context.device.getQueue(context.presentFamilyIndex, 0);
 
 	LOG(INFO) << "CreateLogicalDeviceAndQueues: Succesfully created device and queues";
@@ -662,8 +693,6 @@ void BackendVulkan::DestroySwapchain()
 
 	context.device.destroySwapchainKHR(swapchain);
 }
-
-
 
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
@@ -1197,4 +1226,10 @@ void BackendVulkan::CreateCommandBuffer()
 	{
 		e = false;
 	}
+}
+
+void BackendVulkan::DestroyCmdPoolAndBuffers()
+{
+	context.device.freeCommandBuffers(context.cmdPool, context.commandBuffer);
+	context.device.destroyCommandPool(context.cmdPool);
 }

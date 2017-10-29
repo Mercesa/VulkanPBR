@@ -49,6 +49,7 @@ layout (location = 4) in mat3 TBN;
 
 
 layout (location = 0) out vec4 outColor;
+layout (location = 1) out vec4 outBrightness;
 
 const float PI = 3.14159265359;
 
@@ -139,9 +140,19 @@ void main() {
 	vec3 ambient = vec3(0.03) * albedo;
 	
 	vec3 color = ambient + Lo;
-	
-	//color = color / (color + vec3(1.0));
-	//color = pow(color, vec3(1.0/2.2));
+
 	outColor = vec4(color.rgb, 1.0f);
+	
+	double intensity = dot(vec3(outColor.rgb), vec3(0.2126, 0.7152, 0.0722));
+
+	if(intensity > 1.0f)
+	{
+		outBrightness = outColor;
+	}
+	
+	else
+	{
+		outBrightness = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	}
 	
 }
