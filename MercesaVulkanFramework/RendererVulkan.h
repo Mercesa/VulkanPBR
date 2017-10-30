@@ -62,6 +62,13 @@ struct ShaderResourcesPostProc
 	vk::DescriptorSet inputTextureSet;
 };
 
+
+struct ShaderResourcesBloomCompute
+{
+	vk::DescriptorSet verticalSet;
+	vk::DescriptorSet horizontalSet;
+};
+
 struct ContextResources
 {
 	std::unique_ptr<CommandpoolVulkan> cmdPoolGfx;
@@ -80,6 +87,7 @@ struct ContextResources
 
 	ShaderResourcesPBR descriptorSetPBRShader;
 	ShaderResourcesPostProc descriptorSetPostProc;
+	ShaderResourcesBloomCompute descriptorSetBloomCompute;
 
 };
 
@@ -113,7 +121,6 @@ struct BloomData
 
 	vk::DescriptorImageInfo descriptorTexture1;
 	vk::DescriptorImageInfo descriptorTexture2;
-
 };
 
 
@@ -186,6 +193,7 @@ private:
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramBloomCompute;
 
 
 	// Viewport and scissor rect
@@ -208,6 +216,7 @@ private:
 	std::vector<vk::DescriptorSetLayoutBinding> uniformBinding;
 	std::vector<vk::DescriptorSetLayoutBinding> textureBinding;
 	std::vector<vk::DescriptorSetLayoutBinding> postProcBinding;
+	std::vector<vk::DescriptorSetLayoutBinding> bloomComputeBinding;
 
 	// Descriptor resource management
 	std::unique_ptr<DescriptorPoolVulkan> descriptorPool;

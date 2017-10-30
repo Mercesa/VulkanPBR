@@ -5,6 +5,7 @@
 #include <map>
 #include <future>
 #include <thread>
+#include <utility>
 
 #include "easylogging++.h"
 #include "libs/Spir-v cross/spirv_glsl.hpp"
@@ -88,11 +89,15 @@ public:
 		std::vector<descriptorLayoutIntermediate> combinedImageSamplersIntermediate
 			= ParseResources(resourcesShader.sampled_images, compilerShader, DescriptorType::eCombinedImageSampler, iTypeOfShader);
 
+		std::vector<descriptorLayoutIntermediate> storageBuffersIntermediate
+			= ParseResources(resourcesShader.storage_buffers, compilerShader, DescriptorType::eStorageBuffer, iTypeOfShader);
+
+		
 		// Put resources in a single 
 		intermediateLayout.insert(intermediateLayout.end(), sampledImagesIntermediate.begin(), sampledImagesIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), samplersIntermediate.begin(), samplersIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), uniformBuffersIntermediate.begin(), uniformBuffersIntermediate.end());
-		intermediateLayout.insert(intermediateLayout.end(), combinedImageSamplersIntermediate.begin(), combinedImageSamplersIntermediate.end());
+		intermediateLayout.insert(intermediateLayout.end(), storageBuffersIntermediate.begin(), storageBuffersIntermediate.end());
 
 
 		return intermediateLayout;
@@ -190,22 +195,29 @@ public:
 
 	// compile these shaders into one descriptor layout
 	static std::vector<vk::DescriptorSetLayout> CompileShadersIntoLayouts(
-		const std::string& iVertexShader, const std::string& iFragmentShader, 
+		std::vector<std::pair<std::string, ShaderStageFlagBits>> iShaders,
 		const vk::Device& iDevice)
 	{
-		std::future<std::vector<descriptorLayoutIntermediate>> futureVertex =
-			std::async(CompileShaderLayout, iVertexShader, ShaderStageFlagBits::eVertex);
+		
 
-		std::future<std::vector<descriptorLayoutIntermediate>> futureFragment =
-			std::async(CompileShaderLayout, iFragmentShader, ShaderStageFlagBits::eFragment);
+		std::vector<std::future<std::vector<descriptorLayoutIntermediate>>> tFutures;
 
-		std::vector<descriptorLayoutIntermediate> vertexLayout;
-		std::vector<descriptorLayoutIntermediate> fragmentLayout;
+		// Async process the shaders, since this is mainly an IO operation with some post processing on the data
+		for (auto& e : iShaders)
+		{
+			auto& tFuture = std::async(CompileShaderLayout, e.first, e.second);
+			tFutures.push_back(std::move(tFuture));
+		}
 
-		vertexLayout = futureVertex.get();
-		fragmentLayout = futureFragment.get();
+		// Add all layouts to big vector
+		std::vector<std::vector<descriptorLayoutIntermediate>> layouts;
 
-		std::vector<std::vector<descriptorLayoutIntermediate>> layouts = { std::move(vertexLayout), std::move(fragmentLayout) };
+		// Wait for our futures to be done
+		for (auto& e : tFutures)
+		{
+			layouts.push_back(std::move(e.get()));
+		}
+
 
 		return MergeLayouts(layouts, iDevice);
 	}

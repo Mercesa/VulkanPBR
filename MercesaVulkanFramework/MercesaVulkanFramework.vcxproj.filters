@@ -119,9 +119,6 @@
     <ClCompile Include="CommandpoolVulkan.cpp">
       <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClCompile>
-    <ClCompile Include="DescriptorLayoutHelper.h">
-      <Filter>Vulkan Structures\ResourceManagers</Filter>
-    </ClCompile>
     <ClCompile Include="DescriptorPoolVulkan.cpp">
       <Filter>Vulkan Structures\ResourceManagers</Filter>
     </ClCompile>
@@ -268,6 +265,9 @@
     <ClInclude Include="GraphicsParameters.h">
       <Filter>Vulkan Structures\MainCode</Filter>
     </ClInclude>
+    <ClInclude Include="DescriptorLayoutHelper.h">
+      <Filter>Vulkan Structures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shaders\VertexShaderStart.vert">
@@ -295,6 +295,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\VertexShaderPostProc.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\GaussianBlur.comp">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

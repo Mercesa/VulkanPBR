@@ -157,7 +157,6 @@
   <ItemGroup>
     <ClCompile Include="BackendVulkan.cpp" />
     <ClCompile Include="CommandpoolVulkan.cpp" />
-    <ClCompile Include="DescriptorLayoutHelper.h" />
     <ClCompile Include="DescriptorPoolVulkan.cpp" />
     <ClCompile Include="DeviceVulkan.cpp" />
     <ClCompile Include="EngineTimer.cpp" />
@@ -187,6 +186,9 @@
     <ClInclude Include="BackendVulkan.h" />
     <ClInclude Include="CommandpoolVulkan.h" />
     <ClInclude Include="ConstantBuffers.h" />
+    <ClInclude Include="DescriptorLayoutHelper.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="DescriptorPoolVulkan.h" />
     <ClInclude Include="DeviceVulkan.h" />
     <ClInclude Include="easylogging++.h" />
@@ -236,6 +238,7 @@
     <None Include="Shaders\FragmentShaderPostProc.frag" />
     <None Include="Shaders\FragmentShaderRed.frag" />
     <None Include="Shaders\FragmentShaderStart.frag" />
+    <None Include="Shaders\GaussianBlur.comp" />
     <None Include="Shaders\VertexShaderPostProc.vert" />
     <None Include="Shaders\VertexShaderRed.vert" />
     <None Include="Shaders\VertexShaderStart.vert" />

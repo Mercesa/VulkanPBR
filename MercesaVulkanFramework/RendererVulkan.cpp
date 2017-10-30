@@ -243,6 +243,18 @@ void RendererVulkan::SetupShaders()
 
 	shaderProgramPostProc->LoadShaders(backend->context.device, shaderDataPostProc);
 
+	shaderProgramBloomCompute = std::make_unique<ShaderProgramVulkan>();
+	
+	ShaderDataVulkan computeDataBloom;
+
+	computeDataBloom.entryPointName = "main";
+	computeDataBloom.shaderStage = ShaderStageFlagBits::eCompute;
+	computeDataBloom.shaderFile = "Shaders/Bin/gaussianComputeShader.spv";
+
+
+	std::vector<ShaderDataVulkan> shaderDataComputeBloom = { computeDataBloom };
+
+	shaderProgramBloomCompute->LoadShaders(backend->context.device, shaderDataComputeBloom);
 }
 
 void RendererVulkan::SetupPipeline()
@@ -572,10 +584,11 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 
-	descriptorPool->Create(backend->context.device, PoolData(10, 10, 10, 400, 2, 100));
+	descriptorPool->Create(backend->context.device, PoolData(100, 10, 10, 400, 2, 100));
 
 	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
 	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
+	auto shaderDescriptorLayoutBloomCompute = shaderProgramPostProc->GetShaderProgramLayout();
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
@@ -585,6 +598,8 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		// Setup descriptor set for this shader
 		contextResources[i]->descriptorSetPostProc.inputTextureSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutPostProc[0], postProcBinding)[0];
 
+		contextResources[i]->descriptorSetBloomCompute.horizontalSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutBloomCompute[0], bloomComputeBinding)[0];
+		contextResources[i]->descriptorSetBloomCompute.verticalSet = descriptorPool->AllocateDescriptorSet(backend->context.device, 1, shaderDescriptorLayoutBloomCompute[0], bloomComputeBinding)[0];
 	}
 
 	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
@@ -756,6 +771,59 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
 
 	}
+
+	// Setup descriptors for the post proc scene
+	for (int i = 0; i < contextResources.size(); ++i)
+	{
+		// First descriptor set
+		std::array<vk::WriteDescriptorSet, 2> writes = {};
+
+		writes[0] = {};
+		writes[0].pNext = NULL;
+		writes[0].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
+		writes[0].descriptorCount = 1;
+		writes[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes[0].pImageInfo = &bloomData->descriptorTexture1;
+		writes[0].dstArrayElement = 0;
+		writes[0].dstBinding = 0;
+
+		writes[1] = {};
+		writes[1].pNext = NULL;
+		writes[1].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
+		writes[1].descriptorCount = 1;
+		writes[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes[1].pImageInfo = &bloomData->descriptorTexture2;
+		writes[1].dstArrayElement = 0;
+		writes[1].dstBinding = 1;
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(writes.size()), writes.data(), 0, NULL);
+
+		// Prepare the second descriptor set
+		std::array<vk::WriteDescriptorSet, 2> writes2 = {};
+
+		writes2[0] = {};
+		writes2[0].pNext = NULL;
+		writes2[0].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
+		writes2[0].descriptorCount = 1;
+		writes2[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes2[0].pImageInfo = &bloomData->descriptorTexture2;
+		writes2[0].dstArrayElement = 0;
+		writes2[0].dstBinding = 0;
+
+		writes2[1] = {};
+		writes2[1].pNext = NULL;
+		writes2[1].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
+		writes2[1].descriptorCount = 1;
+		writes2[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes2[1].pImageInfo = &bloomData->descriptorTexture1;
+		writes2[1].dstArrayElement = 0;
+		writes2[1].dstBinding = 1;
+
+		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(writes2.size()), writes2.data(), 0, NULL);
+
+	}
+
+
 }
 
 void RendererVulkan::SetupCommandPoolAndBuffers()
@@ -1114,6 +1182,13 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
 
 
+
+	vk::CommandBuffer& computeBuffer = contextResources[backend->context.currentFrame]->bloomBufferCompute;
+
+
+
+
+
 	RecordCommandBuffersImgui();
 
 	std::vector<DescriptorSet> postProcSets = { contextResources[backend->context.currentFrame]->descriptorSetPostProc.inputTextureSet };
@@ -1272,7 +1347,7 @@ void RendererVulkan::CreateOffscreenData()
 	CreateSimpleImage(backend->allocator,
 		bloomData->texture1.allocation,
 		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY,
-		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
 		vk::Format::eR32G32B32A32Sfloat, ImageLayout::eUndefined,
 		bloomData->texture1.image,
 		offscreenTest->width, offscreenTest->height);
@@ -1293,7 +1368,7 @@ void RendererVulkan::CreateOffscreenData()
 	CreateSimpleImage(backend->allocator,
 		bloomData->texture2.allocation,
 		VmaMemoryUsage::VMA_MEMORY_USAGE_GPU_ONLY,
-		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+		vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
 		vk::Format::eR32G32B32A32Sfloat, ImageLayout::eUndefined,
 		bloomData->texture2.image,
 		offscreenTest->width, offscreenTest->height);
@@ -1416,46 +1491,11 @@ void RendererVulkan::CreateOffscreenData()
 	bloomData->descriptorTexture2.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 	bloomData->descriptorTexture2.imageView = bloomData->texture2.view;
 	bloomData->descriptorTexture2.sampler = offscreenTest->sampler;
+
 }
 
 void RendererVulkan::CreateBloomRenderData()
 {
-	std::array<vk::AttachmentDescription, 1> attachmentDescriptions = {};
-
-	attachmentDescriptions[0].format = vk::Format::eR32G32B32A32Sfloat;
-	attachmentDescriptions[0].samples = vk::SampleCountFlagBits::e1;
-	attachmentDescriptions[0].loadOp = vk::AttachmentLoadOp::eClear;
-	attachmentDescriptions[0].storeOp = vk::AttachmentStoreOp::eStore;
-	attachmentDescriptions[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-	attachmentDescriptions[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-	attachmentDescriptions[0].initialLayout = vk::ImageLayout::eUndefined;
-	attachmentDescriptions[0].finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-
-	std::array<vk::AttachmentReference, 1> colorReference = { vk::AttachmentReference(0, ImageLayout::eColorAttachmentOptimal)};
-
-
-	vk::SubpassDescription subpassDescription = {};
-	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpassDescription.colorAttachmentCount = 1;
-	subpassDescription.pColorAttachments = colorReference.data();
-	subpassDescription.pDepthStencilAttachment = VK_NULL_HANDLE;
-
-	std::array<vk::SubpassDependency, 2> dependencies;
-
-	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[0].dstSubpass = 0;
-	dependencies[0].srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[0].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependencies[0].srcAccessMask = vk::AccessFlagBits::eMemoryRead;
-	dependencies[0].dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
-
-	dependencies[1].srcSubpass = 0;
-	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[1].srcAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
 
 
 }
@@ -1480,7 +1520,7 @@ void RendererVulkan::Initialize(const GFXParams& iParams, iLowLevelWindow* const
 	CreateOffscreenData();
 	SetupPipeline();
 	SetupPipelinePostProc();
-
+		
 	// Setup samplers
 	SetupSamplers();
 
