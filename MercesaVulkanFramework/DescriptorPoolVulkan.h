@@ -11,12 +11,14 @@ struct PoolData
 		int32_t iUniformBuffercount,
 		int32_t iSampledImgCount,
 		int32_t iUniformDynamicCount,
-		int32_t iSetCount) : 	combinedImgSamplerCount(iCombinedImgSamplerCount), 
+		int32_t iSetCount,
+		int32_t iStorageImageCount) : 	combinedImgSamplerCount(iCombinedImgSamplerCount), 
 		samplerCount(iSamplerCount), 
 		uniformBufferCount(iUniformBuffercount), 
 		sampledImgCount(iSampledImgCount), 
 		uniformDynamicCount(iUniformDynamicCount),
-		setCount(iSetCount) {}
+		setCount(iSetCount),
+		storageImageCount(iStorageImageCount){}
 
 	PoolData() : combinedImgSamplerCount(0), samplerCount(0), uniformBufferCount(0), sampledImgCount(0), uniformDynamicCount(0), setCount(0) {}
 
@@ -25,6 +27,7 @@ struct PoolData
 	int32_t uniformBufferCount = 0;
 	int32_t sampledImgCount = 0;
 	int32_t uniformDynamicCount = 0;
+	int32_t storageImageCount = 0;
 	int32_t setCount = 0;
 };
 

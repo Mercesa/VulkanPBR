@@ -22,7 +22,6 @@
 #include "NewCamera.h"
 #include "FramebufferVulkan.h"
 
-
 RendererVulkan::RendererVulkan()
 {
 
@@ -634,7 +633,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 
-	descriptorPool->Create(backend->context.device, PoolData(100, 10, 10, 400, 2, 100));
+	descriptorPool->Create(backend->context.device, PoolData(100, 10, 10, 400, 2, 100, 10));
 
 	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
 	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
@@ -653,7 +652,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 	}
 
 	std::array<vk::WriteDescriptorSet, 5> textureWrites = {};
-	std::array<vk::WriteDescriptorSet, 1> uniformModelWrite = {};
+	std::array<vk::WriteDescriptorSet, 2> uniformModelWrite = {};
 
 	for (auto& e : iObjects)
 	{
@@ -743,7 +742,18 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		uniformModelWrite[0].dstArrayElement = 0;
 		uniformModelWrite[0].dstBinding = 0;
 
+		uniformModelWrite[1] = {};
+		uniformModelWrite[1].pNext = NULL;
+		uniformModelWrite[1].dstSet = tRenderingData->positionBufferSet;
+		uniformModelWrite[1].descriptorCount = 1;
+		uniformModelWrite[1].descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniformModelWrite[1].pBufferInfo = &tRenderingData->materialUniformBuffer.descriptorInfo;
+		uniformModelWrite[1].dstArrayElement = 0;
+		uniformModelWrite[1].dstBinding = 1;
+
 		backend->context.device.updateDescriptorSets(static_cast<uint32_t>(uniformModelWrite.size()), uniformModelWrite.data(), 0, NULL);
+
+
 
 	}
 
@@ -968,23 +978,52 @@ void RendererVulkan::PrepareResources(
 		{
 			auto e = dynamic_cast<ObjectRenderingDataVulkan*>(objectToWorkOn);
 
-			UniformBufferVulkan tUniformBuff;
+
+			// Prepare uniform buffer for objects
+			UniformBufferVulkan tUniformBuffSingleModel;
 
 			CreateSimpleBuffer(backend->allocator,
-				tUniformBuff.allocation,
+				tUniformBuffSingleModel.allocation,
 				VMA_MEMORY_USAGE_CPU_TO_GPU,
-				tUniformBuff.buffer,
+				tUniformBuffSingleModel.buffer,
 				vk::BufferUsageFlagBits::eUniformBuffer,
 				sizeof(CBMatrix));
 
 			matrixSingleData.model = iObjects[i].modelMatrix;
-			CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuff.allocation, (void*)&matrixSingleData, sizeof(matrixSingleData));
+			CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuffSingleModel.allocation, (void*)&matrixSingleData, sizeof(matrixSingleData));
 
-			tUniformBuff.descriptorInfo.buffer = tUniformBuff.buffer;
-			tUniformBuff.descriptorInfo.offset = 0;
-			tUniformBuff.descriptorInfo.range = sizeof(CBModelMatrixSingle);
+			tUniformBuffSingleModel.descriptorInfo.buffer = tUniformBuffSingleModel.buffer;
+			tUniformBuffSingleModel.descriptorInfo.offset = 0;
+			tUniformBuffSingleModel.descriptorInfo.range = sizeof(CBModelMatrixSingle);
 
-			e->positionUniformBuffer = tUniformBuff;
+			e->positionUniformBuffer = tUniformBuffSingleModel;
+
+
+
+			// Prepare uniform buffer for material parameters
+			UniformBufferVulkan tUniformBuffMaterialParams;
+
+			CreateSimpleBuffer(backend->allocator,
+				tUniformBuffMaterialParams.allocation,
+				VMA_MEMORY_USAGE_CPU_TO_GPU,
+				tUniformBuffMaterialParams.buffer,
+				vk::BufferUsageFlagBits::eUniformBuffer,
+				sizeof(CBMatrix));
+
+			pbrMaterialData.metallicness = iObjects[i].material.metalness;
+			pbrMaterialData.roughness = iObjects[i].material.roughness;
+			pbrMaterialData.use = iObjects[i].material.useTexturesForReflectivity;
+
+			CopyDataToBuffer(VkDevice(backend->context.device), tUniformBuffMaterialParams.allocation, (void*)&pbrMaterialData, sizeof(pbrMaterialData));
+
+			tUniformBuffMaterialParams.descriptorInfo.buffer = tUniformBuffMaterialParams.buffer;
+			tUniformBuffMaterialParams.descriptorInfo.offset = 0;
+			tUniformBuffMaterialParams.descriptorInfo.range = sizeof(CBMaterialPBR);
+
+			e->materialUniformBuffer = tUniformBuffMaterialParams;
+			// End preparing buffers
+
+
 			e->isPrepared = true;
 			objRenderingData.push_back(e);
 
@@ -1238,12 +1277,26 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 
 	// Begin and run the compute shader
 	computeBuffer.begin(vk::CommandBufferBeginInfo());
-	computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeHorizontal);
-	computeBuffer.bindDescriptorSets(
-		PipelineBindPoint::eCompute, 
-		pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.horizontalSet, 0, NULL);
 
-	computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
+	for (int i = 0; i < 2; ++i)
+	{
+		computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeHorizontal);
+		computeBuffer.bindDescriptorSets(
+			PipelineBindPoint::eCompute,
+			pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.horizontalSet, 0, NULL);
+
+		computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
+
+		// Begin and run the compute shader
+		//computeBuffer.begin(vk::CommandBufferBeginInfo());
+		computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeVertical);
+		computeBuffer.bindDescriptorSets(
+			PipelineBindPoint::eCompute,
+			pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.verticalSet, 0, NULL);
+
+		computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
+	}
+
 	computeBuffer.end();
 
 	vk::PipelineStageFlags dstStageMaskCompSubmit = vk::PipelineStageFlagBits::eTopOfPipe;
@@ -1263,30 +1316,6 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
 
 
-	// Begin and run the compute shader
-	computeBuffer.begin(vk::CommandBufferBeginInfo());
-	computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeVertical);
-	computeBuffer.bindDescriptorSets(
-		PipelineBindPoint::eCompute,
-		pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.verticalSet, 0, NULL);
-
-	computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
-	computeBuffer.end();
-
-
-	 subInfoComp = vk::SubmitInfo()
-		.setCommandBufferCount(1)
-		.setPCommandBuffers(&contextResources[backend->context.currentFrame]->bloomBufferCompute)
-		.setWaitSemaphoreCount(0)
-		.setPWaitSemaphores(VK_NULL_HANDLE)
-		.setSignalSemaphoreCount(0)
-		.setPSignalSemaphores(VK_NULL_HANDLE)
-		.setPWaitDstStageMask(&dstStageMask);
-
-	backend->context.computeQueue.submit(subInfoComp, contextResources[backend->context.currentFrame]->renderSceneFence);
-
-	backend->context.device.waitForFences(contextResources[backend->context.currentFrame]->renderSceneFence, VK_TRUE, UINT64_MAX);
-	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
 
 
 	// end preparations compute

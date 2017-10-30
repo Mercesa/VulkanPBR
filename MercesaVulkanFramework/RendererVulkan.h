@@ -56,7 +56,6 @@ struct ShaderResourcesPBR
 	vk::DescriptorSet textureSet;
 };
 
-
 struct ShaderResourcesPostProc
 {
 	vk::DescriptorSet inputTextureSet;
@@ -216,6 +215,7 @@ private:
 	CBMatrix matrixConstantBufferData;
 	CBLights lightConstantBufferData;
 	CBModelMatrixSingle matrixSingleData;
+	CBMaterialPBR pbrMaterialData;
 
 
 	//  these bindings will be useful in the future, they do nothing now

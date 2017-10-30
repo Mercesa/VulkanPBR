@@ -14,5 +14,9 @@ public:
 
 	vk::DescriptorSet positionBufferSet;
 	UniformBufferVulkan positionUniformBuffer;
+
+	vk::DescriptorSet materialBufferSet;
+	UniformBufferVulkan materialUniformBuffer;
+
 };
 

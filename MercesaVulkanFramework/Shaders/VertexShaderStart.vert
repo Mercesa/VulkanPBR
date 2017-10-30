@@ -14,6 +14,14 @@ layout(std140, set = 3, binding = 0) uniform modelBuffer{
 	mat4 modelMatrix;
 } mySingleUniform;
 
+layout(std140, set = 3, binding = 1) uniform pbrDataBuffer{
+	float metallic;
+	float roughness;
+	int shouldUse;
+} pbrMaterialData;
+
+
+
 layout(std140, set = 1, binding = 0) uniform bufferVals{
 	mat4 modelMatrix;
 	mat4 viewMatrix;

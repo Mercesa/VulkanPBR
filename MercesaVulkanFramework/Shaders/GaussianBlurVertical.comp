@@ -16,7 +16,7 @@ void main() {
 	for(int i = 0; i < 5; ++i)
 	{
 		result += imageLoad(inputImage, ivec2(gl_GlobalInvocationID.x , gl_GlobalInvocationID.y + i)).rgb * weight[i];
-		result += imageLoad(inputImage, ivec2(gl_GlobalInvocationID.x , gl_GlobalInvocationID.y + i)).rgb * weight[i];
+		result += imageLoad(inputImage, ivec2(gl_GlobalInvocationID.x , gl_GlobalInvocationID.y - i)).rgb * weight[i];
 	}
 
 	//result /= 16.0f;

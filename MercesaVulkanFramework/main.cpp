@@ -27,6 +27,8 @@ INITIALIZE_EASYLOGGINGPP
 #include "GLFWLowLevelWindow.h"
 #include "inputGlfw.h"
 #include "MainGUI.h"
+#include "ApplicationParameters.h"
+
 
 #include <imgui.h>
 #include "Imgui/imgui_impl_glfw_vulkan.h"
@@ -41,10 +43,6 @@ std::unique_ptr<inputGlfw> input;
 std::unique_ptr<MainGUI> gui;
 bool mouseFirstFrame = true;
 
-double lastX = 0;
-double lastY = 0;
-double relX = 0;
-double relY = 0;
 
 static bool startMenu = false;
 
@@ -91,7 +89,7 @@ void processInput(GLFWwindow *window)
 
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
 
@@ -102,6 +100,16 @@ int main()
 	freopen("conout$", "w", stdout);
 	freopen("conout$", "w", stderr);
 #endif
+
+	// Process command line arguments
+	//for (int i = 0; i < argc; ++i)
+	//{
+	//	if (strcmp(argv[i], "renderdoc") == 0)
+	//	{
+	//		isRenderdocExecute = true;
+	//		std::cout << "renderdoc execute detected";
+	//	}
+	//}
 
 	resourceManager = std::make_unique<ResourceManager>();
 	input = std::make_unique<inputGlfw>();

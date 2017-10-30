@@ -183,6 +183,7 @@
     <ClCompile Include="TextureVulkan.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ApplicationParameters.h" />
     <ClInclude Include="BackendVulkan.h" />
     <ClInclude Include="CommandpoolVulkan.h" />
     <ClInclude Include="ConstantBuffers.h" />

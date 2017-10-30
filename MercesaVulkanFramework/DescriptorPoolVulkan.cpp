@@ -15,7 +15,7 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 		return false;
 	}
 
-	std::array<vk::DescriptorPoolSize, 5> type_count;
+	std::array<vk::DescriptorPoolSize, 6> type_count;
 	
 
 	// Initialize our pool with these values
@@ -33,6 +33,9 @@ bool DescriptorPoolVulkan::Create(const vk::Device aDevice,
 
 	type_count[4].type = vk::DescriptorType::eUniformBufferDynamic;
 	type_count[4].descriptorCount = iPoolData.uniformDynamicCount;
+
+	type_count[5].type = vk::DescriptorType::eStorageImage;
+	type_count[5].descriptorCount = iPoolData.storageImageCount;
 
 	vk::DescriptorPoolCreateInfo createInfo = vk::DescriptorPoolCreateInfo()
 		.setPNext(nullptr)
@@ -85,6 +88,12 @@ bool DescriptorPoolVulkan::ValidateResourcesAmounts(const PoolData& iResourceAmo
 		return false;
 	}
 
+	if (this->currentResources.storageImageCount - iResourceAmount.storageImageCount < 0)
+	{
+		return false;
+	}
+
+
 	return true;
 }
 
@@ -94,6 +103,7 @@ bool DescriptorPoolVulkan::UpdateResourceAmounts(const PoolData& iResourceAmount
 	currentResources.samplerCount -= iResourceAmounts.samplerCount;
 	currentResources.uniformBufferCount -= iResourceAmounts.uniformBufferCount;
 	currentResources.sampledImgCount -= iResourceAmounts.sampledImgCount;
+	currentResources.storageImageCount -= iResourceAmounts.storageImageCount;
 
 	currentResources.setCount -= iResourceAmounts.setCount;
 
@@ -129,6 +139,10 @@ bool DescriptorPoolVulkan::CalculateResourceCostOfDescriptorSet(
 
 		case vk::DescriptorType::eSampledImage:
 			oCost.sampledImgCount += e.descriptorCount * iSetAmount;
+			break;
+
+		case vk::DescriptorType::eStorageImage:
+			oCost.storageImageCount += e.descriptorCount * iSetAmount;
 			break;
 
 		default:

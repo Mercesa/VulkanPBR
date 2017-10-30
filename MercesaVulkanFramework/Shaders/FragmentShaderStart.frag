@@ -27,6 +27,11 @@ layout(std140, set = 1, binding = 1) uniform lightVals{
 	int currentAmountOfLights;
 } myLightVals;
 
+layout(std140, set = 3, binding = 1) uniform pbrDataBuffer{
+	float metallic;
+	float roughness;
+	int shouldUse;
+} pbrMaterialData;
 
 
 

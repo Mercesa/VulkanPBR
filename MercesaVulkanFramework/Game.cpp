@@ -7,6 +7,8 @@
 #include "camera.h"
 #include "ModelLoader.h"
 #include "GLFW/glfw3.h"
+#include <iostream>
+#include <algorithm>
 
 Game::Game(inputGlfw* const iInput, ResourceManager* const iResourceManager) :
 	input(iInput), resourceManager(iResourceManager)
@@ -113,8 +115,6 @@ void Game::Init()
 	//modelsToBeLoaded[0].filepaths[4] = "Textures/Floor/oakfloor_AO.png";
 
 }
-#include <iostream>
-#include <algorithm>
 
 void Game::Update(float iDT)
 {
