@@ -12,9 +12,9 @@ layout(set = 0, binding = 1) uniform sampler2D textureBloom;
 
 void main()
 {
-	vec3 color = vec3(texture(textureBloom, inUV));
-	//color = color / (color + vec3(1.0));
-	//color = pow(color, vec3(1.0/2.2));	
+	vec3 color = vec3(texture(textureBloom, inUV)) + vec3(texture(textureScene, inUV));
+	color = color / (color + vec3(1.0));
+	color = pow(color, vec3(1.0/2.2));	
 
 	outColor = vec4(color.rgb, 1.0f);
 }

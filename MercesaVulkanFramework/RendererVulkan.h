@@ -121,6 +121,9 @@ struct BloomData
 
 	vk::DescriptorImageInfo descriptorTexture1;
 	vk::DescriptorImageInfo descriptorTexture2;
+
+	vk::DescriptorImageInfo descriptorTexture1Compute;
+	vk::DescriptorImageInfo descriptorTexture2Compute;
 };
 
 
@@ -188,12 +191,17 @@ private:
 
 	vk::PipelineLayout pipelineLayoutPostProc;
 	vk::Pipeline pipelinePostProc;
-	
+
+	vk::PipelineLayout pipelineLayoutBloomCompute;
+	vk::Pipeline pipelineBloomComputeHorizontal;
+	vk::Pipeline pipelineBloomComputeVertical;
+
 
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPBR;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramRed;
 	std::unique_ptr<ShaderProgramVulkan> shaderProgramPostProc;
-	std::unique_ptr<ShaderProgramVulkan> shaderProgramBloomCompute;
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramBloomComputeHorizontal;
+	std::unique_ptr<ShaderProgramVulkan> shaderProgramBloomComputeVertical;
 
 
 	// Viewport and scissor rect

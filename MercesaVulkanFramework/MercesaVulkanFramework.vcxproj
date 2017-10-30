@@ -238,7 +238,8 @@
     <None Include="Shaders\FragmentShaderPostProc.frag" />
     <None Include="Shaders\FragmentShaderRed.frag" />
     <None Include="Shaders\FragmentShaderStart.frag" />
-    <None Include="Shaders\GaussianBlur.comp" />
+    <None Include="Shaders\GaussianBlurHorizontal.comp" />
+    <None Include="Shaders\GaussianBlurVertical.comp" />
     <None Include="Shaders\VertexShaderPostProc.vert" />
     <None Include="Shaders\VertexShaderRed.vert" />
     <None Include="Shaders\VertexShaderStart.vert" />

@@ -297,7 +297,10 @@
     <None Include="Shaders\VertexShaderPostProc.vert">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Shaders\GaussianBlur.comp">
+    <None Include="Shaders\GaussianBlurHorizontal.comp">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\GaussianBlurVertical.comp">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

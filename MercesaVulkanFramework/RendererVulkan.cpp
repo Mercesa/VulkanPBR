@@ -246,18 +246,31 @@ void RendererVulkan::SetupShaders()
 
 
 	// Load compute shader
-	shaderProgramBloomCompute = std::make_unique<ShaderProgramVulkan>();
+	shaderProgramBloomComputeHorizontal = std::make_unique<ShaderProgramVulkan>();
 	
 	ShaderDataVulkan computeDataBloom;
 
 	computeDataBloom.entryPointName = "main";
 	computeDataBloom.shaderStage = ShaderStageFlagBits::eCompute;
-	computeDataBloom.shaderFile = "Shaders/Bin/gaussianComputeShader.spv";
+	computeDataBloom.shaderFile = "Shaders/Bin/gaussianComputeShaderHorizontal.spv";
 
 
-	std::vector<ShaderDataVulkan> shaderDataComputeBloom = { computeDataBloom };
+	std::vector<ShaderDataVulkan> shaderDataComputeBloomHorizontal = { computeDataBloom };
 
-	shaderProgramBloomCompute->LoadShaders(backend->context.device, shaderDataComputeBloom);
+	shaderProgramBloomComputeHorizontal->LoadShaders(backend->context.device, shaderDataComputeBloomHorizontal);
+
+
+	// Load compute shader
+	shaderProgramBloomComputeVertical = std::make_unique<ShaderProgramVulkan>();
+
+	computeDataBloom.entryPointName = "main";
+	computeDataBloom.shaderStage = ShaderStageFlagBits::eCompute;
+	computeDataBloom.shaderFile = "Shaders/Bin/gaussianComputeShaderVertical.spv";
+
+
+	std::vector<ShaderDataVulkan> shaderDataComputeBloomVertical = { computeDataBloom };
+
+	shaderProgramBloomComputeVertical->LoadShaders(backend->context.device, shaderDataComputeBloomVertical);
 }
 
 void RendererVulkan::SetupPipeline()
@@ -581,6 +594,40 @@ void RendererVulkan::SetupPipelinePostProc()
 
 	pipelinePostProc = backend->context.device.createGraphicsPipeline(vk::PipelineCache(nullptr), gfxPipe);
 
+
+	// Create compute pipeline layout and pipeline
+	auto shaderLayoutBloomCompute = shaderProgramBloomComputeHorizontal->GetShaderProgramLayout();
+
+	vk::PipelineLayoutCreateInfo pipelineLayoutInfoCompute = vk::PipelineLayoutCreateInfo()
+		.setPNext(NULL)
+		.setPushConstantRangeCount(0)
+		.setPPushConstantRanges(NULL)
+		.setSetLayoutCount(shaderLayoutBloomCompute.size())
+		.setPSetLayouts(shaderLayoutBloomCompute.data());
+
+	pipelineLayoutBloomCompute = backend->context.device.createPipelineLayout(pipelineLayoutInfoCompute);
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoBloomComputeHorizontal = shaderProgramBloomComputeHorizontal->GetPipelineShaderInfo();
+
+	vk::ComputePipelineCreateInfo compPipeHorizontal = vk::ComputePipelineCreateInfo()
+		.setLayout(pipelineLayoutBloomCompute)
+		.setStage(shaderPipelineInfoBloomComputeHorizontal[0])
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0);
+
+	pipelineBloomComputeHorizontal = backend->context.device.createComputePipeline(vk::PipelineCache(nullptr), compPipeHorizontal);
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderPipelineInfoBloomComputeVertical = shaderProgramBloomComputeVertical->GetPipelineShaderInfo();
+
+	vk::ComputePipelineCreateInfo compPipeVertical = vk::ComputePipelineCreateInfo()
+		.setLayout(pipelineLayoutBloomCompute)
+		.setStage(shaderPipelineInfoBloomComputeVertical[0])
+		.setBasePipelineHandle(nullptr)
+		.setBasePipelineIndex(0);
+
+	pipelineBloomComputeVertical = backend->context.device.createComputePipeline(vk::PipelineCache(nullptr), compPipeVertical);
+
+
 }
 
 void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
@@ -591,7 +638,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
 	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
-	auto shaderDescriptorLayoutBloomCompute = shaderProgramPostProc->GetShaderProgramLayout();
+	auto shaderDescriptorLayoutBloomCompute = shaderProgramBloomComputeHorizontal->GetShaderProgramLayout();
 
 	for (int i = 0; i < NUM_FRAMES; ++i)
 	{
@@ -775,7 +822,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 
 	}
 
-	// Setup descriptors for the post proc scene
+	// Setup descriptors for the bloom compute
 	for (int i = 0; i < contextResources.size(); ++i)
 	{
 		// First descriptor set
@@ -786,7 +833,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes[0].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
 		writes[0].descriptorCount = 1;
 		writes[0].descriptorType = vk::DescriptorType::eStorageImage;
-		writes[0].pImageInfo = &bloomData->descriptorTexture1;
+		writes[0].pImageInfo = &bloomData->descriptorTexture1Compute;
 		writes[0].dstArrayElement = 0;
 		writes[0].dstBinding = 0;
 
@@ -795,7 +842,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes[1].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
 		writes[1].descriptorCount = 1;
 		writes[1].descriptorType = vk::DescriptorType::eStorageImage;
-		writes[1].pImageInfo = &bloomData->descriptorTexture2;
+		writes[1].pImageInfo = &bloomData->descriptorTexture2Compute;
 		writes[1].dstArrayElement = 0;
 		writes[1].dstBinding = 1;
 
@@ -809,7 +856,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes2[0].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
 		writes2[0].descriptorCount = 1;
 		writes2[0].descriptorType = vk::DescriptorType::eStorageImage;
-		writes2[0].pImageInfo = &bloomData->descriptorTexture2;
+		writes2[0].pImageInfo = &bloomData->descriptorTexture2Compute;
 		writes2[0].dstArrayElement = 0;
 		writes2[0].dstBinding = 0;
 
@@ -818,7 +865,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes2[1].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
 		writes2[1].descriptorCount = 1;
 		writes2[1].descriptorType = vk::DescriptorType::eStorageImage;
-		writes2[1].pImageInfo = &bloomData->descriptorTexture1;
+		writes2[1].pImageInfo = &bloomData->descriptorTexture1Compute;
 		writes2[1].dstArrayElement = 0;
 		writes2[1].dstBinding = 1;
 
@@ -1185,12 +1232,64 @@ void RendererVulkan::Render(const std::vector<Object>& iObjects)
 	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
 
 
+	// Prepare compute and submit
 
 	vk::CommandBuffer& computeBuffer = contextResources[backend->context.currentFrame]->bloomBufferCompute;
 
+	// Begin and run the compute shader
+	computeBuffer.begin(vk::CommandBufferBeginInfo());
+	computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeHorizontal);
+	computeBuffer.bindDescriptorSets(
+		PipelineBindPoint::eCompute, 
+		pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.horizontalSet, 0, NULL);
+
+	computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
+	computeBuffer.end();
+
+	vk::PipelineStageFlags dstStageMaskCompSubmit = vk::PipelineStageFlagBits::eTopOfPipe;
+
+	vk::SubmitInfo subInfoComp = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&contextResources[backend->context.currentFrame]->bloomBufferCompute)
+		.setWaitSemaphoreCount(0)
+		.setPWaitSemaphores(VK_NULL_HANDLE)
+		.setSignalSemaphoreCount(0)
+		.setPSignalSemaphores(VK_NULL_HANDLE)
+		.setPWaitDstStageMask(&dstStageMask);
+
+	backend->context.computeQueue.submit(subInfoComp, contextResources[backend->context.currentFrame]->renderSceneFence);
+
+	backend->context.device.waitForFences(contextResources[backend->context.currentFrame]->renderSceneFence, VK_TRUE, UINT64_MAX);
+	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
 
 
+	// Begin and run the compute shader
+	computeBuffer.begin(vk::CommandBufferBeginInfo());
+	computeBuffer.bindPipeline(PipelineBindPoint::eCompute, pipelineBloomComputeVertical);
+	computeBuffer.bindDescriptorSets(
+		PipelineBindPoint::eCompute,
+		pipelineLayoutBloomCompute, 0, 1, &contextResources[backend->context.currentFrame]->descriptorSetBloomCompute.verticalSet, 0, NULL);
 
+	computeBuffer.dispatch(backend->context.currentParameters.width / 16, backend->context.currentParameters.height / 16, 1);
+	computeBuffer.end();
+
+
+	 subInfoComp = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&contextResources[backend->context.currentFrame]->bloomBufferCompute)
+		.setWaitSemaphoreCount(0)
+		.setPWaitSemaphores(VK_NULL_HANDLE)
+		.setSignalSemaphoreCount(0)
+		.setPSignalSemaphores(VK_NULL_HANDLE)
+		.setPWaitDstStageMask(&dstStageMask);
+
+	backend->context.computeQueue.submit(subInfoComp, contextResources[backend->context.currentFrame]->renderSceneFence);
+
+	backend->context.device.waitForFences(contextResources[backend->context.currentFrame]->renderSceneFence, VK_TRUE, UINT64_MAX);
+	backend->context.device.resetFences(contextResources[backend->context.currentFrame]->renderSceneFence);
+
+
+	// end preparations compute
 
 	RecordCommandBuffersImgui();
 
@@ -1494,6 +1593,13 @@ void RendererVulkan::CreateOffscreenData()
 	bloomData->descriptorTexture2.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 	bloomData->descriptorTexture2.imageView = bloomData->texture2.view;
 	bloomData->descriptorTexture2.sampler = offscreenTest->sampler;
+
+
+	bloomData->descriptorTexture1Compute.imageLayout = vk::ImageLayout::eGeneral;
+	bloomData->descriptorTexture1Compute.imageView = bloomData->texture1.view;
+
+	bloomData->descriptorTexture2Compute.imageLayout = vk::ImageLayout::eGeneral;
+	bloomData->descriptorTexture2Compute.imageView = bloomData->texture2.view;
 
 }
 
