@@ -92,12 +92,18 @@ public:
 		std::vector<descriptorLayoutIntermediate> storageBuffersIntermediate
 			= ParseResources(resourcesShader.storage_buffers, compilerShader, DescriptorType::eStorageBuffer, iTypeOfShader);
 
+		std::vector<descriptorLayoutIntermediate> storageImagesIntermediate
+			= ParseResources(resourcesShader.storage_images, compilerShader, DescriptorType::eStorageImage, iTypeOfShader);
+
 		
 		// Put resources in a single 
 		intermediateLayout.insert(intermediateLayout.end(), sampledImagesIntermediate.begin(), sampledImagesIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), samplersIntermediate.begin(), samplersIntermediate.end());
 		intermediateLayout.insert(intermediateLayout.end(), uniformBuffersIntermediate.begin(), uniformBuffersIntermediate.end());
+		intermediateLayout.insert(intermediateLayout.end(), combinedImageSamplersIntermediate.begin(), combinedImageSamplersIntermediate.end());
+
 		intermediateLayout.insert(intermediateLayout.end(), storageBuffersIntermediate.begin(), storageBuffersIntermediate.end());
+		intermediateLayout.insert(intermediateLayout.end(), storageImagesIntermediate.begin(), storageImagesIntermediate.end());
 
 
 		return intermediateLayout;

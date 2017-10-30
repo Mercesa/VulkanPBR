@@ -228,6 +228,7 @@ void RendererVulkan::SetupShaders()
 
 	shaderProgramPostProc = std::make_unique<ShaderProgramVulkan>();
 
+	
 	ShaderDataVulkan vertexDataPostProc;
 	ShaderDataVulkan fragmentDataPostProc;
 
@@ -243,6 +244,8 @@ void RendererVulkan::SetupShaders()
 
 	shaderProgramPostProc->LoadShaders(backend->context.device, shaderDataPostProc);
 
+
+	// Load compute shader
 	shaderProgramBloomCompute = std::make_unique<ShaderProgramVulkan>();
 	
 	ShaderDataVulkan computeDataBloom;
@@ -265,7 +268,7 @@ void RendererVulkan::SetupPipeline()
 		.setPNext(NULL)
 		.setPushConstantRangeCount(0)
 		.setPPushConstantRanges(NULL)
-		.setSetLayoutCount(NUM_DESCRIPTOR_SETS)
+		.setSetLayoutCount(shaderLayoutPBR.size())
 		.setPSetLayouts(shaderLayoutPBR.data());
 
 	pipelineLayoutRenderScene = backend->context.device.createPipelineLayout(pPipelineLayoutCreateInfo);
@@ -782,7 +785,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes[0].pNext = NULL;
 		writes[0].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
 		writes[0].descriptorCount = 1;
-		writes[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes[0].descriptorType = vk::DescriptorType::eStorageImage;
 		writes[0].pImageInfo = &bloomData->descriptorTexture1;
 		writes[0].dstArrayElement = 0;
 		writes[0].dstBinding = 0;
@@ -791,7 +794,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes[1].pNext = NULL;
 		writes[1].dstSet = contextResources[i]->descriptorSetBloomCompute.horizontalSet;
 		writes[1].descriptorCount = 1;
-		writes[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes[1].descriptorType = vk::DescriptorType::eStorageImage;
 		writes[1].pImageInfo = &bloomData->descriptorTexture2;
 		writes[1].dstArrayElement = 0;
 		writes[1].dstBinding = 1;
@@ -805,7 +808,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes2[0].pNext = NULL;
 		writes2[0].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
 		writes2[0].descriptorCount = 1;
-		writes2[0].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes2[0].descriptorType = vk::DescriptorType::eStorageImage;
 		writes2[0].pImageInfo = &bloomData->descriptorTexture2;
 		writes2[0].dstArrayElement = 0;
 		writes2[0].dstBinding = 0;
@@ -814,7 +817,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 		writes2[1].pNext = NULL;
 		writes2[1].dstSet = contextResources[i]->descriptorSetBloomCompute.verticalSet;
 		writes2[1].descriptorCount = 1;
-		writes2[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writes2[1].descriptorType = vk::DescriptorType::eStorageImage;
 		writes2[1].pImageInfo = &bloomData->descriptorTexture1;
 		writes2[1].dstArrayElement = 0;
 		writes2[1].dstBinding = 1;
