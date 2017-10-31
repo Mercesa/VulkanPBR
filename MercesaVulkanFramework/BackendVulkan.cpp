@@ -1118,9 +1118,9 @@ void BackendVulkan::BeginFrame()
 
 
 	vk::ClearValue clear_values[2] = {};
-	clear_values[0].color.float32[0] = 1.0f;
-	clear_values[0].color.float32[1] = 0.0f;
-	clear_values[0].color.float32[2] = 0.0f;
+	clear_values[0].color.float32[0] = 0.2109375;
+	clear_values[0].color.float32[1] = 0.64705882353;
+	clear_values[0].color.float32[2] = 0.84705882353;
 	clear_values[0].color.float32[3] = 1.0f;
 	clear_values[1].depthStencil.depth = 1.0f;
 	clear_values[1].depthStencil.stencil = 0.0f;

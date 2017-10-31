@@ -633,7 +633,7 @@ void RendererVulkan::SetupDescriptorSet(const std::vector<Object>& iObjects)
 {
 	descriptorPool = std::make_unique<DescriptorPoolVulkan>();
 
-	descriptorPool->Create(backend->context.device, PoolData(100, 10, 10, 400, 2, 100, 10));
+	descriptorPool->Create(backend->context.device, PoolData(100, 10, 200, 600, 2, 500, 10));
 
 	auto shaderDescriptorLayoutPBR = shaderProgramPBR->GetShaderProgramLayout();
 	auto shaderDescriptorLayoutPostProc = shaderProgramPostProc->GetShaderProgramLayout();
@@ -1154,9 +1154,9 @@ void RendererVulkan::RenderScene(const std::vector<Object>& iObjects)
 
 	// Clear our render targets at start frame
 	vk::ClearValue clear_values[3] = {};
-	clear_values[0].color.float32[0] = 1.0f;
-	clear_values[0].color.float32[1] = 0.0f;
-	clear_values[0].color.float32[2] = 0.0f;
+	clear_values[0].color.float32[0] = 0.2109375;
+	clear_values[0].color.float32[1] = 0.64705882353;
+	clear_values[0].color.float32[2] = 0.84705882353;
 	clear_values[0].color.float32[3] = 1.0f;
 	clear_values[1].depthStencil.depth = 1.0f;
 	clear_values[1].depthStencil.stencil = 0.0f;

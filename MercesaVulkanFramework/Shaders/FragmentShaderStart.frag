@@ -111,7 +111,15 @@ void main() {
 	float roughness = texture(sampler2D(roughnessTexture, realTextureSampler), uv).r;
 	float ao = texture(sampler2D(aoTexture, realTextureSampler), uv).r;
 
-	vec3 F0 = vec3(0.4f);
+	if(pbrMaterialData.shouldUse == 1)
+	{
+		metallic = pbrMaterialData.metallic;
+		roughness = pbrMaterialData.roughness;
+		albedo = vec3(0.0f, 0.0f, 0.0f);
+		N = normalize(normal);
+	}
+
+	vec3 F0 = vec3(0.77f);
 	F0 = mix(F0, albedo, metallic);
 
 	vec3 Lo = vec3(0.0);
@@ -139,7 +147,7 @@ void main() {
 
 		float NdotL = max(dot(N, L), 0.0);
 
-		Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+		Lo += kS;// (kD * albedo / PI + specular) * radiance * NdotL;
 	}
 	
 	vec3 ambient = vec3(0.03) * albedo;
