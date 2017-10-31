@@ -27,6 +27,8 @@ INITIALIZE_EASYLOGGINGPP
 #include "GLFWLowLevelWindow.h"
 #include "inputGlfw.h"
 #include "MainGUI.h"
+#include "ApplicationParameters.h"
+
 
 #include <imgui.h>
 #include "Imgui/imgui_impl_glfw_vulkan.h"
@@ -41,10 +43,6 @@ std::unique_ptr<inputGlfw> input;
 std::unique_ptr<MainGUI> gui;
 bool mouseFirstFrame = true;
 
-double lastX = 0;
-double lastY = 0;
-double relX = 0;
-double relY = 0;
 
 static bool startMenu = false;
 
@@ -65,6 +63,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	{
 		input->KeyboardInput(key, scancode, action, mods);
 	}
+
+	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+	{
+		startMenu = !startMenu;
+	}
 	//ImGui_ImplGlfwVulkan_KeyCallback(window, key, scancode, action, mods);
 }
 
@@ -83,13 +86,10 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 
-	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-	{
-		startMenu = !startMenu;
-	}
+
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     // Use validation layers if this is a debug build, and use WSI extensions regardless
 
@@ -100,6 +100,16 @@ int main()
 	freopen("conout$", "w", stdout);
 	freopen("conout$", "w", stderr);
 #endif
+
+	// Process command line arguments
+	//for (int i = 0; i < argc; ++i)
+	//{
+	//	if (strcmp(argv[i], "renderdoc") == 0)
+	//	{
+	//		isRenderdocExecute = true;
+	//		std::cout << "renderdoc execute detected";
+	//	}
+	//}
 
 	resourceManager = std::make_unique<ResourceManager>();
 	input = std::make_unique<inputGlfw>();
@@ -114,13 +124,17 @@ int main()
 	CurrentGame = std::make_unique<Game>(input.get(), resourceManager.get());
 	window->Create(1280, 720);
 	CurrentGame->Init();
+	
+	// Initialize the 
 	renderer->Initialize(GFXParams(0, 0, 1280, 720, 0, 60, 1), window.get());
+
 	renderer->PrepareResources(
 		resourceManager->texturesToPrepare, 
 		resourceManager->modelsToPrepare, 
 		resourceManager->objsToPrepare, 
 		CurrentGame->gameObjects);
 
+	// Initialize glfw stuff
 	glfwSetInputMode(glfwWindow->window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwMakeContextCurrent(glfwWindow->window);
 	
@@ -137,7 +151,7 @@ int main()
 		// Update timer
 		engineTimer->Update();
 
-		//ImGui_ImplGlfwVulkan_NewFrame();
+		ImGui_ImplGlfwVulkan_NewFrame();
 
 		// Process input
 		input->Update();
@@ -149,7 +163,7 @@ int main()
 
 		if (startMenu)
 		{
-			//gui->Update(CurrentGame.get());
+			gui->Update(CurrentGame.get());
 		}
 		// Render resources
 		renderer->BeginFrame((*CurrentGame->camera.get()), CurrentGame->lights);

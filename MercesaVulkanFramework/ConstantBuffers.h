@@ -25,6 +25,11 @@ struct CBModelMatrix {
 	glm::mat4 *model = nullptr;
 };
 
+struct CBMaterialPBR{
+	float roughness = 0.0f;
+	float metallicness = 0.0f;
+	int use = 0;
+};
 
 struct CBModelMatrixSingle {
 	glm::mat4 model;

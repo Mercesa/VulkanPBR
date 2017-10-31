@@ -48,14 +48,24 @@ bool ShaderProgramVulkan::LoadShaders(const vk::Device& iDevice, std::vector<Sha
 		LOG(ERROR) << "ShaderProgramVulkan::LoadShaders Attempting to load 0 shaders";
 		return false;
 	}
-
+	
+	// Load the shaders instantly
 	for (auto& e : iShadersToLoad)
 	{
 		shadersData.push_back(CreateShader(iDevice, e.shaderFile, e.entryPointName, e.shaderStage));
 	}
 	
+
+	std::vector<std::pair<std::string, ShaderStageFlagBits>> shadersToProcessIntolayout;
+
+	// go through the shader data and add them t
+	for (auto& e : shadersData)
+	{
+		shadersToProcessIntolayout.push_back({ e.shaderFile, e.shaderStage });
+	}
+
 	// For now I will only support vertex and fragment shader layout parsing, 
-	shaderLayout = std::move(ShaderLayoutparser::CompileShadersIntoLayouts(shadersData[0].shaderFile, shadersData[1].shaderFile, iDevice));
+	shaderLayout = std::move(ShaderLayoutparser::CompileShadersIntoLayouts(shadersToProcessIntolayout, iDevice));
 	
 	
 	return true;
@@ -84,7 +94,6 @@ std::vector<vk::PipelineShaderStageCreateInfo> ShaderProgramVulkan::GetPipelineS
 	}
 
 	return tPipelineShadersInfo;
-	//for(auto& e :)
 }
 
 std::vector<vk::DescriptorSetLayout> ShaderProgramVulkan::GetShaderProgramLayout()

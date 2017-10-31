@@ -7,6 +7,8 @@
 #include "camera.h"
 #include "ModelLoader.h"
 #include "GLFW/glfw3.h"
+#include <iostream>
+#include <algorithm>
 
 Game::Game(inputGlfw* const iInput, ResourceManager* const iResourceManager) :
 	input(iInput), resourceManager(iResourceManager)
@@ -40,6 +42,47 @@ void Game::Init()
 	light.position = glm::vec3(0.0f, 0.0f, 4.0f);
 	lights.push_back(light);
 
+	light.diffuseColor = glm::vec3(10.0f, 10.0f, 10.0f);
+	light.position = glm::vec3(0.0f, 20.0f, 4.0f);
+	lights.push_back(light);
+
+	light.diffuseColor = glm::vec3(10.0f, 10.0f, 10.0f);
+	light.position = glm::vec3(20.0f, 20.0f, 4.0f);
+	lights.push_back(light);
+
+	light.diffuseColor = glm::vec3(10.0f, 10.0f, 10.0f);
+	light.position = glm::vec3(20.0f, 0.0f, 4.0f);
+	lights.push_back(light);
+
+	for (int y = 0; y < 5; ++y)
+	{
+		for (int x = 0; x < 5; ++x)
+		{
+			// Load first sphere
+			auto SphereModel = resourceManager->LoadModel("Models/Sphere/Sphere.obj");
+			Material material;
+
+			material.diffuseTexture = resourceManager->LoadTexture("Textures/rustediron2_basecolor.png");
+			material.specularTexture = resourceManager->LoadTexture("Textures/rustediron2_metallic.png");
+			material.normalTexture = resourceManager->LoadTexture("Textures/rustediron2_normal.png");
+			material.roughnessTexture = resourceManager->LoadTexture("Textures/rustediron2_roughness.png");
+			material.aoTexture = resourceManager->LoadTexture("");
+
+
+
+			Object obj;
+			obj.model = SphereModel[0];
+			obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f)) * 
+				glm::translate(glm::mat4(1.0f), glm::vec3((float)x * 2.0f,(float)y * 2.0f, 0.0f));
+			obj.material = material;
+			obj.material.roughness = 1.0f - static_cast<float>(x)/5.0f;
+			obj.material.metalness = 1.0f - static_cast<float>(y)/5.0f;
+			obj.material.useTexturesForReflectivity = 1;
+			obj.renderingData = resourceManager->RegisterRenderObject();
+
+			gameObjects.push_back(obj);
+		}
+	}
 
 	// Load first sphere
 	auto SphereModel = resourceManager->LoadModel("Models/Sphere/Sphere.obj");
@@ -52,45 +95,51 @@ void Game::Init()
 	material.aoTexture = resourceManager->LoadTexture("");
 
 
+
 	Object obj;
 	obj.model = SphereModel[0];
-	obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
+	obj.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1., 1.0f, 1.0f)) *
+		glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 10 * 2.0f, 0.0f));
 	obj.material = material;
+	obj.material.roughness = 1.0f - static_cast<float>(1) / 5.0f;
+	obj.material.metalness = 1.0f - static_cast<float>(1) / 5.0f;
+	obj.material.useTexturesForReflectivity = 1;
 	obj.renderingData = resourceManager->RegisterRenderObject();
 
 	gameObjects.push_back(obj);
 
-	auto GunModel = resourceManager->LoadModel("Models/Gun/Cerberus_LP.fbx");
 
-	material.diffuseTexture = resourceManager->LoadTexture("Textures/Cerberus_A.tga");
-	material.specularTexture = resourceManager->LoadTexture("Textures/Cerberus_M.tga");
-	material.normalTexture = resourceManager->LoadTexture("Textures/Cerberus_N.tga");
-	material.roughnessTexture = resourceManager->LoadTexture("Textures/Cerberus_R.tga");
-	material.aoTexture = resourceManager->LoadTexture("Textures/Cerberus_AO.tga");
-
-
-	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
-
-
-	obj.model = GunModel[0];
-	obj.material = material;
-	obj.renderingData = resourceManager->RegisterRenderObject();
-	gameObjects.push_back(obj);
-
-
-	// New model
-	auto DragonModel = resourceManager->LoadModel("Models/Lucy/Lucy.obj")[0];
-	material.diffuseTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-alb.png");
-	material.specularTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-metal.png");
-	material.normalTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-normal.png");
-	material.roughnessTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-rough.png");
-	material.aoTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-ao.png");
-
-	obj.model = DragonModel;
-	obj.material = material;
-	obj.renderingData = resourceManager->RegisterRenderObject();
-	obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
-	gameObjects.push_back(obj);
+	//auto GunModel = resourceManager->LoadModel("Models/Gun/Cerberus_LP.fbx");
+	//
+	//material.diffuseTexture = resourceManager->LoadTexture("Textures/Cerberus_A.tga");
+	//material.specularTexture = resourceManager->LoadTexture("Textures/Cerberus_M.tga");
+	//material.normalTexture = resourceManager->LoadTexture("Textures/Cerberus_N.tga");
+	//material.roughnessTexture = resourceManager->LoadTexture("Textures/Cerberus_R.tga");
+	//material.aoTexture = resourceManager->LoadTexture("Textures/Cerberus_AO.tga");
+	//
+	//
+	//obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(3.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.04f, 0.04f, 0.04f));
+	//
+	//
+	//obj.model = GunModel[0];
+	//obj.material = material;
+	//obj.renderingData = resourceManager->RegisterRenderObject();
+	//gameObjects.push_back(obj);
+	//
+	//
+	//// New model
+	//auto DragonModel = resourceManager->LoadModel("Models/Lucy/Lucy.obj")[0];
+	//material.diffuseTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-alb.png");
+	//material.specularTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-metal.png");
+	//material.normalTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-normal.png");
+	//material.roughnessTexture = resourceManager->LoadTexture( "Textures/CopperRock/copper-rock1-rough.png");
+	//material.aoTexture = resourceManager->LoadTexture("Textures/CopperRock/copper-rock1-ao.png");
+	//
+	//obj.model = DragonModel;
+	//obj.material = material;
+	//obj.renderingData = resourceManager->RegisterRenderObject();
+	//obj.modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(6.0f, 0.0f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.1f));
+	//gameObjects.push_back(obj);
 
 	//
 	//
@@ -113,8 +162,6 @@ void Game::Init()
 	//modelsToBeLoaded[0].filepaths[4] = "Textures/Floor/oakfloor_AO.png";
 
 }
-#include <iostream>
-#include <algorithm>
 
 void Game::Update(float iDT)
 {

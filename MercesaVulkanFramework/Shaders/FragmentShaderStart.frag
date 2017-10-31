@@ -27,6 +27,11 @@ layout(std140, set = 1, binding = 1) uniform lightVals{
 	int currentAmountOfLights;
 } myLightVals;
 
+layout(std140, set = 3, binding = 1) uniform pbrDataBuffer{
+	float metallic;
+	float roughness;
+	int shouldUse;
+} pbrMaterialData;
 
 
 
@@ -49,6 +54,7 @@ layout (location = 4) in mat3 TBN;
 
 
 layout (location = 0) out vec4 outColor;
+layout (location = 1) out vec4 outBrightness;
 
 const float PI = 3.14159265359;
 
@@ -105,7 +111,15 @@ void main() {
 	float roughness = texture(sampler2D(roughnessTexture, realTextureSampler), uv).r;
 	float ao = texture(sampler2D(aoTexture, realTextureSampler), uv).r;
 
-	vec3 F0 = vec3(0.4f);
+	if(pbrMaterialData.shouldUse == 1)
+	{
+		metallic = pbrMaterialData.metallic;
+		roughness = pbrMaterialData.roughness;
+		albedo = vec3(0.0f, 0.0f, 0.0f);
+		N = normalize(normal);
+	}
+
+	vec3 F0 = vec3(0.77f);
 	F0 = mix(F0, albedo, metallic);
 
 	vec3 Lo = vec3(0.0);
@@ -133,21 +147,25 @@ void main() {
 
 		float NdotL = max(dot(N, L), 0.0);
 
-		Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+		Lo += kS;// (kD * albedo / PI + specular) * radiance * NdotL;
 	}
 	
 	vec3 ambient = vec3(0.03) * albedo;
 	
 	vec3 color = ambient + Lo;
-	
-	color = color / (color + vec3(1.0));
-	color = pow(color, vec3(1.0/2.2));
+
 	outColor = vec4(color.rgb, 1.0f);
 	
-	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv);
+	double intensity = dot(vec3(outColor.rgb), vec3(0.2126, 0.7152, 0.0722));
+
+	if(intensity > 1.0f)
+	{
+		outBrightness = outColor;
+	}
 	
-	//vec3 lightCol = vec3(myLightVals.lights[0].color);
-	//outColor = texture(sampler2D(realTexture, realTextureSampler), uv) * vec4(col.rgb, 1.0f);
-	//outColor = texture(sampler2D(albedoTexture, realTextureSampler), uv) + vec4(col.rgb, 1.0f);
-	//outSecond = vec4(1.0f, 1.0f, 1.0f, 1.0f);
+	else
+	{
+		outBrightness = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	}
+	
 }

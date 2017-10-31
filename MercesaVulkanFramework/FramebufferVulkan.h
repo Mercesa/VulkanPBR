@@ -80,7 +80,6 @@ public:
 	vk::Framebuffer framebuffer;
 	vk::RenderPass renderpass;
 
-	std::vector<FramebufferAttachmentVulkan> framebufferAttachments;
 
 	void AddAttachment(const vk::Device& iDevice, const AttachmentCreateInfo& iAttachmentCreateInfo, const VmaAllocator& iAllocator);
 	void CreateRenderpass(const vk::Device& iDevice);

@@ -6,7 +6,15 @@ layout (location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outColor;
 
+layout(set = 0, binding = 0) uniform sampler2D textureScene;
+layout(set = 0, binding = 1) uniform sampler2D textureBloom;
+
+
 void main()
 {
-	outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	vec3 color =   vec3(texture(textureScene, inUV));
+	color = color / (color + vec3(1.0));
+	color = pow(color, vec3(1.0/2.2));	
+
+	outColor = vec4(color.rgb, 1.0f);
 }

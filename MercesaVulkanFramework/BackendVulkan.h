@@ -14,7 +14,7 @@ class iLowLevelWindow;
 using namespace vk;
 
 static const int32_t NUM_FRAMES = 2;
-static const vk::SampleCountFlagBits MULTISAMPLES = vk::SampleCountFlagBits::e1;
+static const vk::SampleCountFlagBits NUM_MULTISAMPLES = vk::SampleCountFlagBits::e1;
 struct GPUinfo
 {
 	vk::PhysicalDevice device;
@@ -43,6 +43,7 @@ public:
 	vk::CommandPool cmdPool;
 
 	int64_t currentFrame = 0;
+	int64_t lastFrame = 0;
 	int64_t counter = 0;
 
 	GPUinfo* gpu;
@@ -51,8 +52,10 @@ public:
 	vk::Device device;
 	int graphicsFamilyIndex;
 	int presentFamilyIndex;
+	int computeFamilyIndex;
 	vk::Queue graphicsQueue;
 	vk::Queue presentQueue;
+	vk::Queue computeQueue;
 
 	vk::Format depthFormat;
 	vk::RenderPass renderpass;
@@ -62,6 +65,7 @@ public:
 
 	GFXParams currentParameters;
 };
+
 
 class BackendVulkan
 {
@@ -74,11 +78,18 @@ public:
 	void Shutdown();
 
 	void BeginFrame();
-	void EndFrame();
+	void EndFrame(vk::CommandBuffer iSceneRenderBuffer, vk::CommandBuffer iGuiBuffer);
 	void BlockSwapBuffers();
+	void AcquireImage();
+	void BlockUntilGpuIdle();
 
 	vulkanContext context;
 	VmaAllocator allocator;
+
+	vk::Format swapchainFormat;
+	std::vector<vk::Image> swapchainImages;
+	std::vector<vk::ImageView> swapchainViews;
+	uint32_t currentSwapIndex = 0;
 
 private:
 
@@ -110,8 +121,7 @@ private:
 
 	void CreateCommandBuffer();
 	void CreateCommandPool();
-
-
+	void DestroyCmdPoolAndBuffers();
 
 	// Two functions which are used to get the instance layers we want
 	void GetInstanceLayers(std::vector<const char*>& iResult);
@@ -138,7 +148,6 @@ private:
 
 	vk::SwapchainKHR swapchain;
 	vk::PresentModeKHR presentMode;
-	vk::Format swapchainFormat;
 	vk::Extent2D swapchainExtent;
 
 	// msaa stuff
@@ -151,8 +160,6 @@ private:
 	vk::ImageView depthView;
 	VmaAllocation depthAllocation;
 
-	std::vector<vk::Image> swapchainImages;
-	std::vector<vk::ImageView> swapchainViews;
 
 	std::vector<vk::Framebuffer> framebuffers;
 
@@ -161,5 +168,5 @@ private:
 
 	VkDebugReportCallbackEXT callBack;
 
-	uint32_t currentSwapIndex = 0;
+
 };

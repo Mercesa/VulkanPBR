@@ -9,6 +9,7 @@
 #include "RenderingIncludes.h"
 #include "iLowLevelWindow.h"
 #include "GLFWLowLevelWindow.h"
+#include "ApplicationParameters.h"
 #include "easylogging++.h"
 
 using namespace vk;
@@ -118,15 +119,15 @@ void BackendVulkan::Init(const GFXParams& iParams, iLowLevelWindow* const iWindo
 	
 	CreateRenderTargets();
 	
+	CreateCommandPool();
+
+	CreateCommandBuffer();
+
 	CreateDepthbuffer();
 
 	CreateRenderpass();
 
 	CreateFramebuffers();
-
-	CreateCommandPool();
-
-	CreateCommandBuffer();
 }
 
 void BackendVulkan::Shutdown()
@@ -136,6 +137,13 @@ void BackendVulkan::Shutdown()
 	DestroyDepthBuffer();
 	DestroyRenderTargets();
 	DestroySemaphores(); 
+	DestroyCmdPoolAndBuffers();
+	
+	for (auto& e : context.commandBufferFences)
+	{
+		context.device.destroyFence(e);
+	}
+
 	context.device.destroyRenderPass(context.renderpass);
 
 	vmaDestroyAllocator(allocator);
@@ -150,7 +158,8 @@ void BackendVulkan::GetInstanceLayers(std::vector<const char*>& iResult)
 	//std::vector<LayerProperties> layers;//enumerateInstanceLayerProperties();
 
 #ifdef _DEBUG
-	iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+	//iResult.push_back("VK_LAYER_LUNARG_standard_validation");
+
 	//layerNames.push_back("VK_LAYER_LUNARG_core_validation");
 	//layerNames.push_back("VK_LAYER_LUNARG_parameter_validation");
 	//layerNames.push_back("VK_LAYER_RENDERDOC_Capture");
@@ -350,7 +359,7 @@ void BackendVulkan::SelectPhysicalDevice()
 
 		int graphicsID = -1;
 		int presentID = -1;
-
+		int computeID = -1;
 		if (!CheckPhysicalDeviceExtensionSupport(gpu, deviceExtensions)) 
 		{
 			continue;
@@ -366,6 +375,7 @@ void BackendVulkan::SelectPhysicalDevice()
 			continue;
 		}
 	
+		// Find graphics queue
 		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
 		{
 			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
@@ -382,6 +392,24 @@ void BackendVulkan::SelectPhysicalDevice()
 			}
 		}
 
+		// Find compute queue
+		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
+		{
+			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
+
+			if (props.queueCount == 0)
+			{
+				continue;
+			}
+
+			if (props.queueFlags & vk::QueueFlagBits::eCompute)
+			{
+				computeID = j;
+				break;
+			}
+		}
+
+		// find present queue
 		for (int j = 0; j < gpu.queueFamilyProps.size(); ++j)
 		{
 			vk::QueueFamilyProperties& props = gpu.queueFamilyProps[j];
@@ -400,10 +428,11 @@ void BackendVulkan::SelectPhysicalDevice()
 			}
 		}
 
-		if (graphicsID >= 0 && presentID >= 0)
+		if (graphicsID >= 0 && presentID >= 0 && computeID >= 0)
 		{
 			context.graphicsFamilyIndex = graphicsID;
 			context.presentFamilyIndex = presentID;
+			context.computeFamilyIndex = computeID;
 			physicalDevice = gpu.device;
 			context.gpu = &gpu;
 			physicalDeviceFeatures = physicalDevice.getFeatures();
@@ -426,6 +455,7 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 
 	uniqueFamilyIDS[context.graphicsFamilyIndex] += 1;
 	uniqueFamilyIDS[context.presentFamilyIndex] += 1;
+	uniqueFamilyIDS[context.computeFamilyIndex] += 1;
 
 	std::vector<vk::DeviceQueueCreateInfo> devQCreateInfo;
 
@@ -448,6 +478,9 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 	deviceFeatures.depthBiasClamp = VK_TRUE;
 	deviceFeatures.depthBounds = VK_TRUE;
 	deviceFeatures.fillModeNonSolid = VK_TRUE;
+	deviceFeatures.samplerAnisotropy = VK_TRUE;
+	deviceFeatures.shaderFloat64 = VK_TRUE;
+
 
 	vk::DeviceCreateInfo info = vk::DeviceCreateInfo()
 		.setQueueCreateInfoCount(static_cast<uint32_t>(devQCreateInfo.size()))
@@ -455,11 +488,12 @@ void BackendVulkan::CreateLogicalDeviceAndQueues()
 		.setPEnabledFeatures(&deviceFeatures)
 		.setEnabledExtensionCount(static_cast<uint32_t>(deviceExtensions.size()))
 		.setPpEnabledExtensionNames(deviceExtensions.data())
-		.setEnabledLayerCount(0); // Device layers are deprecated and need to be enabled if the user wants backwards compatibilit. Me, being the user. Does not care about backwards compatibility in this project
+		.setEnabledLayerCount(0); // Device layers are deprecated and need to be enabled if the user wants backwards compatibility. Me, being the user. Does not care about backwards compatibility in this project
 
 	context.device = physicalDevice.createDevice(info);
 
 	context.graphicsQueue	= context.device.getQueue(context.graphicsFamilyIndex, 0);
+	context.computeQueue = context.device.getQueue(context.computeFamilyIndex, 0);
 	context.presentQueue	= context.device.getQueue(context.presentFamilyIndex, 0);
 
 	LOG(INFO) << "CreateLogicalDeviceAndQueues: Succesfully created device and queues";
@@ -663,8 +697,6 @@ void BackendVulkan::DestroySwapchain()
 }
 
 
-
-
 static VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkDebugReportFlagsEXT msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
 	size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg,
 	void *pUserData) {
@@ -723,6 +755,95 @@ void BackendVulkan::CreateDebugCallbacks()
 	
 }
 
+inline void TransitionImageLayout(vk::CommandBuffer iBuffer, vk::Image aImage, vk::Format aFormat, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+
+	vk::ImageMemoryBarrier barrier = ImageMemoryBarrier()
+		.setOldLayout(oldLayout)
+		.setNewLayout(newLayout)
+		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+		.setImage(aImage)
+		.setSubresourceRange(vk::ImageSubresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1))
+		.setSrcAccessMask(vk::AccessFlagBits(0))
+		.setDstAccessMask(vk::AccessFlagBits(0));
+
+	vk::PipelineStageFlagBits sourceStage;
+	vk::PipelineStageFlagBits destinationStage;
+
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		sourceStage = PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else if (oldLayout == ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits(0);
+		barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+
+		barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+
+
+	else
+	{
+		LOG(ERROR) << "Unsupported layout transition";
+	}
+
+	iBuffer.pipelineBarrier(
+		sourceStage,
+		destinationStage,
+		vk::DependencyFlagBits(0),
+		0, nullptr,
+		0, nullptr,
+		1, &barrier);
+}
+
+inline vk::CommandBuffer BeginSingleTimeCommands(vk::Device aDevice, vk::CommandPool aPoolToUse)
+{
+	vk::CommandBufferAllocateInfo alloc_info = vk::CommandBufferAllocateInfo()
+		.setCommandPool(aPoolToUse)
+		.setCommandBufferCount(1);
+
+	vk::CommandBuffer commandBuffer = aDevice.allocateCommandBuffers(alloc_info)[0];
+
+	vk::CommandBufferBeginInfo beginInfo = vk::CommandBufferBeginInfo()
+		.setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+
+	commandBuffer.begin(beginInfo);
+
+	return commandBuffer;
+}
+
+inline void EndSingleTimeCommands(vk::Device aDevice, vk::CommandBuffer aBuffer, vk::CommandPool aPool, vk::Queue aQueue)
+{
+	aBuffer.end();
+
+	vk::SubmitInfo submitInfo = vk::SubmitInfo()
+		.setCommandBufferCount(1)
+		.setPCommandBuffers(&aBuffer);
+
+	aQueue.submit(submitInfo, vk::Fence(nullptr));
+	aQueue.waitIdle();
+
+	aDevice.freeCommandBuffers(aPool, aBuffer);
+	aDevice.waitIdle();
+}
+
 void BackendVulkan::CreateDepthbuffer()
 {
 	vk::ImageCreateInfo image_Info = {};
@@ -768,6 +889,10 @@ void BackendVulkan::CreateDepthbuffer()
 	context.depthFormat= Format::eD24UnormS8Uint;
 	
 	depthView = context.device.createImageView(view_info);
+
+	vk::CommandBuffer cmdBufferTextures = BeginSingleTimeCommands(context.device, context.cmdPool);
+	TransitionImageLayout(cmdBufferTextures, depthImage, depth_format, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	EndSingleTimeCommands(context.device, cmdBufferTextures, context.cmdPool, context.graphicsQueue);
 }
 
 void BackendVulkan::DestroyDepthBuffer()
@@ -783,7 +908,7 @@ void BackendVulkan::CreateRenderTargets()
 	physicalDevice.getImageFormatProperties(swapchainFormat, vk::ImageType::e2D, ImageTiling::eOptimal, vk::ImageUsageFlagBits::eColorAttachment, vk::ImageCreateFlagBits(0));
 
 	
-	const int samples = (int)MULTISAMPLES;
+	const int samples = (int)NUM_MULTISAMPLES;
 
 	if (samples >= 16 && (fmtProps.sampleCounts & vk::SampleCountFlagBits::e16)){
 		context.sampleCount = SampleCountFlagBits::e16;
@@ -908,7 +1033,7 @@ void BackendVulkan::CreateRenderpass()
 	vk::AttachmentDescription colorAttachment;
 	colorAttachment.format = swapchainFormat;
 	colorAttachment.samples = vk::SampleCountFlagBits::e1;
-	colorAttachment.loadOp = vk::AttachmentLoadOp::eDontCare;
+	colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
 	colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 	colorAttachment.initialLayout = vk::ImageLayout::eUndefined;
 	colorAttachment.finalLayout = vk::ImageLayout::eGeneral;
@@ -918,8 +1043,8 @@ void BackendVulkan::CreateRenderpass()
 	vk::AttachmentDescription depthAttachment;
 	depthAttachment.format = context.depthFormat;
 	depthAttachment.samples = context.sampleCount;
-	depthAttachment.loadOp = vk::AttachmentLoadOp::eDontCare;
-	depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
+	depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
+	depthAttachment.storeOp = vk::AttachmentStoreOp::eStore;
 	depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
 	depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
@@ -968,47 +1093,52 @@ void BackendVulkan::CreateRenderpass()
 	context.renderpass = context.device.createRenderPass(renderpassCreateInfo);
 }
 
+
+void BackendVulkan::BlockUntilGpuIdle()
+{
+	if (context.commandBufferRecorded[context.lastFrame] != false)
+	{
+		context.device.waitForFences(context.commandBufferFences[context.lastFrame], VK_TRUE, UINT64_MAX);
+		context.device.resetFences(context.commandBufferFences[context.lastFrame]);
+		context.commandBufferRecorded[context.lastFrame] = false;
+	}
+}
+void BackendVulkan::AcquireImage()
+{
+	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
+}
+
 void BackendVulkan::BeginFrame()
 {
 	context.commandBuffer = context.commandBuffers[context.currentFrame];
-	context.device.acquireNextImageKHR(swapchain, UINT64_MAX, acquireSemaphores[context.currentFrame], vk::Fence(nullptr), &currentSwapIndex);
 
 	vk::CommandBufferBeginInfo cmdBufferBeginInfo = vk::CommandBufferBeginInfo();
 
 	context.commandBuffer.begin(cmdBufferBeginInfo);
 
+
+	vk::ClearValue clear_values[2] = {};
+	clear_values[0].color.float32[0] = 0.2109375;
+	clear_values[0].color.float32[1] = 0.64705882353;
+	clear_values[0].color.float32[2] = 0.84705882353;
+	clear_values[0].color.float32[3] = 1.0f;
+	clear_values[1].depthStencil.depth = 1.0f;
+	clear_values[1].depthStencil.stencil = 0.0f;
 	vk::RenderPassBeginInfo renderPassBeginInfo = vk::RenderPassBeginInfo()
 		.setRenderPass(context.renderpass)
-		.setFramebuffer(framebuffers[currentSwapIndex]);
+		.setFramebuffer(framebuffers[currentSwapIndex])
+		.setClearValueCount(2)
+		.setPClearValues(clear_values);
 
 	renderPassBeginInfo.renderArea.extent = swapchainExtent;
 
 	context.commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 }
 
-void BackendVulkan::EndFrame()
+void BackendVulkan::EndFrame(vk::CommandBuffer iSceneRenderBuffer, vk::CommandBuffer iGuiBuffer)
 {
 	context.commandBuffer.endRenderPass();
 
-	vk::ImageMemoryBarrier barrier = vk::ImageMemoryBarrier()
-		.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
-		.setImage(swapchainImages[currentSwapIndex])
-		.setOldLayout(vk::ImageLayout::eGeneral)
-		.setNewLayout(vk::ImageLayout::ePresentSrcKHR)
-		.setSrcAccessMask(vk::AccessFlagBits::eColorAttachmentWrite)
-		.setDstAccessMask(vk::AccessFlagBits(0));
-
-	barrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-
-	context.commandBuffer.pipelineBarrier(
-		vk::PipelineStageFlagBits::eColorAttachmentOutput, 
-		vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits(0),
-		(uint32_t)0, NULL, 0, NULL, (uint32_t)1, &barrier);
 
 	context.commandBuffer.end();
 	context.commandBufferRecorded[context.currentFrame] = true;
@@ -1018,9 +1148,11 @@ void BackendVulkan::EndFrame()
 
 	vk::PipelineStageFlags dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
+	vk::CommandBuffer buffers[2]{ context.commandBuffer, iGuiBuffer };
+	
 	vk::SubmitInfo subInfo = vk::SubmitInfo()
-		.setCommandBufferCount(1)
-		.setPCommandBuffers(&context.commandBuffer)
+		.setCommandBufferCount(2)
+		.setPCommandBuffers(buffers)
 		.setWaitSemaphoreCount(1)
 		.setPWaitSemaphores(acquire)
 		.setSignalSemaphoreCount(1)
@@ -1028,6 +1160,8 @@ void BackendVulkan::EndFrame()
 		.setPWaitDstStageMask(&dstStageMask);
 
 
+
+	// Very important! the imgui renderpass implicitly sets the swapchain view to present
 	context.graphicsQueue.submit(1, &subInfo, context.commandBufferFences[context.currentFrame]);
 }
 
@@ -1038,9 +1172,12 @@ void BackendVulkan::BlockSwapBuffers()
 		return;
 	}
 
-	context.device.waitForFences(context.commandBufferFences[context.currentFrame], VK_TRUE, UINT64_MAX);
-	context.device.resetFences(context.commandBufferFences[context.currentFrame]);
-	context.commandBufferRecorded[context.currentFrame] = false;
+	if (NUM_FRAMES == 1)
+	{
+		context.device.waitForFences(context.commandBufferFences[context.currentFrame], VK_TRUE, UINT64_MAX);
+		context.device.resetFences(context.commandBufferFences[context.currentFrame]);
+		context.commandBufferRecorded[context.currentFrame] = false;
+	}
 
 	vk::Semaphore* finished = &renderCompleteSemaphore[context.currentFrame];
 
@@ -1053,8 +1190,10 @@ void BackendVulkan::BlockSwapBuffers()
 
 	context.presentQueue.presentKHR(presentInfo);
 	
+	context.lastFrame = context.currentFrame;
 	context.counter++;
 	context.currentFrame = context.counter % NUM_FRAMES;
+	vmaSetCurrentFrameIndex(allocator, context.currentFrame);
 }
 
 void BackendVulkan::CreateCommandPool()
@@ -1089,4 +1228,10 @@ void BackendVulkan::CreateCommandBuffer()
 	{
 		e = false;
 	}
+}
+
+void BackendVulkan::DestroyCmdPoolAndBuffers()
+{
+	context.device.freeCommandBuffers(context.cmdPool, context.commandBuffer);
+	context.device.destroyCommandPool(context.cmdPool);
 }
